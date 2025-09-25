@@ -343,6 +343,7 @@ export default function TestPage() {
         };
       })
     }
+    console.log("Payload to submit:", payload);
 
     try {
       const res = await fetch('http://127.0.0.1:6100/api/purchase/create-pr', {

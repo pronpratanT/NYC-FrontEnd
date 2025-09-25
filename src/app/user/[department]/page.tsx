@@ -35,7 +35,7 @@ const decodeDepartmentName = (encoded: string): string => {
   try {
     let decoded = encoded;
     let previousDecoded = '';
-    
+
     while (decoded !== previousDecoded) {
       previousDecoded = decoded;
       try {
@@ -44,7 +44,7 @@ const decodeDepartmentName = (encoded: string): string => {
         break;
       }
     }
-    
+
     return decoded;
   } catch (error) {
     console.error('Failed to decode department name:', error);
@@ -55,7 +55,7 @@ const decodeDepartmentName = (encoded: string): string => {
 export default function DepartmentPage() {
   const params = useParams();
   const router = useRouter();
-  
+
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDep, setSelectedDep] = useState<string>("");
@@ -63,7 +63,7 @@ export default function DepartmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [departmentNotFound, setDepartmentNotFound] = useState<boolean>(false);
-  
+
   // Token authentication states
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
@@ -78,14 +78,14 @@ export default function DepartmentPage() {
   // ดึงชื่อแผนกจาก URL parameter และทำการ decode
   useEffect(() => {
     if (params?.department) {
-      const departmentParam = Array.isArray(params.department) 
-        ? params.department[0] 
+      const departmentParam = Array.isArray(params.department)
+        ? params.department[0]
         : params.department;
-      
-  // Removed unused setOriginalEncodedDep
+
+      // Removed unused setOriginalEncodedDep
       const decodedDepartment = decodeDepartmentName(departmentParam);
       setSelectedDep(decodedDepartment);
-      
+
       console.log('Encoded Department from URL:', departmentParam);
       console.log('Decoded Department:', decodedDepartment);
     }
@@ -113,7 +113,7 @@ export default function DepartmentPage() {
           sessionStorage.removeItem('department_auth');
         }
       }
-      
+
       setAuthState(prev => ({ ...prev, isLoading: false }));
     };
 
@@ -164,7 +164,7 @@ export default function DepartmentPage() {
         });
 
         setTokenInput("");
-        
+
       } else {
         setTokenError(data.error || 'Token ไม่ถูกต้องหรือถูกใช้งานแล้ว');
         setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -245,8 +245,8 @@ export default function DepartmentPage() {
 
   // กรองข้อมูลพนักงานตามแผนกที่เลือก
   const filteredUsers = users.filter((user) => {
-    return user.user_dep === selectedDep || 
-           (user.Department && user.Department.name === selectedDep);
+    const inDepartment = user.user_dep === selectedDep || (user.Department && user.Department.name === selectedDep);
+    return inDepartment && user.is_active === true;
   });
 
   const handlePositionChange = (userId: string, position: string) => {

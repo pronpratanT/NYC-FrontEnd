@@ -18,10 +18,9 @@ export const TokenProvider = ({ children }: { children: ReactNode }) => {
             }
         };
         
-        // อัพเดต token ตอน mount
-        const initialToken = getCookie("authToken");
-        console.log("TokenProvider initial token:", initialToken);
-        setToken(initialToken);
+        const currentToken = getCookie("authToken");
+        console.log("TokenProvider initial token:", currentToken);
+        setToken(currentToken);
         
         // ฟัง custom event สำหรับ token updates
         const handleTokenUpdate = () => {

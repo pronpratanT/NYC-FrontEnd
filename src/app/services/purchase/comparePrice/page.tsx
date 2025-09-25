@@ -7,6 +7,9 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useToken } from "../../../context/TokenContext";
+import { useTheme } from "../../../components/ThemeProvider";
+import { IoIosCheckmark } from "react-icons/io";
+import { FaXmark } from "react-icons/fa6";
 
 type Part = {
     pr_list_id: number;
@@ -27,10 +30,14 @@ type PRs = {
     dept_name: string;
     dept_short: string;
     dept_id: number;
+    manager_approve: boolean;
+    supervisor_approve: boolean;
+    pu_operator_approve: boolean;
     pr_lists: Part[];
 };
 
 function ComparePriceContent({ token }: { token: string | null }) {
+    const { isDarkMode } = useTheme();
     const searchParams = useSearchParams();
     const prId = searchParams.get("id");
     const router = useRouter();
@@ -46,6 +53,13 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPartNo, setSelectedPartNo] = useState<string>("");
     const [selectedPart, setSelectedPart] = useState<Part | null>(null);
+
+        // Pagination
+        const [page, setPage] = useState(1);
+        const rowsPerPage = 10;
+        const totalRows = prData?.pr_lists?.length || 0;
+        const totalPages = Math.ceil(totalRows / rowsPerPage);
+        const pagedParts = prData?.pr_lists?.slice((page - 1) * rowsPerPage, page * rowsPerPage) || [];
 
     const handleItemClick = (part: Part) => {
         setSelectedPartNo(part.part_no);
@@ -90,6 +104,38 @@ function ComparePriceContent({ token }: { token: string | null }) {
         fetchData();
     }, [prId, token]);
 
+    const handleApprove = async () => {
+        if (!prId) {
+            setError("ไม่พบ PR ID");
+            return;
+        }
+        setLoading(true);
+        try {
+            const response = await fetch(`http://127.0.0.1:6100/api/purchase/pr/approve/${prId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || `HTTP ${response.status}`);
+            }
+            setError("");
+            window.alert("อนุมัติสำเร็จ");
+            router.push("/services/purchase");
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || "เกิดข้อผิดพลาด");
+            } else {
+                setError("เกิดข้อผิดพลาด");
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+
     if (loading) return <div>กำลังโหลดข้อมูล...</div>;
     if (error) return <div style={{ color: "red" }}>{error}</div>;
 
@@ -106,7 +152,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                     <ol className="flex items-center w-full text-sm font-medium text-center sm:text-base">
                         {/* Step 1: Select PR */}
                         <li className="flex items-center gap-2">
-                            <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 ${prData ? 'bg-green-100 border-green-500 text-green-700' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                            <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 ${prData ? `bg-green-100 border-green-500 text-green-700 ${isDarkMode ? 'dark:bg-green-900 dark:border-green-400 dark:text-green-300' : ''}` : `bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}`}>
                                 {prData ? (
                                     <svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
                                         <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 10l4 4 6-8" />
@@ -115,23 +161,23 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     <span className="font-bold">1</span>
                                 )}
                             </span>
-                            <span className={`ml-2 ${prData ? 'text-green-700 font-semibold' : 'text-gray-400 font-medium'}`}>Select PR</span>
+                            <span className={`ml-2 ${prData ? `text-green-700 font-semibold ${isDarkMode ? 'dark:text-green-300' : ''}` : `text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}`}>Select PR</span>
                         </li>
-                        <span className="flex-1 h-1 bg-gray-200 mx-4 block"></span>
+                        <span className={`flex-1 h-1 mx-4 block ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}></span>
                         {/* Step 2: Compare Price */}
                         <li className="flex items-center gap-2">
-                            <span className="flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400">
+                            <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}>
                                 <span className="font-bold">2</span>
                             </span>
-                            <span className="ml-2 text-gray-400 font-medium">Compare Price</span>
+                            <span className={`ml-2 text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}>Compare Price</span>
                         </li>
-                        <span className="flex-1 h-1 bg-gray-200 mx-4 block"></span>
+                        <span className={`flex-1 h-1 mx-4 block ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}></span>
                         {/* Step 3: Confirmation */}
                         <li className="flex items-center gap-2">
-                            <span className="flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400">
+                            <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}>
                                 <span className="font-bold">3</span>
                             </span>
-                            <span className="ml-2 text-gray-400 font-medium">Confirmation</span>
+                            <span className={`ml-2 text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}>Confirmation</span>
                         </li>
                     </ol>
                 </div>
@@ -141,109 +187,205 @@ function ComparePriceContent({ token }: { token: string | null }) {
                     <div className="max-w-none w-full space-y-8 mb-2 pt-8">
                         {/* Modern PR Info Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
+                            {/* PR CARD */}
+                            <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
+                                <div className="flex items-center gap-3 mb-2 justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>หมายเลข PR</span>
                                     </div>
-                                    <span className="font-semibold text-gray-700">หมายเลข PR</span>
+                                    {/* Approve / Reject Buttons */}
+                                    {!(prData?.manager_approve && prData?.supervisor_approve && prData?.pu_operator_approve) && (
+                                        <div className="flex items-center gap-2 relative">
+                                            <div className="flex items-center">
+                                                <button
+                                                    type="button"
+                                                    className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
+                                                    onClick={() => handleApprove()}
+                                                    style={{ width: '40px', height: '40px', zIndex: 2 }}
+                                                    onMouseEnter={e => {
+                                                        e.currentTarget.style.width = '112px';
+                                                        const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                    }}
+                                                    onMouseLeave={e => {
+                                                        e.currentTarget.style.width = '40px';
+                                                        const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                    }}
+                                                >
+                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                        <IoIosCheckmark size={40} />
+                                                    </span>
+                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                        Approve
+                                                    </span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
+                                                    onClick={() => alert('ปฏิเสธ PR นี้')}
+                                                    style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
+                                                    onMouseEnter={e => {
+                                                        e.currentTarget.style.width = '112px';
+                                                        const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                    }}
+                                                    onMouseLeave={e => {
+                                                        e.currentTarget.style.width = '40px';
+                                                        const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                    }}
+                                                >
+                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                        <FaXmark size={20} />
+                                                    </span>
+                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                        Reject
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="text-lg font-bold text-gray-900 mb-1">{prData.pr_no}</div>
-                                <div className="text-xs text-gray-400">สถานะ: รอดำเนินการ</div>
+                                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no}</div>
+                                <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                    สถานะ : {' '}
+                                    {!prData.supervisor_approve && (
+                                        <span className={`font-semibold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`}>รอหัวหน้าแผนกอนุมัติ</span>
+                                    )}
+                                    {prData.supervisor_approve && !prData.manager_approve && (
+                                        <span className={`font-semibold ${isDarkMode ? 'text-orange-300' : 'text-orange-500'}`}>รอผู้จัดการแผนกอนุมัติ</span>
+                                    )}
+                                    {prData.supervisor_approve && prData.manager_approve && !prData.pu_operator_approve && (
+                                        <span className={`font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>รอแผนกจัดซื้ออนุมัติ</span>
+                                    )}
+                                    {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
+                                        <span className={`font-semibold ${isDarkMode ? 'text-green-300' : 'text-green-600'}`}>รอดำเนินการ</span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
+                            {/* Department CARD */}
+                            <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/30' : 'bg-green-100'}`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v4a1 1 0 001 1h3m10-5h-3a1 1 0 00-1 1v4a1 1 0 001 1h3m-10 4h10" />
                                         </svg>
                                     </div>
-                                    <span className="font-semibold text-gray-700">แผนก/หน่วยงาน</span>
+                                    <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>แผนก/หน่วยงาน</span>
                                 </div>
-                                <div className="text-lg font-bold text-gray-900 mb-1">{prData.dept_name}</div>
-                                <div className="text-xs text-gray-400">รหัสแผนก: {prData.dept_short}</div>
+                                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.dept_name}</div>
+                                <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>รหัสแผนก : {prData.dept_short}</div>
                             </div>
-                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
+                            {/* Date CARD */}
+                            <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                     </div>
-                                    <span className="font-semibold text-gray-700">วันที่ทำ PR</span>
+                                    <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>วันที่ทำ PR</span>
                                 </div>
-                                <div className="text-lg font-bold text-gray-900 mb-1">{new Date(prData.pr_date).toLocaleDateString('th-TH')}</div>
-                                <div className="text-xs text-gray-400">เวลา: {new Date(prData.pr_date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</div>
+                                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{new Date(prData.pr_date).toLocaleDateString('th-TH')}</div>
+                                <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>เวลา: {new Date(prData.pr_date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</div>
                             </div>
                         </div>
                         {/* Part No Input and Table */}
-                        <div className="bg-white rounded-3xl shadow border border-green-100 overflow-visible ">
-                            <div className="px-8 pt-6 pb-4 flex items-center justify-between bg-gradient-to-r from-green-50 via-white to-green-100 rounded-t-3xl overflow-visible">
+                        <div className={`rounded-3xl shadow border overflow-visible ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
+                            <div className={`px-8 pt-6 pb-4 flex items-center justify-between rounded-t-3xl overflow-visible ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
                                 <div className="flex items-center gap-3">
-                                    <span className="text-xl font-bold text-green-700">Purchase Requisition</span>
-                                    <span className="text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full shadow-sm border border-green-200">{} รายการ</span>
+                                    <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
+                                    <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>{ } รายการ</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
+                                    onClick={() => router.push("/services/purchase")}
+                                >
+                                    เลือก PR ใหม่
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                className="text-green-700 bg-white rounded-lg px-6 py-2 font-semibold border border-green-300 focus:outline-none transition-colors duration-150 hover:bg-green-50 cursor-pointer hover:shadow"
-                                onClick={() => router.push("/services/purchase")}
-                            >
-                                เลือก PR ใหม่
-                            </button>
-                        </div>
-                        <div className="overflow-visible">
-                            <table className="min-w-full text-sm overflow-visible">
-                                <thead className="bg-gradient-to-r from-green-50 via-white to-green-100">
-                                    <tr>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-12">Item</th>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-32">Part No.</th>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-64">Part Name</th>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-16">QTY</th>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-20">UNIT</th>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-24">Vendor</th>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-16">Stock</th>
-                                        <th className="px-2 py-3 text-center font-semibold text-gray-700 w-24">Price/Unit</th>
-                                    </tr>
-                                </thead>
-                                <tbody className={`bg-white divide-y divide-green-100 bg-gradient-to-r from-green-50 via-white to-green-100 dark:bg-gray-900 dark:divide-gray-700 dark:bg-gradient-to-r dark:from-gray-800 dark:via-gray-900 dark:to-gray-800`}>
-                                    {(prData?.pr_lists ?? []).map((part, idx) => (
-                                        <tr key={part.part_no + '-row-' + idx} className="hover:bg-green-50 dark:hover:bg-gray-800 transition-all duration-150 cursor-pointer" onClick={() => handleItemClick(part)}>
-                                            <td className="px-2 py-3 text-center w-12 dark:text-gray-200">{idx + 1}</td>
-                                            <td className="px-2 py-3 font-medium text-gray-800 w-32 text-center dark:text-gray-200">{part.part_no}</td>
-                                            <td className="px-2 py-3 w-64 dark:text-gray-200">{part.part_name}</td>
-                                            <td className="px-2 py-3 w-16 text-center dark:text-gray-200">{part.qty}</td>
-                                            <td className="px-2 py-3 w-20 text-center dark:text-gray-200">{part.unit}</td>
-                                            <td className="px-2 py-3 w-24 text-center dark:text-gray-200">{part.vendor}</td>
-                                            <td className="px-2 py-3 w-16 text-center dark:text-gray-200">{part.stock}</td>
-                                            <td className="px-2 py-3 w-24 text-right pr-15 dark:text-gray-200">{part.price_per_unit}</td>
+                            <div className="overflow-visible">
+                                <table className="min-w-full text-sm overflow-visible">
+                                    <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
+                                        <tr>
+                                            <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-24 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-24 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className={`divide-y transition-all duration-150 ${isDarkMode ? 'bg-slate-900/50 divide-slate-700/50 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-white divide-green-100 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
+                                        {pagedParts.map((part, idx) => (
+                                            <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 cursor-pointer ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-green-50'}`} onClick={() => handleItemClick(part)}>
+                                                <td className={`px-2 py-3 text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
+                                                <td className={`px-2 py-3 font-medium w-32 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.part_no}</td>
+                                                <td className={`px-2 py-3 w-64 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.part_name}</td>
+                                                <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.qty}</td>
+                                                <td className={`px-2 py-3 w-20 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.unit}</td>
+                                                <td className={`px-2 py-3 w-24 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.vendor}</td>
+                                                <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.stock}</td>
+                                                <td className={`px-2 py-3 w-24 text-right pr-15 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
+                                            </tr>
+                                        ))}
+                                        {/* Pagination row */}
+                                        {totalRows > rowsPerPage && (
+                                            <tr>
+                                                <td colSpan={8} className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
+                                                    <div className="inline-flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className={`px-3 py-1 rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            onClick={() => page > 1 && setPage(page - 1)}
+                                                            disabled={page === 1}
+                                                        >ก่อนหน้า</button>
+                                                        <span className={`mx-2 font-medium ${isDarkMode ? 'text-slate-200' : 'text-green-700'}`}>หน้า {page} / {totalPages}</span>
+                                                        <button
+                                                            type="button"
+                                                            className={`px-3 py-1 rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            onClick={() => page < totalPages && setPage(page + 1)}
+                                                            disabled={page === totalPages}
+                                                        >ถัดไป</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Extra space at the bottom */}
+                            <div className={`pb-6 rounded-b-3xl ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}></div>
                         </div>
+
+                        {/* PRModal for price comparison */}
+                        {modalOpen && selectedPartNo && selectedPart && prData && (
+                            <PRModal
+                                partNo={selectedPartNo}
+                                prNumber={prData.pr_no}
+                                department={prData.dept_name}
+                                prDate={prData.pr_date}
+                                qty={selectedPart.qty}
+                                unit={selectedPart.unit}
+                                pr_list_id={selectedPart.pr_list_id}
+                                onClose={() => setModalOpen(false)}
+                            />
+                        )}
                     </div>
-                    
-                    {/* PRModal for price comparison */}
-                    {modalOpen && selectedPartNo && selectedPart && prData && (
-                        <PRModal 
-                            partNo={selectedPartNo}
-                            prNumber={prData.pr_no}
-                            department={prData.dept_name}
-                            prDate={prData.pr_date}
-                            qty={selectedPart.qty}
-                            unit={selectedPart.unit}
-                            pr_list_id={selectedPart.pr_list_id}
-                            onClose={() => setModalOpen(false)} 
-                        />
-                    )}
-                </div>
-            ) : (
-                <div className="p-8 text-center text-gray-400">กรุณาเลือก PR จากหน้าแรก</div>
-            )}
-        </main>
-    </div>
+                ) : (
+                    <div className={`p-8 text-center ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>กรุณาเลือก PR จากหน้าแรก</div>
+                )}
+            </main>
+        </div>
     );
 }
 
