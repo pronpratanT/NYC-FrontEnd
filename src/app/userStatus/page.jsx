@@ -1,0 +1,502 @@
+"use client";
+import { useEffect, useState } from "react";
+
+export default function Page() {
+  const [departments, setDepartments] = useState([]);
+  const [selectedDep, setSelectedDep] = useState("all");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [userPositions, setUserPositions] = useState({});
+  const [userWorkStatus, setUserWorkStatus] = useState({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [resUsers, resDeps] = await Promise.all([
+          fetch("/api/proxy/user", { cache: "no-store" }),
+          fetch("/api/proxy/user/deps", { cache: "no-store" }),
+        ]);
+
+        if (!resUsers.ok) {
+          throw new Error(`User API error: HTTP ${resUsers.status} ${resUsers.statusText}`);
+        }
+        if (!resDeps.ok) {
+          throw new Error(`Deps API error: HTTP ${resDeps.status} ${resDeps.statusText}`);
+        }
+
+        const dataUsers = await resUsers.json();
+        const dataDeps = await resDeps.json();
+
+        const usersArray = Array.isArray(dataUsers) ? dataUsers : dataUsers.data || [];
+        const depsArray = Array.isArray(dataDeps) ? dataDeps : dataDeps.data || [];
+
+        setUsers(usersArray);
+        setDepartments(depsArray);
+
+        console.log("Users:", usersArray);
+        console.log("Departments:", depsArray);
+
+      } catch (err) {
+        const errorMessage = err && err.message ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล";
+        setError(errorMessage);
+        console.error("Failed to fetch data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Filter users based on selected department
+  const filteredUsers = selectedDep === "all"
+    ? users
+    : users.filter(user => user.user_dep === selectedDep || user.Department?.name === selectedDep);
+
+  // Handle position assignment
+  const handlePositionChange = (userId, position) => {
+    setUserPositions(prev => ({ ...prev, [userId]: position }));
+  };
+
+  // Handle work status change
+  const handleWorkStatusChange = (userId, status) => {
+    setUserWorkStatus(prev => ({ ...prev, [userId]: status }));
+  };
+
+  // Check if there are users with work status assigned
+  const hasWorkStatusAssigned = Object.keys(userWorkStatus).some(userId => userWorkStatus[userId]);
+
+  // Save function
+  const handleSave = async () => {
+    try {
+      // Find users that have work status assigned
+      const usersWithStatus = Object.keys(userWorkStatus).filter(userId => userWorkStatus[userId]);
+      
+      if (usersWithStatus.length === 0) {
+        alert("กรุณาเลือกสถานะการทำงานสำหรับพนักงานอย่างน้อย 1 คน");
+        return;
+      }
+
+      // Prepare array of user status updates
+      const updateArray = [];
+
+      for (const userId of usersWithStatus) {
+        const user = users.find(u => u.employee_id === userId);
+        const status = userWorkStatus[userId];
+
+        if (!user) {
+          console.log(`ไม่พบข้อมูลพนักงาน ID: ${userId}`);
+          continue;
+        }
+
+        // Debug: Check user object structure
+        console.log("User object:", user);
+        console.log("Available user fields:", Object.keys(user));
+
+        // Convert status to boolean: "ยังทำงาน" = true, "ลาออก" = false
+        const isActive = status === "ยังทำงาน";
+
+        // Try different ID fields
+        const userIdValue = user.id || user.ID || user.user_id || user.employee_id;
+        
+        if (!userIdValue) {
+          console.error("Cannot find user ID in object:", user);
+          continue;
+        }
+
+        updateArray.push({
+          user_id: Number(userIdValue),
+          is_active: isActive,
+        });
+      }
+
+      if (updateArray.length === 0) {
+        alert("ไม่พบข้อมูลพนักงานที่ถูกต้องสำหรับการอัปเดต");
+        return;
+      }
+      console.log("Prepared user status updates:", updateArray);
+
+      console.log("Updating user statuses:", updateArray);
+
+      // Send individual requests using Promise.all
+      const updatePromises = updateArray.map(async (userUpdate) => {
+        const res = await fetch('/api/proxy/user/UpdateIsActive', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userUpdate),
+        });
+
+        if (!res.ok) {
+          let errorMessage = `Failed to update user ${userUpdate.user_id}: HTTP ${res.status} - ${res.statusText}`;
+          
+          // Try to get detailed error from response
+          try {
+            const errorData = await res.json();
+            if (errorData.error || errorData.message) {
+              errorMessage += `\n${errorData.error || errorData.message}`;
+            }
+          } catch (parseError) {
+            console.log("Could not parse error response");
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        return res.json();
+      });
+
+      const results = await Promise.all(updatePromises);
+      console.log("All updates completed:", results);
+
+      alert(`บันทึกข้อมูลสำเร็จ ✅\nอัปเดตสถานะพนักงาน ${updateArray.length} คน`);
+
+    } catch (err) {
+      console.error("Failed to save:", err);
+      
+      // Show more detailed error message
+      let errorMsg = "เกิดข้อผิดพลาดในการบันทึก ❌";
+      if (err.message) {
+        errorMsg += `\n\nรายละเอียด: ${err.message}`;
+      }
+      
+      alert(errorMsg);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+      <main className="container mx-auto px-6 py-8">
+        
+        {/* Page Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            จัดการสถานะพนักงาน
+          </h1>
+          <p className="text-gray-600 text-lg">ระบบจัดการข้อมูลและสถานะการทำงานของพนักงาน</p>
+        </div>
+
+        {/* Action Section */}
+        {!error && !loading && users.length > 0 && (
+          <div className="mb-6 flex flex-col gap-2">
+            <div className="flex gap-4 items-center">
+              {/* Save button */}
+              <button
+                onClick={handleSave}
+                disabled={!hasWorkStatusAssigned}
+                className={`inline-flex items-center px-6 py-3 rounded-xl font-semibold shadow-lg transition-all duration-300 transform hover:scale-105
+        ${!hasWorkStatusAssigned
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white hover:shadow-xl"}
+      `}
+              >
+                <svg
+                  className="h-5 w-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                บันทึกสถานะการทำงาน
+              </button>
+
+              {/* Department filter dropdown */}
+              <select
+                value={selectedDep}
+                onChange={(e) => setSelectedDep(e.target.value)}
+                className="px-4 py-3 border border-gray-200 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+              >
+                <option value="all">-- เลือกทุกแผนก --</option>
+                {departments.map((dep) => (
+                  <option key={dep.ID} value={dep.name}>
+                    {dep.name}
+                  </option>
+                ))}
+              </select>
+
+              {filteredUsers.length > 0 && (
+                <span className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+                  {selectedDep === "all"
+                    ? `พนักงานทั้งหมด: ${filteredUsers.length} คน`
+                    : `พนักงานในแผนก ${selectedDep}: ${filteredUsers.length} คน`}
+                </span>
+              )}
+
+              {!hasWorkStatusAssigned && (
+                <p className="text-sm text-orange-600">
+                  ⚠️ กรุณาเลือกสถานะการทำงานสำหรับพนักงานอย่างน้อย 1 คน
+                </p>
+              )}
+              
+              {hasWorkStatusAssigned && (
+                <p className="text-sm text-green-600">
+                  ✅ พร้อมบันทึกสถานะการทำงานสำหรับ {Object.keys(userWorkStatus).filter(userId => userWorkStatus[userId]).length} คน
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-white mb-2">ข้อมูลพนักงาน</h2>
+                <p className="text-blue-100 text-lg">
+                  {loading ?
+                    'กำลังโหลดข้อมูล...' :
+                    error ?
+                      'เกิดข้อผิดพลาดในการดึงข้อมูล' :
+                      selectedDep === "all" ?
+                        `พบข้อมูลพนักงาน ${users.length} คนทั้งหมด` :
+                        `แสดงพนักงานแผนก ${selectedDep} จำนวน ${filteredUsers.length} คน`
+                  }
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <svg className="w-16 h-16 text-white/50" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </div>
+            
+            {/* Statistics */}
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-100">ยังทำงาน</p>
+                    <p className="text-2xl font-bold text-white">
+                      {Object.values(userWorkStatus).filter(status => status === 'ยังทำงาน').length}
+                    </p>
+                  </div>
+                  <svg className="w-8 h-8 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-100">ลาออกแล้ว</p>
+                    <p className="text-2xl font-bold text-white">
+                      {Object.values(userWorkStatus).filter(status => status === 'ลาออก').length}
+                    </p>
+                  </div>
+                  <svg className="w-8 h-8 text-red-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-100">รวมทั้งหมด</p>
+                    <p className="text-2xl font-bold text-white">{filteredUsers.length}</p>
+                  </div>
+                  <svg className="w-8 h-8 text-blue-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-100">ยังไม่เลือก</p>
+                    <p className="text-2xl font-bold text-white">
+                      {filteredUsers.length - Object.keys(userWorkStatus).filter(key => userWorkStatus[key]).length}
+                    </p>
+                  </div>
+                  <svg className="w-8 h-8 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Loading */}
+          {loading && (
+            <div className="flex items-center justify-center p-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">กำลังโหลดข้อมูล...</span>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 m-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">
+                    <strong>เกิดข้อผิดพลาด:</strong> {error}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded text-sm"
+                  >
+                    รีเฟรชหน้า
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Table */}
+          {!error && !loading && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                        </svg>
+                        <span>รหัสพนักงาน</span>
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd"/>
+                        </svg>
+                        <span>ชื่อ-นามสกุล</span>
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z" clipRule="evenodd"/>
+                        </svg>
+                        <span>แผนก</span>
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
+                        </svg>
+                        <span>สถานะการทำงาน</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A10.003 10.003 0 0124 26c4.21 0 7.813 2.602 9.288 6.286M30 14a6 6 0 11-12 0 6 6 0 0112 0zm12 6a4 4 0 11-8 0 4 4 0 018 0zm-28 0a4 4 0 11-8 0 4 4 0 018 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <h3 className="mt-2 text-sm font-medium text-gray-900">
+                            {selectedDep === "all" ? "ไม่มีข้อมูลพนักงาน" : "ไม่มีพนักงานในแผนกนี้"}
+                          </h3>
+                          <p className="mt-1 text-sm text-gray-500">
+                            {selectedDep === "all" ?
+                              "ยังไม่มีข้อมูลพนักงานในระบบ" :
+                              `ไม่พบข้อมูลพนักงานในแผนก ${selectedDep}`
+                            }
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((user, index) => (
+                      <tr
+                        key={user.employee_id || index}
+                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-300 border-b border-gray-100"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                              <span className="text-sm font-bold text-white">
+                                {user.employee_id || (index + 1).toString().padStart(3, '0')}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {[user.f_name, user.l_name]
+                              .filter(Boolean)
+                              .join(' ') || '-'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex px-3 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 shadow-sm">
+                            {user.user_dep || user.Department?.name || 'ไม่ระบุ'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <select
+                            value={userWorkStatus[user.employee_id] || ""}
+                            onChange={(e) => handleWorkStatusChange(user.employee_id, e.target.value)}
+                            className="text-sm border border-gray-200 rounded-xl px-4 py-2 bg-white/80 backdrop-blur-sm shadow-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                          >
+                            <option value="">-- เลือกสถานะ --</option>
+                            <option value="ยังทำงาน">ยังทำงาน</option>
+                            <option value="ลาออก">ลาออก</option>
+                          </select>
+                          {userWorkStatus[user.employee_id] === "ยังทำงาน" && (
+                            <span className="ml-2 inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                              </svg>
+                              ยังทำงาน
+                            </span>
+                          )}
+                          {userWorkStatus[user.employee_id] === "ลาออก" && (
+                            <span className="ml-2 inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+                              </svg>
+                              ลาออก
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Footer */}
+          {!error && !loading && filteredUsers.length > 0 && (
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  {selectedDep === "all" ? (
+                    <>แสดง <span className="font-medium">{users.length}</span> รายการทั้งหมด</>
+                  ) : (
+                    <>
+                      แสดง <span className="font-medium">{filteredUsers.length}</span> รายการ
+                      จากทั้งหมด <span className="font-medium">{users.length}</span> รายการ
+                      ในแผนก <span className="font-medium">{selectedDep}</span>
+                    </>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500">
+                  อัปเดตล่าสุด: {new Date().toLocaleString('th-TH')}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
