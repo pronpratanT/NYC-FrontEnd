@@ -29,6 +29,8 @@ export const useUser = () => {
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<Me | null>(null);
   const token = useToken();
+  // ROOT PATH from .env
+  const apiUrl = process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE;
 
   useEffect(() => {
     if (!token) {
@@ -37,7 +39,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
     const fetchUserInfo = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:6001/api/user/me`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/me`, {
           cache: 'no-store',
           headers: { Authorization: `Bearer ${token}` },
         });

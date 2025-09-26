@@ -4,7 +4,7 @@ import { createClient } from 'redis';
 
 // Redis client setup
 const redis = createClient({
-  url: process.env.REDIS_URL || 'redis://127.0.0.1:6379'
+  url: process.env.REDIS_URL || 'redis://127.0.0.1:6379/1'
 });
 
 // Connect to Redis if not already connected

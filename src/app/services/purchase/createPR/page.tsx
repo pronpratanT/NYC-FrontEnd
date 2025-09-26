@@ -51,6 +51,9 @@ export default function TestPage() {
   const [unitData, setUnitData] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false)
 
+  // ROOT PATH from .env
+  const apiUrl = process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE;
+
   // Pagination
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
@@ -92,70 +95,70 @@ export default function TestPage() {
           return;
         }
 
-        // เก็บข้อมูลเก่าไว้ก่อน
-        const existingPartsInfo = [...partsInfo];
+        // ใช้ functional update เพื่อหลีกเลี่ยง dependency
+        setPartsInfo(currentPartsInfo => {
+          // เก็บข้อมูลเก่าไว้ก่อน
+          const existingPartsInfo = [...currentPartsInfo];
 
-        // หา part ที่ยังไม่มีข้อมูล
-        const existingPartNos = existingPartsInfo.map(p => p.part_no);
-        const newParts = selectedParts.filter(part => !existingPartNos.includes(part));
+          // หา part ที่ยังไม่มีข้อมูล
+          const existingPartNos = existingPartsInfo.map(p => p.part_no);
+          const newParts = selectedParts.filter(part => !existingPartNos.includes(part));
 
-        if (newParts.length === 0) {
-          // ถ้าไม่มี part ใหม่ให้ดึง แต่ยังต้อง filter เฉพาะ part ที่ถูกเลือกไว้
-          const filteredPartsInfo = existingPartsInfo.filter(p => typeof p.part_no === 'string' && selectedParts.includes(p.part_no));
-          setPartsInfo(filteredPartsInfo);
-          return;
-        }
+          if (newParts.length === 0) {
+            // ถ้าไม่มี part ใหม่ให้ดึง แต่ยังต้อง filter เฉพาะ part ที่ถูกเลือกไว้
+            return existingPartsInfo.filter(p => typeof p.part_no === 'string' && selectedParts.includes(p.part_no));
+          }
 
-        // Fetch data เฉพาะ part ใหม่ทีละตัว เพื่อให้แน่ใจว่า part_no ตรงกับ response
-        const newPartsData: partData[] = [];
+          // สำหรับ new parts ให้ทำการ fetch แบบ async
+          (async () => {
+            const newPartsData: partData[] = [];
 
-        for (const part of newParts) {
-          try {
-            const response = await fetch(`http://127.0.0.1:6100/api/purchase/pr/compare/lists/last?part_no=${encodeURIComponent(part)}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            for (const part of newParts) {
+              try {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/compare/lists/last?part_no=${encodeURIComponent(part)}`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
 
-            if (!response.ok) {
-              console.warn(`No data found for part: ${part} (HTTP ${response.status})`);
-              continue; // ข้าม part นี้ไป
+                if (!response.ok) {
+                  console.warn(`No data found for part: ${part} (HTTP ${response.status})`);
+                  continue;
+                }
+
+                const json = await response.json();
+                console.log(`Fetched data for ${part}:`, json);
+
+                const data = Array.isArray(json.data) ? json.data : (json.data ? [json.data] : (Array.isArray(json) ? json : [json]));
+
+                data.forEach((item: partData) => {
+                  if (item && item.part_no === part) {
+                    const parsed: partData = {
+                      part_no: String(item.part_no),
+                      qty: item.qty ?? null,
+                      unit: item.unit ?? null,
+                      vendor: item.vendor ?? null,
+                      stock: item.stock ?? null,
+                      price_per_unit: item.price_per_unit ?? null,
+                    };
+                    newPartsData.push(parsed);
+                  }
+                });
+
+              } catch (error) {
+                console.error(`Error fetching data for part ${part}:`, error);
+              }
             }
 
-            const json = await response.json();
-            console.log(`Fetched data for ${part}:`, json);
-
-            // Normalize และเช็ค part_no
-            const data = Array.isArray(json.data) ? json.data : (json.data ? [json.data] : (Array.isArray(json) ? json : [json]));
-
-            // เพิ่มข้อมูลที่มี part_no ตรงกับที่ต้องการ
-            data.forEach((item: partData) => {
-              if (item && item.part_no === part) {
-                // normalize to partData shape to satisfy TypeScript
-                const parsed: partData = {
-                  part_no: String(item.part_no),
-                  qty: item.qty ?? null,
-                  unit: item.unit ?? null,
-                  vendor: item.vendor ?? null,
-                  stock: item.stock ?? null,
-                  price_per_unit: item.price_per_unit ?? null,
-                };
-                newPartsData.push(parsed);
-              }
+            // อัปเดตข้อมูลหลังจาก fetch เสร็จ
+            setPartsInfo(prev => {
+              const combinedPartsInfo = [...prev, ...newPartsData];
+              return combinedPartsInfo.filter(p => typeof p.part_no === 'string' && selectedParts.includes(p.part_no));
             });
 
-          } catch (error) {
-            console.error(`Error fetching data for part ${part}:`, error);
-            // ข้าม part นี้ไปแล้วดึง part ถัดไป
-          }
-        }
+          })();
 
-        console.log("Processed new part data:", newPartsData);
-
-        // รวมข้อมูลเก่าและใหม่ แล้ว filter เฉพาะ part ที่ถูกเลือกไว้
-        const combinedPartsInfo = [...existingPartsInfo, ...newPartsData];
-        const filteredPartsInfo = combinedPartsInfo.filter(p => typeof p.part_no === 'string' && selectedParts.includes(p.part_no));
-
-        setPartsInfo(filteredPartsInfo);
-        console.log("Updated part info:", filteredPartsInfo);
+          // return ค่าเดิมก่อนเพื่อไม่ให้เกิด re-render
+          return existingPartsInfo.filter(p => typeof p.part_no === 'string' && selectedParts.includes(p.part_no));
+        });
 
       } catch (error) {
         console.error("Error fetching part data:", error);
@@ -163,7 +166,7 @@ export default function TestPage() {
     };
 
     fetchPartData();
-  }, [selectedParts, token]); // ลบ partsInfo ออกจาก dependency เพื่อป้องกัน infinite loop
+  }, [selectedParts, token]); // ลบ partsInfo ออกเพื่อป้องกัน infinite loop
 
   const handleRowDueDateChange = (idx: number, date: Date | null) => {
     setRowDueDates(prev => {
@@ -303,6 +306,12 @@ export default function TestPage() {
         console.log(`กรุณาเลือก Destination ในแถวที่ ${idx + 1}`);
         return false;
       }
+      // ตรวจสอบข้อมูลจริง
+      const hasRealData = partInfo && (partInfo.vendor !== null || partInfo.unit !== null || partInfo.stock !== null || partInfo.price_per_unit !== null);
+      if (!hasRealData) {
+        // ถ้าไม่มีข้อมูลจริง ให้ stock และ price/unit เป็น 0 และผ่าน validation
+        continue;
+      }
       const stockValue = stockData[idx] !== undefined && stockData[idx] !== null && stockData[idx] !== '' ? stockData[idx] : partInfo?.stock;
       if (stockValue === undefined || stockValue === null || stockValue === '' || isNaN(Number(stockValue))) {
         console.log(`กรุณากรอก Stock ให้ถูกต้องในแถวที่ ${idx + 1}`);
@@ -339,14 +348,14 @@ export default function TestPage() {
           objective: objectiveData[idx],
           destination: destinationData[idx],
           stock: parseFloat(String(stockData[idx] !== '' ? stockData[idx] : (partInfo?.stock ?? '0'))),
-          price_per_unit: priceData[idx] !== '' ? priceData[idx] : (partInfo?.price_per_unit ?? ''),
+          price_per_unit: parseFloat(String(priceData[idx] !== '' ? priceData[idx] : (partInfo?.price_per_unit ?? '0'))),
         };
       })
     }
     console.log("Payload to submit:", payload);
 
     try {
-      const res = await fetch('http://127.0.0.1:6100/api/purchase/create-pr', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/create-pr`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -355,7 +364,8 @@ export default function TestPage() {
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
-        let errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
+        const errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
+        throw new Error(errorMsg);
       }
       await res.json();
       alert('บันทึกข้อมูลสำเร็จ!');
@@ -511,7 +521,7 @@ export default function TestPage() {
                     <th className={`px-2 py-3 text-center font-semibold w-26 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
                     <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                     <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
+                    <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
                     <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
                     <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
                   </tr>
@@ -541,7 +551,7 @@ export default function TestPage() {
                                 type="number"
                                 min="0" step="1"
                                 className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
-                                value={pagedQty[idx] || partInfo.qty || ''}
+                                value={pagedQty[idx] !== '' && pagedQty[idx] !== undefined && pagedQty[idx] !== null ? Number(pagedQty[idx]).toFixed(2) : (partInfo.qty !== null && partInfo.qty !== undefined ? Number(partInfo.qty).toFixed(2) : '')}
                                 onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
                                 placeholder="0"
                               />
@@ -574,18 +584,24 @@ export default function TestPage() {
                             <td className="px-2 py-3 w-16">
                               <input
                                 type="text"
-                                className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.vendor ?? ''} readOnly />
+                                className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                value={partInfo.vendor ?? ''} 
+                                readOnly />
                             </td>
-                            <td className="px-2 py-3 w-16">
+                            <td className="px-2 py-3 w-20">
                               <input
-                                type="text"
-                                className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.stock ?? ''} readOnly />
+                                type="number"
+                                className={`w-full h-10 px-2 py-2 border rounded text-sm text-right focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                value={Number(partInfo.stock ?? 0).toFixed(2)}
+                                readOnly />
                             </td>
                             <td className="px-2 py-3 w-16">
                               <input
                                 type="number"
                                 min="0" step="1"
-                                className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.price_per_unit ?? ''} readOnly />
+                                className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                value={Number(partInfo.price_per_unit ?? 0).toFixed(2)} 
+                                readOnly />
                             </td>
                             <td className="px-2 py-3 w-20">
                               <select
@@ -616,7 +632,7 @@ export default function TestPage() {
                                 min="0" step="1"
                                 className={`w-full h-10 px-2 py-2 border rounded text-center text-sm text-right focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
                                 placeholder="จำนวน"
-                                value={pagedQty[idx] || ''}
+                                value={pagedQty[idx] !== '' && pagedQty[idx] !== undefined && pagedQty[idx] !== null ? Number(pagedQty[idx]).toFixed(2) : ''}
                                 onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
                               />
                             </td>
@@ -665,19 +681,18 @@ export default function TestPage() {
                             </td>
                             <td className="px-2 py-3 w-16">
                               <input
-                                type="text"
-                                value={stockData[(page - 1) * rowsPerPage + idx] || ''}
-                                onChange={e => handleStockChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                type="number"
+                                value={Number(0).toFixed(2)}
+                                readOnly
+                                className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
                                 placeholder="Stock"
                               />
                             </td>
                             <td className="px-2 py-3 w-16">
                               <input
                                 type="number"
-                                min="0" step="1"
-                                onChange={e => handlePriceChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                value={priceData[(page - 1) * rowsPerPage + idx] || ''}
+                                value={Number(0).toFixed(2)}
+                                readOnly
                                 className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
                                 placeholder="ราคา"
                               />
