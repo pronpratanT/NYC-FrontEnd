@@ -36,6 +36,10 @@ const nextConfig = {
         destination: 'http://127.0.0.1:6100/api/purchase/search-part-no',
       },
       {
+        source: '/api/proxy/purchase/search-vendor',
+        destination: 'http://127.0.0.1:6100/api/purchase/search-vendor',
+      },
+      {
         source: '/api/proxy/purchase/request/departments',
         destination: 'http://127.0.0.1:6100/api/purchase/pr/request/departments',
       },

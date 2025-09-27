@@ -111,7 +111,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
         }
         setLoading(true);
         try {
-            const response = await fetch(`http://127.0.0.1:6100/api/purchase/pr/approve/${prId}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/approve/${prId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
