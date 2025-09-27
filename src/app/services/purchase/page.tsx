@@ -283,34 +283,38 @@ export default function PurchasePage() {
                                 {/* Status badge top right */}
                                 <div className="absolute top-2 right-2 z-10">
                                     {!pr.supervisor_approved ? (
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-800/50 text-yellow-300' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
-                                            รอหัวหน้าแผนกอนุมัติ
-                                        </span>
-                                    ) : !pr.manager_approved ? (
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-amber-900/30 border-amber-800/50 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-amber-500' : 'text-amber-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
-                                            รอผู้จัดการแผนกอนุมัติ
-                                        </span>
-                                    ) : !pr.pu_operator_approved ? (
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-800/50 text-orange-300' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
-                                            รอแผนกจัดซื้ออนุมัติ
-                                        </span>
-                                    ) : (
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-800/50 text-green-300' : 'bg-green-50 border-green-200 text-green-700'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
-                                            รอดำเนินการ
-                                        </span>
-                                    )}
+                                            // Blue
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                                </svg>
+                                                รอหัวหน้าแผนกอนุมัติ
+                                            </span>
+                                        ) : !pr.manager_approved ? (
+                                            // Purple
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-200' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                                </svg>
+                                                รอผู้จัดการแผนกอนุมัติ
+                                            </span>
+                                        ) : !pr.pu_operator_approved ? (
+                                            // Orange
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                                </svg>
+                                                รอแผนกจัดซื้ออนุมัติ
+                                            </span>
+                                        ) : (
+                                            // Green
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                                </svg>
+                                                รอดำเนินการ
+                                            </span>
+                                        )}
                                 </div>
                                 {/* Middle: Table info */}
                                 <div className="w-full px-6 pt-2">

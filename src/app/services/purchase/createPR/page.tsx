@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { FaRegCalendarAlt } from "react-icons/fa";
@@ -26,6 +27,7 @@ type partData = {
 }
 
 export default function TestPage() {
+  const router = useRouter();
   // สร้างหมายเลข PR mock: PR-YY-X000
   function getMockPRNo() {
     const year = new Date().getFullYear().toString().slice(-2); // ปีสองหลัก
@@ -109,30 +111,38 @@ export default function TestPage() {
             return existingPartsInfo.filter(p => typeof p.part_no === 'string' && selectedParts.includes(p.part_no));
           }
 
-          // สำหรับ new parts ให้ทำการ fetch แบบ async
+          // ฟังก์ชันตัดหลัง ' |' ออก
+          function formatPartForFetch(part: string) {
+            const idx = part.indexOf(' |');
+            return idx !== -1 ? part.slice(0, idx) : part;
+          }
+
           (async () => {
             const newPartsData: partData[] = [];
 
             for (const part of newParts) {
+              const fetchPart = formatPartForFetch(part);
+              // console.log("Fetching data for part:", fetchPart);
+              // console.log("Original selected part:", part);
               try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/compare/lists/last?part_no=${encodeURIComponent(part)}`, {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/compare/lists/last?part_no=${encodeURIComponent(fetchPart)}`, {
                   headers: { Authorization: `Bearer ${token}` }
                 });
 
                 if (!response.ok) {
-                  console.warn(`No data found for part: ${part} (HTTP ${response.status})`);
+                  console.warn(`No data found for part: ${fetchPart} (HTTP ${response.status})`);
                   continue;
                 }
 
                 const json = await response.json();
-                console.log(`Fetched data for ${part}:`, json);
+                console.log(`Fetched data for ${fetchPart}:`, json);
 
                 const data = Array.isArray(json.data) ? json.data : (json.data ? [json.data] : (Array.isArray(json) ? json : [json]));
 
                 data.forEach((item: partData) => {
-                  if (item && item.part_no === part) {
+                  if (item && item.part_no === fetchPart) {
                     const parsed: partData = {
-                      part_no: String(item.part_no),
+                      part_no: part, // ใช้ part เดิมจาก selectedParts เพื่อให้ตรงกับการ find ในตาราง
                       qty: item.qty ?? null,
                       unit: item.unit ?? null,
                       vendor: item.vendor ?? null,
@@ -140,11 +150,12 @@ export default function TestPage() {
                       price_per_unit: item.price_per_unit ?? null,
                     };
                     newPartsData.push(parsed);
+                    console.log("Added part data:", parsed);
                   }
                 });
 
               } catch (error) {
-                console.error(`Error fetching data for part ${part}:`, error);
+                console.error(`Error fetching data for part ${fetchPart}:`, error);
               }
             }
 
@@ -341,7 +352,7 @@ export default function TestPage() {
       pr_list: selectedParts.map((part, idx) => {
         const partInfo = partsInfo.find(p => p.part_no === part);
         return {
-          part_no: part,
+          part_no: part.indexOf(' |') !== -1 ? part.slice(0, part.indexOf(' |')) : part,
           qty: parseFloat(String(qtyData[idx] !== '' ? qtyData[idx] : (partInfo?.qty ?? '0'))),
           unit: unitData[idx] !== '' ? unitData[idx] : (partInfo?.unit ?? ''),
           due_date: rowDueDates[idx] ? rowDueDates[idx]?.toISOString().slice(0, 10) : null,
@@ -369,7 +380,7 @@ export default function TestPage() {
       }
       await res.json();
       alert('บันทึกข้อมูลสำเร็จ!');
-      // ตัวอย่าง reset form:
+      // Reset form
       setSelectedParts([]);
       setQtyData([]);
       setObjectiveData([]);
@@ -378,11 +389,12 @@ export default function TestPage() {
       setStockData([]);
       setPriceData([]);
       setUnitData([]);
-      // หรือ redirect ด้วย router.push('/services/purchase')
+      setIsSaving(false);
+      // Redirect to /services/purchase only after success
+      router.push('/services/purchase');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
       console.error(err);
-    } finally {
       setIsSaving(false);
     }
   };
@@ -467,7 +479,7 @@ export default function TestPage() {
                   />
                   <button
                     type="button"
-                    className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-green-500 text-white font-bold shadow hover:bg-green-600 transition-all duration-150 cursor-pointer ${isDarkMode ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-white font-bold shadow transition-all duration-150 cursor-pointer ${isDarkMode ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-emerald-500 hover:bg-green-500'}`}
                     style={{ zIndex: 2 }}
                     onClick={() => setShowCreatPartNo(true)}
                   >
@@ -545,14 +557,22 @@ export default function TestPage() {
                               </button>
                             </td>
                             <td className={`px-2 py-3 font-bold text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
-                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{partInfo.part_no}</td>
+                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                              {partInfo.part_no && partInfo.part_no.indexOf(' |') !== -1 ? partInfo.part_no.slice(0, partInfo.part_no.indexOf(' |')) : partInfo.part_no}
+                            </td>
                             <td className="px-2 py-3 w-20">
                               <input
                                 type="number"
                                 min="0" step="1"
                                 className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
-                                value={pagedQty[idx] !== '' && pagedQty[idx] !== undefined && pagedQty[idx] !== null ? Number(pagedQty[idx]).toFixed(2) : (partInfo.qty !== null && partInfo.qty !== undefined ? Number(partInfo.qty).toFixed(2) : '')}
+                                value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : (partInfo.qty !== null && partInfo.qty !== undefined ? partInfo.qty : '')}
                                 onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                onBlur={e => {
+                                  const val = e.target.value;
+                                  if (val !== '' && !isNaN(Number(val))) {
+                                    handleQtyChange((page - 1) * rowsPerPage + idx, Number(val).toFixed(2));
+                                  }
+                                }}
                                 placeholder="0"
                               />
                             </td>
@@ -585,7 +605,7 @@ export default function TestPage() {
                               <input
                                 type="text"
                                 className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
-                                value={partInfo.vendor ?? ''} 
+                                value={partInfo.vendor ?? ''}
                                 readOnly />
                             </td>
                             <td className="px-2 py-3 w-20">
@@ -600,7 +620,7 @@ export default function TestPage() {
                                 type="number"
                                 min="0" step="1"
                                 className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
-                                value={Number(partInfo.price_per_unit ?? 0).toFixed(2)} 
+                                value={Number(partInfo.price_per_unit ?? 0).toFixed(2)}
                                 readOnly />
                             </td>
                             <td className="px-2 py-3 w-20">
@@ -632,8 +652,14 @@ export default function TestPage() {
                                 min="0" step="1"
                                 className={`w-full h-10 px-2 py-2 border rounded text-center text-sm text-right focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
                                 placeholder="จำนวน"
-                                value={pagedQty[idx] !== '' && pagedQty[idx] !== undefined && pagedQty[idx] !== null ? Number(pagedQty[idx]).toFixed(2) : ''}
+                                value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : ''}
                                 onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                onBlur={e => {
+                                  const val = e.target.value;
+                                  if (val !== '' && !isNaN(Number(val))) {
+                                    handleQtyChange((page - 1) * rowsPerPage + idx, Number(val).toFixed(2));
+                                  }
+                                }}
                               />
                             </td>
                             <td className="px-2 py-3 w-20">
