@@ -27,6 +27,7 @@ type PRCard = {
     manager_approved: boolean;
     supervisor_approved: boolean;
     pu_operator_approved: boolean;
+    waiting: number;
 }
 
 // Icon mapping for departments with consistent IoDocumentTextOutline icon
@@ -68,6 +69,7 @@ export default function PurchasePage() {
         const fetchPrCards = async () => {
             try {
                 setError(null);
+                setLoading(true);
 
                 // ตรวจสอบว่ามี token หรือไม่
                 if (!token) {
@@ -76,19 +78,33 @@ export default function PurchasePage() {
                     return;
                 }
 
-                console.log("Fetching PR cards with token:", token);
-                const response = await fetch("/api/proxy/purchase/request/departments", {
+                let url = "/api/proxy/purchase/request/departments";
+                let fetchOptions: RequestInit = {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
-                });
+                };
+
+                // ถ้ามี search ให้ใช้ API search-pr
+                if (search && search.trim() !== "") {
+                    url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
+                    fetchOptions = {
+                        ...fetchOptions,
+                        cache: "no-store",
+                        headers: {
+                            ...(fetchOptions.headers || {}),
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    };
+                }
+
+                const response = await fetch(url, fetchOptions);
 
                 if (response.status === 401) {
                     setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
-                    // ลบ token ที่หมดอายุ
                     document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    // Redirect ไปหน้า login
                     router.push("/login");
                     return;
                 }
@@ -99,10 +115,8 @@ export default function PurchasePage() {
 
                 const data = await response.json();
                 const prsArray = Array.isArray(data) ? data : data.data || [];
-
                 setPrCards(prsArray);
-                console.log("Loaded PR cards:", prsArray);
-
+                // console.log("Loaded PR cards:", prsArray);
             } catch (error: unknown) {
                 console.error("Failed to fetch PR cards:", error);
                 if (error instanceof Error) {
@@ -115,10 +129,12 @@ export default function PurchasePage() {
             }
         };
 
-        if (token !== null) { // รอให้ token ถูก set ก่อน
+        if (token !== null) {
             fetchPrCards();
         }
-    }, [token, router]);
+    }, [token, router, search]);
+
+    {/* Search and filter controls */}
 
     return (
         <div className="min-h-screen">
@@ -197,10 +213,9 @@ export default function PurchasePage() {
                                         type="search"
                                         id="search-dropdown"
                                         className={`block p-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
-                                        placeholder="ค้นหา PR, วันที่..."
+                                        placeholder="ค้นหา PR, ผู้จัดทำ..."
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
-                                        required
                                     />
                                     <button type="submit" className="p-3 text-base font-medium h-[48px] text-white bg-green-600 rounded-r-xl hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center" style={{ marginLeft: '-1px' }}>
                                         <svg className="w-6 h-6 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
@@ -329,7 +344,7 @@ export default function PurchasePage() {
                                 </div>
                                 {/* Bottom: Actions */}
                                 <div className="w-full px-6 pb-5 flex flex-col gap-2 items-center">
-                                    <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{pr.pr_no}</span>
+                                    <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(pr.pr_date)}</span>
                                     <div className="flex w-full justify-center">
                                         <button
                                             className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
@@ -344,7 +359,7 @@ export default function PurchasePage() {
                                             <GoDownload className="w-7 h-7" />
                                         </button>
                                     </div>
-                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>{formatDate(pr.pr_date)} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></span>
+                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></span>
                                 </div>
                             </div>
                         ))}

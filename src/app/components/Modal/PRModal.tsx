@@ -1,10 +1,12 @@
 import React, { JSX } from "react";
 import { useEffect, useState, useRef } from "react";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
-import { useToken } from "../context/TokenContext";
+import { CiEdit } from "react-icons/ci";
+import { useToken } from "../../context/TokenContext";
 import { TiPlus } from "react-icons/ti";
-import { useTheme } from "./ThemeProvider";
+import { useTheme } from "../ThemeProvider";
 import CreateVendor from "./CreateVendor";
+import EditVendor from "./EditVendor";
 
 
 // Custom scrollbar styles
@@ -92,9 +94,14 @@ type RecentPurchase = {
 }
 
 type CompareData = {
+  compare_id: number;
   vendor_id: number;
   vendor_name: string;
   vendor_code: string;
+  email: string | null;
+  tax_id: string | null;
+  fax_no: string | null;
+  contact_name: string;
   tel: string;
   credit_term: string;
   price: number;
@@ -126,16 +133,6 @@ type VendorSelected = {
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, onClose }) => {
-  // Log ข้อมูลที่ส่งเข้ามา
-  // console.log("PRModal Props:", {
-  //   partNo,
-  //   prNumber,
-  //   department,
-  //   prDate,
-  //   qty,
-  //   unit
-  // });
-
   // Tab state
   const [activeTab, setActiveTab] = useState("purchase");
   const [compareData, setCompareData] = useState<PartNo | null>(null);
@@ -166,6 +163,27 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   //create vendor modal
   const [showCreateVendor, setShowCreateVendor] = useState(false);
 
+  // edit vendor modal
+  const [showEditVendor, setShowEditVendor] = useState(false);
+  const [editVendorData, setEditVendorData] = useState<any>(null);
+
+  // Log ข้อมูลที่ส่งเข้ามา
+  // console.log("PRModal Props:", {
+  //   partNo,
+  //   prNumber,
+  //   department,
+  //   prDate,
+  //   qty,
+  //   unit
+  // });
+
+  // Handler to open EditVendor modal with vendor data
+  const handleEditVendor = (vendor: any) => {
+    console.log("Editing vendor:", vendor);
+    setEditVendorData(vendor);
+    setShowEditVendor(true);
+  };
+
   // Define type for selected row data
   type SelectedRowData = Omit<InventoryItem, 'qty' | 'unit'> & {
     selectedVendor: CompareData;
@@ -183,6 +201,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [previousPurchaseHistory, setPreviousPurchaseHistory] = useState<RecentPurchase | null>(null);
   // เก็บเหตุผลการเลือก
   const [selectedReason, setSelectedReason] = useState<string>("");
+
+  // State to track which vendor is being edited (by vendor_code)
+  const [editingVendorCode, setEditingVendorCode] = useState<string | null>(null);
+
+  // State to track edited prices
+  const [editedPrices, setEditedPrices] = useState<{ compare_id: number; price: number }[]>([]);
 
   // เมื่อโหลด compareData แล้ว ให้ดึงข้อมูลล่าสุดมาเก็บ
   useEffect(() => {
@@ -264,48 +288,48 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
 
-    const fetchCompareData = async () => {
-      try {
-        setError("");
-        setLoading(true);
-        console.log("Fetching compare data for partNo:", partNo, "pr_list_id:", pr_list_id);
-        if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-
-        // Fetch price comparison data
-        const response = await fetch(`/api/purchase/pc/compare/list?part_no=${partNo}&pr_list_id=${pr_list_id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!response.ok) throw new Error("โหลดข้อมูลเปรียบเทียบราคาไม่สำเร็จ");
-
-        const data = await response.json();
-        // console.log("Data structure:", {
-        //   hasData: !!data,
-        //   dataKeys: Object.keys(data || {}),
-        //   dataData: data?.data,
-        //   directData: data,
-        //   isArray: Array.isArray(data),
-        //   isArrayData: Array.isArray(data?.data)
-        // });
-
-        // Extract data from the response
-        const compareData = data?.data || data;
-
-        setCompareData(compareData);
-
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message || "เกิดข้อผิดพลาด");
-        } else {
-          setError("เกิดข้อผิดพลาด");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCompareData();
   }, [partNo, pr_list_id, token]);
+
+  const fetchCompareData = async () => {
+    try {
+      setError("");
+      setLoading(true);
+      console.log("Fetching compare data for partNo:", partNo, "pr_list_id:", pr_list_id);
+      if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+
+      // Fetch price comparison data
+      const response = await fetch(`/api/purchase/pc/compare/list?part_no=${partNo}&pr_list_id=${pr_list_id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error("โหลดข้อมูลเปรียบเทียบราคาไม่สำเร็จ");
+
+      const data = await response.json();
+      // console.log("Data structure:", {
+      //   hasData: !!data,
+      //   dataKeys: Object.keys(data || {}),
+      //   dataData: data?.data,
+      //   directData: data,
+      //   isArray: Array.isArray(data),
+      //   isArrayData: Array.isArray(data?.data)
+      // });
+
+      // Extract data from the response
+      const compareData = data?.data || data;
+
+      setCompareData(compareData);
+
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "เกิดข้อผิดพลาด");
+      } else {
+        setError("เกิดข้อผิดพลาด");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ปิด dropdown เมื่อคลิกนอก input หรือ dropdown
   useEffect(() => {
@@ -394,14 +418,19 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             if (prev.some(v => v.vendor_code === vendorData.vendor_code)) return prev;
             // Map VendorSelected to CompareData (fill with '-')
             const newCompare: CompareData = {
-              vendor_id: vendorData.vendor_id || vendorData.ID,
-              vendor_name: vendorData.vendor_name,
-              vendor_code: vendorData.vendor_code,
-              tel: vendorData.tel_no || '-',
-              credit_term: vendorData.credit_term || '-',
-              price: 0,
-              discount: 0,
-              due_date: '-',
+              compare_id: vendorData.compare_id ?? '',
+              vendor_id: vendorData.vendor_id ?? vendorData.ID ?? '',
+              vendor_name: vendorData.vendor_name ?? '-',
+              vendor_code: vendorData.vendor_code ?? '-',
+              tel: vendorData.tel_no ?? vendorData.tel ?? '-',
+              credit_term: vendorData.credit_term ?? '-',
+              price: typeof vendorData.price === 'number' ? vendorData.price : 0,
+              discount: typeof vendorData.discount === 'number' ? vendorData.discount : 0,
+              due_date: vendorData.due_date ?? '-',
+              email: vendorData.email ?? '-',
+              tax_id: vendorData.tax_id ?? '-',
+              fax_no: vendorData.fax_no ?? '-',
+              contact_name: vendorData.contact_name ?? '-',
             };
             return [...prev, newCompare];
           });
@@ -433,9 +462,32 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       new_qty: qty,
     };
 
+    // สร้าง array edited_prices[] สำหรับ vendor ที่มีการแก้ไขราคา
+    const edited_prices = editedPrices.map(item => ({
+      clv_id: item.compare_id,
+      price: item.price
+    }));
+
     console.log("Submitting payload:", payload);
+    console.log("Edited prices:", edited_prices);
 
     try {
+      // PUT edited_prices to /edit-price-in-clv if there are any edited prices
+      if (edited_prices.length > 0) {
+        const editRes = await fetch('http://127.0.0.1:6100/api/purchase/edit-price-in-clv', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ edited_prices })
+        });
+        if (!editRes.ok) {
+          const data = await editRes.json().catch(() => ({}));
+          throw new Error(data.message || 'แก้ไขราคาผู้ขายไม่สำเร็จ');
+        }
+      }
+      //PUT payload to /send-pcl-to-approve
       const res = await fetch('http://127.0.0.1:6100/api/purchase/send-pcl-to-approve', {
         method: 'PUT',
         headers: {
@@ -455,6 +507,56 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       console.error(err);
     }
   }
+
+  // ฟังก์ชันสำหรับดึงข้อมูลแถวผู้ขายทั้งหมด (รวม extra vendors)
+  const getCompareRows = () => {
+    let allCompareData: CompareData[] = [];
+    if (compareData?.compare_vendors && Array.isArray(compareData.compare_vendors)) {
+      allCompareData = [...compareData.compare_vendors];
+    }
+    if (extraCompareVendors.length > 0) {
+      extraCompareVendors.forEach(v => {
+        if (!allCompareData.some(cv => cv.vendor_code === v.vendor_code)) {
+          allCompareData.push(v);
+        }
+      });
+    }
+    // ไม่ต้อง sort เลย ให้แสดงตามลำดับข้อมูลที่ได้มา
+    return allCompareData;
+  };
+
+  // sort เฉพาะตอน blur input เท่านั้น (ต้องอยู่ใน map loop เพื่อรู้ vendor ที่ blur)
+  const handlePriceBlur = (vendorCode: string) => {
+    setEditingVendorCode(null);
+    // sort ข้อมูลใหม่หลังจากแก้ไขเสร็จ
+    if (compareData && compareData.compare_vendors) {
+      compareData.compare_vendors = [...compareData.compare_vendors].sort((a, b) => (a.price || 0) - (b.price || 0));
+      setCompareData({ ...compareData });
+    }
+    if (extraCompareVendors.length > 0) {
+      setExtraCompareVendors(prev => [...prev].sort((a, b) => (a.price || 0) - (b.price || 0)));
+    }
+  };
+
+  // Sort compare_vendors ascending by price ทุกครั้งที่ compareData เปลี่ยนหรือเปิด tab compare (แต่ต้องป้องกัน loop)
+  useEffect(() => {
+    if (activeTab === 'compare' && compareData && compareData.compare_vendors) {
+      // ตรวจสอบก่อนว่าข้อมูลยังไม่ได้ sort จริง ๆ
+      const sorted = [...compareData.compare_vendors].sort((a, b) => (a.price || 0) - (b.price || 0));
+      const isSorted = compareData.compare_vendors.every((v, i) => v.vendor_code === sorted[i]?.vendor_code);
+      if (!isSorted) {
+        setCompareData({ ...compareData, compare_vendors: sorted });
+      }
+    }
+    if (activeTab === 'compare' && extraCompareVendors.length > 0) {
+      const sorted = [...extraCompareVendors].sort((a, b) => (a.price || 0) - (b.price || 0));
+      const isSorted = extraCompareVendors.every((v, i) => v.vendor_code === sorted[i]?.vendor_code);
+      if (!isSorted) {
+        setExtraCompareVendors(sorted);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, compareData]);
 
   return (
     <>
@@ -777,7 +879,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     </span>
                                   </td>
                                   <td className={`px-4 py-4 font-bold text-sm text-center ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{item.pr_no}</td>
-                                  <td className={`px-4 py-4 font-bold text-sm text-right pr-4 ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{item.qty}</td>
+                                  <td className={`px-4 py-4 font-bold text-sm text-right ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{item.qty}</td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{item.unit}</td>
                                   <td className={`px-4 py-4 text-center border-r ${isDarkMode ? 'border-slate-700' : 'border-black-200'}`}>
                                     {item.po_no ? (
@@ -788,7 +890,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <span className={`inline-flex px-3 py-1.5 rounded-xl text-xs font-medium border ${isDarkMode ? 'bg-gray-800/80 text-gray-400 border-gray-600/60' : 'bg-gray-100/80 text-gray-600 border-gray-200/60'}`}>รออนุมัติ</span>
                                     )}
                                   </td>
-                                  <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.vendor_name || '-'}</td>
+                                  <td className={`px-4 py-4 text-sm text-left font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.vendor_name || '-'}</td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.price ? `${purchase.price.toLocaleString()}` : '-'} ฿</td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.discount ?? '-'}%</td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.date ? new Date(purchase.date).toLocaleDateString('th-TH', {
@@ -892,23 +994,25 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <colgroup>
                         <col style={{ width: '50px' }} />
                         <col style={{ width: '50px' }} />
-                        <col style={{ width: '180px' }} />
+                        <col style={{ width: '200px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '120px' }} />
+                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '50px' }} />
                       </colgroup>
                       <thead>
                         <tr>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">#</th>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">ID</th>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">Vendor</th>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">Tel.</th>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">เครดิต</th>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">ราคา</th>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">ลด%</th>
-                          <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-center">ส่งมอบ</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">#</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ID</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Vendor</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Tel.</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">เครดิต</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ราคา</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ลด%</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ส่งมอบ</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Actions</th>
                         </tr>
                       </thead>
                     </table>
@@ -919,34 +1023,27 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <colgroup>
                         <col style={{ width: '50px' }} />
                         <col style={{ width: '50px' }} />
-                        <col style={{ width: '180px' }} />
+                        <col style={{ width: '200px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '120px' }} />
+                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '50px' }} />
                       </colgroup>
                       <tbody className={`${isDarkMode ? 'bg-slate-800/95' : 'bg-white/95'}`}>
                         {(() => {
-                          let allCompareData: CompareData[] = [];
-                          if (compareData?.compare_vendors && Array.isArray(compareData.compare_vendors)) {
-                            allCompareData = [...compareData.compare_vendors];
-                          }
-                          if (extraCompareVendors.length > 0) {
-                            extraCompareVendors.forEach(v => {
-                              if (!allCompareData.some(cv => cv.vendor_code === v.vendor_code)) {
-                                allCompareData.push(v);
-                              }
-                            });
-                          }
-                          const sortedCompareData = allCompareData.sort((a, b) => (a.price || 0) - (b.price || 0));
+                          const allCompareData = getCompareRows();
                           const startIdx = (purchasePage - 1) * rowsPerPage;
-                          const pagedRows = sortedCompareData.slice(startIdx, startIdx + rowsPerPage);
+                          const pagedRows = allCompareData.slice(startIdx, startIdx + rowsPerPage);
                           return pagedRows.length > 0 ? pagedRows.map((vendor, index) => (
                             <tr
-                              key={index}
+                              key={vendor.vendor_code || index}
                               className={`border-b cursor-pointer transition-colors ${isDarkMode ? 'border-slate-700 hover:bg-purple-900/30' : 'border-slate-100 hover:bg-purple-50/50'}`}
-                              onClick={() => handleCompareRowClick(vendor)}
+                              onClick={e => {
+                                if ((e.target as HTMLElement).closest('input')) return;
+                                handleCompareRowClick(vendor);
+                              }}
                             >
                               <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{startIdx + index + 1}</td>
                               <td className={`px-4 py-3 text-sm text-center font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{vendor.vendor_code}</td>
@@ -954,7 +1051,44 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               <td className={`px-4 py-3 text-sm text-left ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.tel}</td>
                               <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.credit_term}</td>
                               <td className={`px-4 py-3 text-sm font-bold text-right pr-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                                {vendor.price.toLocaleString()} ฿
+                                <span className="flex items-center justify-center gap-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    className={`w-24 px-2 py-1 rounded border text-right font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'} focus:outline-none focus:ring-2 focus:ring-emerald-400`}
+                                    value={(() => {
+                                      const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
+                                      if (typeof found?.price === 'number') return found.price;
+                                      return typeof vendor.price === 'number' && vendor.price !== null ? vendor.price : '';
+                                    })()}
+                                    onClick={e => e.stopPropagation()}
+                                    onFocus={e => {
+                                      e.stopPropagation();
+                                      setEditingVendorCode(vendor.vendor_code);
+                                    }}
+                                    onBlur={() => handlePriceBlur(vendor.vendor_code)}
+                                    onChange={e => {
+                                      const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                      setEditedPrices(prev => {
+                                        const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                        if (exists) {
+                                          return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, price: newValue } : p);
+                                        } else {
+                                          return [...prev, { compare_id: vendor.compare_id, price: newValue }];
+                                        }
+                                      });
+                                      // ...ยัง sync กับ state เดิมเพื่อ UI ทันที...
+                                      if (vendor.vendor_code) {
+                                        setExtraCompareVendors(prev => prev.map(v => v.vendor_code === vendor.vendor_code ? { ...v, price: newValue } : v));
+                                        if (compareData && compareData.compare_vendors) {
+                                          compareData.compare_vendors = compareData.compare_vendors.map(v => v.vendor_code === vendor.vendor_code ? { ...v, price: newValue } : v);
+                                          setCompareData({ ...compareData });
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <span>฿</span>
+                                </span>
                               </td>
                               <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{(vendor.discount ?? 0)}%</td>
                               <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -963,6 +1097,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   month: '2-digit',
                                   day: '2-digit'
                                 }) : '-'}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  type="button"
+                                  className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'}`}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleEditVendor(vendor);
+                                  }}
+                                >
+                                  <CiEdit size={24} className="inline align-middle" />
+                                </button>
                               </td>
                             </tr>
                           )) : (
@@ -985,7 +1131,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         {showDropdown && search && vendors.length > 0 && (
                           <div ref={dropdownRef} className={`absolute z-[9999] w-full border rounded-xl shadow-lg mb-2 max-h-56 overflow-y-auto bottom-full ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-purple-200'}`} style={{ zIndex: 9999 }}>
                             <div className="p-2">
-                              <div className={`text-xs px-4 py-3 border-b rounded-t-lg ${isDarkMode ? 'text-slate-400 bg-slate-800/50 border-slate-700/50' : 'text-purple-700 border-purple-200 bg-purple-100'}`}>
+                              <div className={`text-xs px-4 py-3 border-b rounded-t-lg ${isDarkMode ? 'text-slate-400 bg-slate-800/50' : 'text-purple-700 border-purple-200 bg-purple-100'}`}>
                                 พบ {vendors.length} รายการ
                               </div>
                               {vendors.map((vendor, idx) => (
@@ -1056,23 +1202,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <div className={`flex items-center border rounded shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                         <div className={`px-3 py-1.5 text-sm border-r ${isDarkMode ? 'text-slate-300 bg-slate-700 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                           {(() => {
-                            let allCompareData: CompareData[] = [];
-                            if (compareData?.compare_vendors && Array.isArray(compareData.compare_vendors)) {
-                              allCompareData = [...compareData.compare_vendors];
-                            }
-                            if (extraCompareVendors.length > 0) {
-                              extraCompareVendors.forEach(v => {
-                                if (!allCompareData.some(cv => cv.vendor_code === v.vendor_code)) {
-                                  allCompareData.push(v);
-                                }
-                              });
-                            }
-                            const totalRows = allCompareData.length;
-                            const startRow = totalRows === 0 ? 0 : ((purchasePage - 1) * rowsPerPage + 1);
-                            const endRow = Math.min(purchasePage * rowsPerPage, totalRows);
+                            const startRow = totalPurchaseRows === 0 ? 0 : ((purchasePage - 1) * rowsPerPage + 1);
+                            const endRow = Math.min(purchasePage * rowsPerPage, totalPurchaseRows);
                             return (
                               <>
-                                <span className="text-purple-500 font-bold">{startRow}-{endRow}</span> of {totalRows}
+                                <span className="font-bold">{startRow}-{endRow}</span> of {totalPurchaseRows}
                               </>
                             );
                           })()}
@@ -1089,10 +1223,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <button
                             type="button"
                             className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                            disabled={
-                              !Array.isArray(compareData?.compare_vendors) ||
-                              (purchasePage * rowsPerPage >= compareData.compare_vendors.length)
-                            }
+                            disabled={compareData?.part_inventory_and_pr && ((purchasePage * rowsPerPage) >= totalPurchaseRows)}
                             onClick={() => setPurchasePage(p => p + 1)}
                           >
                             <IoIosArrowForward className="w-4 h-4" />
@@ -1136,7 +1267,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               <div><span className="font-medium">ชื่อผู้ขาย:</span> {selectedRowData.selectedVendor.vendor_name || '-'}</div>
                               <div><span className="font-medium">เบอร์โทร:</span> {selectedRowData.selectedVendor.tel || '-'}</div>
                               <div><span className="font-medium">เครดิต:</span> {selectedRowData.selectedVendor.credit_term || '-'}</div>
-                              <div><span className="font-medium">ราคา:</span> {selectedRowData.selectedVendor.price ? `฿${selectedRowData.selectedVendor.price.toLocaleString()}` : '-'}</div>
+                              <div><span className="font-medium">ราคา:</span> {selectedRowData.selectedVendor.price ? `${selectedRowData.selectedVendor.price.toLocaleString()} ฿` : '-'}</div>
                               <div><span className="font-medium">ส่วนลด:</span> {selectedRowData.selectedVendor.discount ? `${selectedRowData.selectedVendor.discount}%` : '0%'}</div>
                               {/* <div><span className="font-medium">วันที่ส่งมอบ:</span> {selectedRowData.selectedVendor.due_date ? new Date(selectedRowData.selectedVendor.due_date).toLocaleDateString('th-TH') : '-'}</div> */}
                             </div>
@@ -1147,7 +1278,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <div className={`bg-gradient-to-r p-4 rounded-lg border ${isDarkMode ? 'from-orange-900/50 to-amber-900/50 border-orange-700/60' : 'from-orange-50 to-amber-50 border-orange-200/60'}`}>
                           <h4 className={`font-semibold mb-3 ${isDarkMode ? 'text-orange-400' : 'text-orange-700'}`}>ผลสรุป</h4>
                           {compareData ? (
-                            <div className={`space-y-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                            <div className={`spacey-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                               <div>
                                 <span className="font-medium">ผู้ร้องขอ:</span>
                                 <span className={`ml-2 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{compareData.requester_name || 'ไม่ระบุ'}</span>
@@ -1263,10 +1394,30 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           </div>
         </div>
       </div>
-    {/* CreateVendor Modal */}
-    {showCreateVendor && (
-      <CreateVendor pcl_id={compareData?.pcl_id} onCancel={() => setShowCreateVendor(false)} />
-    )}
+      {/* Open Modal */}
+      {showCreateVendor && (
+        <CreateVendor
+          pcl_id={compareData?.pcl_id}
+          onCancel={() => setShowCreateVendor(false)}
+          onConfirm={() => {
+            setShowCreateVendor(false);
+            // รีโหลดข้อมูลใหม่และไปที่ tab เปรียบเทียบราคา
+            if (typeof fetchCompareData === 'function') fetchCompareData();
+            setActiveTab('compare');
+          }}
+        />
+      )}
+      {showEditVendor && (
+        <EditVendor
+          vendorData={editVendorData}
+          onCancel={() => setShowEditVendor(false)}
+          onConfirm={() => {
+            setShowEditVendor(false);
+            if (typeof fetchCompareData === 'function') fetchCompareData();
+            setActiveTab('compare');
+          }}
+        />
+      )}
     </>
   );
 };

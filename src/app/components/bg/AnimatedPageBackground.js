@@ -1,8 +1,8 @@
-"use client";
+'use client';
 import React, { useState, useEffect } from "react";
-import { useTheme } from "./ThemeProvider";
+import { useTheme } from "../ThemeProvider";
 
-function AnimatedPageBackgroundDarkMode() {
+function AnimatedPageBackground() {
   const { isDarkMode } = useTheme();
   const [time, setTime] = useState(0);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
@@ -151,4 +151,4 @@ function AnimatedPageBackgroundDarkMode() {
   );
 }
 
-export default AnimatedPageBackgroundDarkMode;
+export default AnimatedPageBackground;

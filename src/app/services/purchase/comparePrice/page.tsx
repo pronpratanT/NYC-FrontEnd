@@ -2,7 +2,7 @@
 
 import Sidebar from "../../../components/sidebar";
 import Header from "../../../components/header";
-import PRModal from '../../../components/PRModal';
+import PRModal from '../../../components/Modal/PRModal';
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -148,9 +148,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                 style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft: 'calc(18rem + 55px)' }}
             >
                 {/* Stepper */}
-                <div className="px-8 pt-8 pb-2">
+                {/* <div className="px-8 pt-8 pb-2">
                     <ol className="flex items-center w-full text-sm font-medium text-center sm:text-base">
-                        {/* Step 1: Select PR */}
+
                         <li className="flex items-center gap-2">
                             <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 ${prData ? `bg-green-100 border-green-500 text-green-700 ${isDarkMode ? 'dark:bg-green-900 dark:border-green-400 dark:text-green-300' : ''}` : `bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}`}>
                                 {prData ? (
@@ -164,7 +164,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             <span className={`ml-2 ${prData ? `text-green-700 font-semibold ${isDarkMode ? 'dark:text-green-300' : ''}` : `text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}`}>Select PR</span>
                         </li>
                         <span className={`flex-1 h-1 mx-4 block ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}></span>
-                        {/* Step 2: Compare Price */}
+
                         <li className="flex items-center gap-2">
                             <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}>
                                 <span className="font-bold">2</span>
@@ -172,7 +172,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             <span className={`ml-2 text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}>Compare Price</span>
                         </li>
                         <span className={`flex-1 h-1 mx-4 block ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}></span>
-                        {/* Step 3: Confirmation */}
+
                         <li className="flex items-center gap-2">
                             <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}>
                                 <span className="font-bold">3</span>
@@ -180,11 +180,11 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             <span className={`ml-2 text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}>Confirmation</span>
                         </li>
                     </ol>
-                </div>
+                </div> */}
 
                 {/* Content: Show PR info and table only if prData exists */}
                 {prData ? (
-                    <div className="max-w-none w-full space-y-8 mb-2 pt-8">
+                    <div className="max-w-none w-full space-y-8 mb-2">
                         {/* Modern PR Info Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                             {/* PR CARD */}

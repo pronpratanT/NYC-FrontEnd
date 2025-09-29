@@ -15,7 +15,7 @@ import Header from '@/app/components/header';
 import { useUser } from '../../../context/UserContext';
 import { useToken } from '../../../context/TokenContext';
 import { TiPlus } from "react-icons/ti";
-import CreatPartNo from '@/app/components/CreatPartNo';
+import CreatPartNo from '@/app/components/Modal/CreatPartNo';
 
 type partData = {
   part_no: string | null;
