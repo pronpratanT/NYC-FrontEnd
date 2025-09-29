@@ -1116,7 +1116,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
                   {selectedRowData ? (
                     <div className="space-y-6">
-                      {/* Grid แสดงข้อมูล 3 หมวด */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* ข้อมูลการขอซื้อล่าสุด */}
                         <div className={`bg-gradient-to-r p-4 rounded-lg border ${isDarkMode ? 'from-emerald-900/50 to-teal-900/50 border-emerald-700/60' : 'from-emerald-50 to-teal-50 border-emerald-200/60'}`}>
