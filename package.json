@@ -9,8 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@heroui/calendar": "^2.2.26",
+    "@heroui/code": "^2.2.20",
+    "@heroui/date-picker": "^2.3.27",
+    "@heroui/react": "^2.8.4",
+    "@internationalized/date": "^3.9.0",
+    "@react-aria/calendar": "^3.9.1",
+    "@react-aria/i18n": "^3.12.12",
+    "@react-spectrum/calendar": "^3.7.7",
+    "@react-stately/calendar": "^3.8.4",
     "bootstrap": "^5.3.8",
     "dayjs": "^1.11.18",
+    "flatpickr": "^4.6.13",
     "jsonwebtoken": "^9.0.2",
     "next": "15.5.2",
     "react": "19.1.0",

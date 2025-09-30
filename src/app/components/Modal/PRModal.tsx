@@ -585,6 +585,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>
                       เปรียบเทียบราคาสินค้า
                     </h2>
+                    {/* Info Cards */}
                   </div>
 
                   {/* Clean Product Info Cards */}
@@ -750,6 +751,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   <span>ผลสรุป</span>
                 </div>
               </button>
+              
             </nav>
           </div>
           {/* Modal body */}
