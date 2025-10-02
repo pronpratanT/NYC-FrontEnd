@@ -61,6 +61,33 @@ html.dark body,
   background: #16a34a;
 }
 
+/* Dark mode scrollbar styles */
+@media (prefers-color-scheme: dark) {
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #166534;
+  }
+
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background: #22c55e;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #1e293b;
+  }
+}
+
+html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #166534;
+}
+
+html.dark .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+  background: #22c55e;
+}
+
+html.dark .scrollbar-thin::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
 /* Custom Scrollbar Classes for Tailwind */
 .scrollbar-thumb-green-300::-webkit-scrollbar-thumb {
   background: #86efac;

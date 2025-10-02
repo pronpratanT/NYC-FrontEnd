@@ -9,9 +9,8 @@ import { useTheme } from "../../components/ThemeProvider";
 import Sidebar from "@/app/components/sidebar";
 import Header from "@/app/components/header";
 import { useToken } from "@/app/context/TokenContext";
-import { FiSearch } from "react-icons/fi";
+// Removed unused import FiSearch
 import { LuCalendarFold } from "react-icons/lu";
-import { CalendarDate } from "@internationalized/date";
 import { useRef } from "react";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
@@ -57,16 +56,12 @@ const departmentColors: { [key: string]: string } = {
 };
 
 // Convert JS Date to CalendarDate
-function toCalendarDate(date: Date): CalendarDate {
-    return new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
-}
+// Removed unused function toCalendarDate
 
 export default function PurchasePage() {
     // Sort icon status dropdown state
     const [statusSortDropdownOpen, setStatusSortDropdownOpen] = useState(false);
-    // Pagination for department dropdown
-    const [depPage, setDepPage] = useState(1);
-    const depPerPage = 5;
+    // Removed unused depPage, setDepPage, depPerPage
     // ฟังก์ชันแปลงวันที่เป็น DD/MM/YYYY
     function formatDate(dateStr: string) {
         if (!dateStr) return '';
@@ -87,7 +82,7 @@ export default function PurchasePage() {
     const { isDarkMode } = useTheme();
     const [error, setError] = useState<string | null>(null);
     const [prCards, setPrCards] = useState<PRCard[]>([]);
-    const [filteredPrCards, setFilteredPrCards] = useState<PRCard[]>([]);
+    // Removed unused filteredPrCards, setFilteredPrCards
     const [loading, setLoading] = useState(true);
 
     const token = useToken();
@@ -96,7 +91,7 @@ export default function PurchasePage() {
 
     // State สำหรับ DateRangePicker
     const [calendarOpen, setCalendarOpen] = useState(false);
-    const [selectedRange, setSelectedRange] = useState<any>(null);
+    // Removed unused selectedRange, setSelectedRange
     // เปลี่ยนจาก string เป็น object
     const [dateRange, setDateRange] = useState<{ start: string; end: string; displayText: string } | null>(null);
 
@@ -161,7 +156,7 @@ export default function PurchasePage() {
     useEffect(() => {
         if (calendarOpen) injectFlatpickrTheme();
         if (calendarOpen && dateRangeInputRef.current) {
-            const options: any = {
+            const options: Record<string, unknown> = {
                 mode: "range",
                 dateFormat: "d/m/Y",
                 locale: {
@@ -186,7 +181,7 @@ export default function PurchasePage() {
                     setTimeout(hideExtraCalendarRow, 0);
                 }
             };
-            const fp = flatpickr(dateRangeInputRef.current as any, options);
+            const fp = flatpickr(dateRangeInputRef.current as HTMLInputElement, options);
             // Hide extra calendar row if needed
             function hideExtraCalendarRow() {
                 const calendar = fp.calendarContainer;
@@ -217,6 +212,7 @@ export default function PurchasePage() {
                 fp.destroy();
             };
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [calendarOpen]);
 
     useEffect(() => {

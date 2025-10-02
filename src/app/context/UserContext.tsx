@@ -29,8 +29,7 @@ export const useUser = () => {
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<Me | null>(null);
   const token = useToken();
-  // ROOT PATH from .env
-  const apiUrl = process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE;
+  // Removed unused variable apiUrl
 
   useEffect(() => {
     if (!token) {

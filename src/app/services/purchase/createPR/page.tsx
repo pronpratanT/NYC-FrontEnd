@@ -54,7 +54,7 @@ export default function TestPage() {
   const [isSaving, setIsSaving] = useState(false)
 
   // ROOT PATH from .env
-  const apiUrl = process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE;
+  // Removed unused variable apiUrl
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -276,20 +276,8 @@ export default function TestPage() {
     });
   };
 
-  const handleStockChange = (idx: number, value: string) => {
-    setStockData(prev => {
-      const arr = [...prev];
-      arr[idx] = value;
-      return arr;
-    });
-  };
-  const handlePriceChange = (idx: number, value: string) => {
-    setPriceData(prev => {
-      const arr = [...prev];
-      arr[idx] = value;
-      return arr;
-    });
-  };
+  // Removed unused function handleStockChange
+  // Removed unused function handlePriceChange
 
   // ฟังก์ชันตรวจสอบความถูกต้องของข้อมูลในแต่ละแถว
   function validatePRInputs() {
@@ -355,7 +343,7 @@ export default function TestPage() {
           part_no: part.indexOf(' |') !== -1 ? part.slice(0, part.indexOf(' |')) : part,
           qty: parseFloat(String(qtyData[idx] !== '' ? qtyData[idx] : (partInfo?.qty ?? '0'))),
           unit: unitData[idx] !== '' ? unitData[idx] : (partInfo?.unit ?? ''),
-          due_date: rowDueDates[idx] ? rowDueDates[idx]?.toISOString().slice(0, 10) : null,
+          due_date: rowDueDates[idx] ? rowDueDates[idx]?.toLocaleDateString('en-CA') : null,
           objective: objectiveData[idx],
           destination: destinationData[idx],
           stock: parseFloat(String(stockData[idx] !== '' ? stockData[idx] : (partInfo?.stock ?? '0'))),
@@ -643,9 +631,7 @@ export default function TestPage() {
                               </button>
                             </td>
                             <td className={`px-2 py-3 font-bold text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
-                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{part}
-                              {/* <span className={`text-xs px-2 py-1 rounded-full ml-2 ${isDarkMode ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-100 text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">ไม่มีข้อมูล/ไม่เคยซื้อ</span> */}
-                            </td>
+                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{part && part.indexOf(' |') !== -1 ? part.slice(0, part.indexOf(' |')) : part}</td>
                             <td className="px-2 py-3 w-20">
                               <input
                                 type="number"
