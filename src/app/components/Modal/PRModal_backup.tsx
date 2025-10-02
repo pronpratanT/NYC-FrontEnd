@@ -64,7 +64,6 @@ export type PartNo = {
   pcl_id: number;
   part_no: string;
   choose_vendor: string | null;
-  reason_choose: string | null;
   requester_name: string;
   dept_request: string;
   pu_responsible: string;
@@ -83,6 +82,8 @@ type InventoryItem = {
   unit: string;
   po_no: string;
   recent_purchase: RecentPurchase[];
+  status: string | null;
+  reason_choose: string | null;
 };
 
 type RecentPurchase = {
@@ -133,10 +134,11 @@ type VendorSelected = {
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, onClose }) => {
-  console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
+  // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
 
   // Tab state
   const [activeTab, setActiveTab] = useState("purchase");
+  const [purchaseType, setPurchaseType] = useState<'D' | 'I' | undefined>(undefined);
   const [compareData, setCompareData] = useState<PartNo | null>(null);
   const [loading, setLoading] = useState(true);
   // loading สำหรับ vendor dropdown เท่านั้น
@@ -208,7 +210,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Removed: editingVendorCode (unused)
 
   // State to track edited prices
-  const [editedPrices, setEditedPrices] = useState<{ compare_id: number; price: number }[]>([]);
+  // Support both price and discount in editedPrices
+  const [editedPrices, setEditedPrices] = useState<{ compare_id: number; price?: number; discount?: number }[]>([]);
 
   // เมื่อโหลด compareData แล้ว ให้ดึงข้อมูลล่าสุดมาเก็บ
   useEffect(() => {
@@ -259,7 +262,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           }
         }
         // Auto switch to completed summary tab
-        setActiveTab('completed-summary');
+        // setActiveTab('completed-summary');
       }
 
       // console.log("Total items:", totalCount, "Latest item:", sortedItems[0]);
@@ -317,6 +320,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const compareData = data?.data || data;
 
       setCompareData(compareData);
+      console.log("Fetched compare data:", compareData);
 
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -486,7 +490,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // สร้าง array edited_prices[] สำหรับ vendor ที่มีการแก้ไขราคา
     const edited_prices = editedPrices.map(item => ({
       clv_id: item.compare_id,
-      price: item.price
+      price: item.price,
+      discount: item.discount
     }));
 
     console.log("Submitting payload:", payload);
@@ -529,6 +534,63 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
   }
 
+  const handleApproveSubmit = async () => {
+    const approvedPCL = {
+      id: compareData?.pcl_id,
+    }
+    console.log("Approving PCL with data:", approvedPCL);
+    try {
+      const res = await fetch('http://127.0.0.1:6100/api/purchase/approve-pcl', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(approvedPCL)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      }
+      alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      if (onClose) onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+      console.error(err);
+    }
+  }
+
+  const handleSubmitPOCreate = async () => {
+    const poCreate = {
+      material_type: purchaseType,
+      po_list: [
+        {
+          pcl_id: compareData?.pcl_id,
+        }
+      ]
+    }
+    console.log("Creating PO with data:", poCreate);
+    try {
+      const res = await fetch('http://127.0.0.1:6100/api/purchase/po/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(poCreate)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      }
+      alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      if (onClose) onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+      console.error(err);
+    }
+  }
+
   // ฟังก์ชันสำหรับดึงข้อมูลแถวผู้ขายทั้งหมด (รวม extra vendors)
   const getCompareRows = () => {
     let allCompareData: CompareData[] = [];
@@ -542,8 +604,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         }
       });
     }
-    // ไม่ต้อง sort เลย ให้แสดงตามลำดับข้อมูลที่ได้มา
-    return allCompareData;
+    // เรียงราคาจากน้อยไปมาก โดยใช้ราคาจาก editedPrices ถ้ามี หรือราคาเดิม
+    return allCompareData.sort((a, b) => {
+      const priceA = editedPrices.find(p => p.compare_id === a.compare_id)?.price ?? a.price ?? 0;
+      const priceB = editedPrices.find(p => p.compare_id === b.compare_id)?.price ?? b.price ?? 0;
+      return priceA - priceB;
+    });
   };
 
   // sort เฉพาะตอน blur input เท่านั้น (ต้องอยู่ใน map loop เพื่อรู้ vendor ที่ blur)
@@ -787,7 +853,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 >
                   <div className="flex items-center space-x-2">
                     <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>ผลสรุป</span>
+                    <span>ผลสรุปรายละเอียด</span>
                   </div>
                 </button>
               )}
@@ -831,20 +897,267 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 </div>
               )}
 
+              {/* ANCHOR Approve Tab*/}
               {/* Tab Content - Approve (show only when latestNoPO and activeTab is 'approve') */}
               {!loading && !error && compareData && activeTab === 'approve' && latestNoPO && (
-                <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 flex flex-col ${isDarkMode ? 'bg-green-900/90 border-green-700/60' : 'bg-white/90 border-green-400/40'}`}>
-                  <div className="p-8 text-center">
-                    <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>รออนุมัติ PR ล่าสุด</h2>
-                    <div className={`mb-4 text-lg ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>PR เลขที่: <span className="font-bold">{latestInventoryItem?.pr_no}</span></div>
-                    <div className={`mb-4 text-lg ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>จำนวน: <span className="font-bold">{latestInventoryItem?.qty} {latestInventoryItem?.unit}</span></div>
-                    <div className={`mb-4 text-lg ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>วันที่: <span className="font-bold">{latestInventoryItem?.date_compare ? new Date(latestInventoryItem.date_compare).toLocaleDateString('th-TH') : '-'}</span></div>
-                    <div className={`mb-4 text-lg ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>สถานะ: <span className="font-bold text-yellow-500">รออนุมัติ</span></div>
-                    {/* สามารถเพิ่มปุ่มหรือข้อมูลอื่น ๆ ได้ตามต้องการ */}
-                  </div>
+                <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
+                  {(() => {
+                    const prWithPO = latestInventoryItem;
+                    if (!prWithPO) return <div className="p-6">ไม่พบข้อมูล</div>;
+
+                    // หา vendor_id จาก recent_purchase
+                    let purchaseVendorId: number | undefined = undefined;
+                    const rp = prWithPO.recent_purchase;
+                    if (Array.isArray(rp) && rp.length > 0 && typeof rp[0]?.vendor_id === 'number') {
+                      purchaseVendorId = rp[0].vendor_id;
+                    } else if (rp && typeof rp === 'object' && 'vendor_id' in rp && typeof (rp as { vendor_id?: number }).vendor_id === 'number') {
+                      purchaseVendorId = (rp as { vendor_id: number }).vendor_id;
+                    }
+
+                    const vendorDetail = compareData?.compare_vendors?.find(v => v.vendor_id === purchaseVendorId);
+
+                    return (
+                      <div className="flex flex-col h-full">
+                        {/* Header */}
+                        <div className={`bg-gradient-to-r px-8 py-4 border-b ${isDarkMode ? 'from-yellow-900/60 to-orange-900/60 border-yellow-700/60' : 'from-yellow-50 to-orange-50 border-yellow-200/60'}`}>
+                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>รออนุมัติ PR ล่าสุด</h3>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
+                          {/* Form Layout - 2 Column Grid */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ */}
+                            <div className="space-y-4">
+                              {/* ข้อมูลการขอซื้อ */}
+                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                <div className="flex items-center space-x-2 mb-4">
+                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
+                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                  </div>
+                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>ข้อมูลการขอซื้อ</h4>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-1 gap-3">
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PR เลขที่</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{prWithPO.pr_no}</div>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>จำนวน</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.qty}</div>
+                                    </div>
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>หน่วย</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.unit}</div>
+                                    </div>
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>แผนก</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.dept_request}</div>
+                                    </div>
+                                  </div>
+
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสสินค้า</label>
+                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.prod_code}</div>
+                                  </div>
+
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รายละเอียด</label>
+                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} line-clamp-2`}>{prWithPO.prod_detail}</div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* เหตุผลการขอซื้อ */}
+                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                <div className="flex items-center space-x-2 mb-4">
+                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-yellow-900/50' : 'bg-yellow-100'}`}>
+                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>เหตุผลการขอซื้อ</h4>
+                                </div>
+
+                                <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <div className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                    {(() => {
+                                      const reasonMap: { [key: string]: string } = {
+                                        '1': '1. ราคาถูก มีสินค้าส่งมอบได้เลย',
+                                        '2': '2. ราคาแพงกว่า แต่มีสินค้าส่งมอบและรอไม่ได้',
+                                        '3': '3. มีผู้ขาย / ผู้ผลิตรายเดียว',
+                                        '4': '4. ราคาแพงกว่า คุณภาพดีกว่า',
+                                        '5': '5. ราคาเท่ากัน มีเครดิตยาวกว่า',
+                                        '6': '6. ราคาแพงกว่า แต่ส่งให้ ไม่ต้องไปรับ',
+                                        '7': '7. ราคาเท่ากัน ส่งเร็วกว่า (ส่งถึงที่)',
+                                        '8': '8. ราคาแพงกว่า แต่เป็นชุดเดียวกัน แยกสั่งไม่ได้',
+                                        '9': '9. ราคาเท่ากัน แบ่งสั่ง',
+                                        '10': '10. ต้องการด่วน รอเทียบราคาไม่ได้'
+                                      };
+
+                                      const reasonChoose = prWithPO?.reason_choose;
+                                      if (reasonChoose && reasonMap[reasonChoose]) {
+                                        return reasonMap[reasonChoose];
+                                      }
+                                      return 'ไม่ระบุเหตุผล';
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Action Buttons - แยกกรอบอิสระ */}
+                              <div className={`p-4`}>
+                                <div className="flex justify-center gap-4">
+                                  <button
+                                    type="button"
+                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-red-700 text-white border-red-600 hover:bg-red-800 focus:ring-red-600' : 'bg-red-500 text-white border-red-400 hover:bg-red-600 focus:ring-red-400'}`}
+                                  >
+                                    Reject
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleApproveSubmit}
+                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'}`}
+                                  >
+                                    Approve
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}
+                            <div className="space-y-4">
+                              {/* ข้อมูลผู้ขาย */}
+                              {vendorDetail && (
+                                <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                  <div className="flex items-center space-x-2 mb-4">
+                                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
+                                      <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                      </svg>
+                                    </div>
+                                    <h4 className={`text-lg font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>ข้อมูลผู้ขาย</h4>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสผู้ขาย</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.vendor_code}</div>
+                                      </div>
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เครดิต</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.credit_term || '-'}</div>
+                                      </div>
+                                    </div>
+
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ชื่อผู้ขาย</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.vendor_name}</div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เบอร์โทร</label>
+                                        <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.tel || '-'}</div>
+                                      </div>
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>อีเมล</label>
+                                        <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} truncate`}>{vendorDetail.email || '-'}</div>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ราคา</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                                          {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
+                                            ? ((prWithPO.recent_purchase[0] as { price?: number })?.price !== undefined
+                                              ? `${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()} ฿`
+                                              : '-')
+                                            : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { price?: number })?.price !== undefined)
+                                              ? `${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()} ฿`
+                                              : '-'}
+                                        </div>
+                                      </div>
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount ? `${prWithPO.recent_purchase[0].discount}%` : '0%'}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* สถานะและข้อมูลเพิ่มเติม */}
+                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                <div className="flex items-center space-x-2 mb-4">
+                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-900/50' : 'bg-orange-100'}`}>
+                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-700'}`}>สถานะและข้อมูลเพิ่มเติม</h4>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div className={`p-3 rounded-lg border col-span-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>สถานะ</label>
+                                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${isDarkMode ? 'bg-yellow-900/80 text-yellow-300 border border-yellow-700/60' : 'bg-yellow-100 text-yellow-800'}`}>
+                                        รออนุมัติ
+                                      </span>
+                                    </div>
+                                    <div className={`p-3 rounded-lg border col-span-2 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
+                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                        {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
+                                          ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
+                                            ? new Date((prWithPO.recent_purchase[0] as { date: string }).date).toLocaleDateString('th-TH')
+                                            : '-')
+                                          : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { date?: string })?.date)
+                                            ? new Date((prWithPO.recent_purchase as { date: string }).date).toLocaleDateString('th-TH')
+                                            : '-'}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
+                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.date_compare ? new Date(prWithPO.date_compare).toLocaleDateString('th-TH') : '-'}</div>
+                                  </div>
+
+                                  {compareData.requester_name && (
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ผู้ร้องขอ</label>
+                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{compareData.requester_name}</div>
+                                    </div>
+                                  )}
+
+                                  {compareData.pu_responsible && (
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ผู้จัดทำ</label>
+                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{compareData.pu_responsible}</div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
-
+              {/* ANCHOR Completed Summary Tab */}
               {/* Tab Content - Completed Summary (show when there's PO data) */}
               {!loading && !error && compareData && activeTab === 'completed-summary' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
@@ -872,165 +1185,248 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
                         {/* Content */}
                         <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
-                          {/* Form Layout - 2x2 Grid */}
+                          {/* Form Layout - 2 Column Grid */}
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {/* Top Left - ข้อมูลการขอซื้อ */}
-                            <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
-                              <div className="flex items-center space-x-2 mb-4">
-                                <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
-                                  <svg className={`w-4 h-4 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                  </svg>
-                                </div>
-                                <h4 className={`text-lg font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>ข้อมูลการขอซื้อ</h4>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PR เลขที่</label>
-                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{prWithPO.pr_no}</div>
-                                  </div>
-                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PO เลขที่</label>
-                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{prWithPO.po_no}</div>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-3">
-                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>จำนวน</label>
-                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.qty}</div>
-                                  </div>
-                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>หน่วย</label>
-                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.unit}</div>
-                                  </div>
-                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>แผนก</label>
-                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.dept_request}</div>
-                                  </div>
-                                </div>
-
-                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสสินค้า</label>
-                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.prod_code}</div>
-                                </div>
-
-                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รายละเอียด</label>
-                                  <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} line-clamp-2`}>{prWithPO.prod_detail}</div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Top Right - ข้อมูลผู้ขาย */}
-                            {vendorDetail && (
+                            {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ + ประเภทการซื้อ */}
+                            <div className="space-y-4">
+                              {/* ข้อมูลการขอซื้อ */}
                               <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
                                 <div className="flex items-center space-x-2 mb-4">
-                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
-                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
+                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                   </div>
-                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>ข้อมูลผู้ขาย</h4>
+                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>ข้อมูลการขอซื้อ</h4>
                                 </div>
 
                                 <div className="space-y-3">
                                   <div className="grid grid-cols-2 gap-3">
                                     <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสผู้ขาย</label>
-                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.vendor_code}</div>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PR เลขที่</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{prWithPO.pr_no}</div>
                                     </div>
                                     <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เครดิต</label>
-                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.credit_term || '-'}</div>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PO เลขที่</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{prWithPO.po_no}</div>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>จำนวน</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.qty}</div>
+                                    </div>
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>หน่วย</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.unit}</div>
+                                    </div>
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>แผนก</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.dept_request}</div>
                                     </div>
                                   </div>
 
                                   <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ชื่อผู้ขาย</label>
-                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.vendor_name}</div>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสสินค้า</label>
+                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.prod_code}</div>
                                   </div>
 
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เบอร์โทร</label>
-                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.tel || '-'}</div>
-                                    </div>
-                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>อีเมล</label>
-                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} truncate`}>{vendorDetail.email || '-'}</div>
-                                    </div>
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รายละเอียด</label>
+                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} line-clamp-2`}>{prWithPO.prod_detail}</div>
                                   </div>
+                                </div>
+                              </div>
 
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ราคา</label>
-                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                                        {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
-                                          ? ((prWithPO.recent_purchase[0] as { price?: number })?.price !== undefined
-                                            ? `${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()} ฿`
-                                            : '-')
-                                          : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { price?: number })?.price !== undefined)
-                                            ? `${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()} ฿`
-                                            : '-'}
+                              {/* เหตุผลการขอซื้อ */}
+                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                <div className="flex items-center space-x-2 mb-4">
+                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-yellow-900/50' : 'bg-yellow-100'}`}>
+                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>เหตุผลการขอซื้อ</h4>
+                                </div>
+
+                                <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <div className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                    {(() => {
+                                      const reasonMap: { [key: string]: string } = {
+                                        '1': '1. ราคาถูก มีสินค้าส่งมอบได้เลย',
+                                        '2': '2. ราคาแพงกว่า แต่มีสินค้าส่งมอบและรอไม่ได้',
+                                        '3': '3. มีผู้ขาย / ผู้ผลิตรายเดียว',
+                                        '4': '4. ราคาแพงกว่า คุณภาพดีกว่า',
+                                        '5': '5. ราคาเท่ากัน มีเครดิตยาวกว่า',
+                                        '6': '6. ราคาแพงกว่า แต่ส่งให้ ไม่ต้องไปรับ',
+                                        '7': '7. ราคาเท่ากัน ส่งเร็วกว่า (ส่งถึงที่)',
+                                        '8': '8. ราคาแพงกว่า แต่เป็นชุดเดียวกัน แยกสั่งไม่ได้',
+                                        '9': '9. ราคาเท่ากัน แบ่งสั่ง',
+                                        '10': '10. ต้องการด่วน รอเทียบราคาไม่ได้'
+                                      };
+
+                                      const reasonChoose = prWithPO?.reason_choose;
+                                      console.log('reasonChoose from prWithPO:', reasonChoose);
+                                      if (reasonChoose && reasonMap[reasonChoose]) {
+                                        return reasonMap[reasonChoose];
+                                      }
+                                      return 'ไม่ระบุเหตุผล';
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* ประเภทการซื้อ */}
+                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                <div className="flex items-center space-x-2 mb-4">
+                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}>
+                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                    </svg>
+                                  </div>
+                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>ประเภทการซื้อ</h4>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div
+                                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'D'
+                                      ? isDarkMode
+                                        ? 'bg-blue-900/60 border-blue-500'
+                                        : 'bg-blue-100 border-blue-500'
+                                      : isDarkMode
+                                        ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                        : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                      }`}
+                                    onClick={() => setPurchaseType('D')}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'D'
+                                        ? isDarkMode
+                                          ? 'border-blue-300 bg-blue-500'
+                                          : 'border-blue-500 bg-blue-500'
+                                        : isDarkMode
+                                          ? 'border-slate-500'
+                                          : 'border-slate-400'
+                                        }`}></div>
+                                      <div>
+                                        <div className={`font-bold text-sm ${purchaseType === 'D'
+                                          ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                          : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                          }`}>DIRECT</div>
+                                        <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อโดยตรง</div>
                                       </div>
                                     </div>
-                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
-                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount ? `${prWithPO.recent_purchase[0].discount}%` : '0%'}</div>
+                                  </div>
+                                  <div
+                                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'I'
+                                      ? isDarkMode
+                                        ? 'bg-blue-900/60 border-blue-500'
+                                        : 'bg-blue-100 border-blue-500'
+                                      : isDarkMode
+                                        ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                        : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                      }`}
+                                    onClick={() => setPurchaseType('I')}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'I'
+                                        ? isDarkMode
+                                          ? 'border-blue-300 bg-blue-500'
+                                          : 'border-blue-500 bg-blue-500'
+                                        : isDarkMode
+                                          ? 'border-slate-500'
+                                          : 'border-slate-400'
+                                        }`}></div>
+                                      <div>
+                                        <div className={`font-bold text-sm ${purchaseType === 'I'
+                                          ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                          : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                          }`}>INDIRECT</div>
+                                        <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อผ่านตัวกลาง</div>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
-                            )}
-
-                            {/* Bottom Left - ประเภทการซื้อ */}
-                            <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
-                              <div className="flex items-center space-x-2 mb-4">
-                                <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}>
-                                  <svg className={`w-4 h-4 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                  </svg>
+                              <div className={`p-4`}>
+                                {/* <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}> */}
+                                <div className="flex justify-center gap-4">
+                                  <button
+                                    type="button"
+                                    onClick={handleSubmitPOCreate}
+                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'}`}
+                                  >
+                                    บันทึก
+                                  </button>
                                 </div>
-                                <h4 className={`text-lg font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>ประเภทการซื้อ</h4>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${isDarkMode ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500' : 'bg-slate-50 border-slate-200 hover:border-blue-400'}`}>
-                                  <div className="flex items-center space-x-2">
-                                    <div className={`w-3 h-3 rounded-full border-2 ${isDarkMode ? 'border-blue-400 bg-blue-500' : 'border-blue-500 bg-blue-500'}`}></div>
-                                    <div>
-                                      <div className={`font-bold text-sm ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>DIRECT</div>
-                                      <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อโดยตรง</div>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${isDarkMode ? 'bg-slate-800/50 border-slate-600 hover:border-gray-500' : 'bg-slate-50 border-slate-200 hover:border-gray-400'}`}>
-                                  <div className="flex items-center space-x-2">
-                                    <div className={`w-3 h-3 rounded-full border-2 ${isDarkMode ? 'border-slate-500' : 'border-slate-400'}`}></div>
-                                    <div>
-                                      <div className={`font-bold text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>INDIRECT</div>
-                                      <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อผ่านตัวกลาง</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* ปุ่มบันทึก */}
-                              <div className="flex justify-center mt-6">
-                                <button
-                                  type="button"
-                                  className={`px-6 py-2 rounded-xl font-semibold shadow transition-all duration-200 border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 cursor-pointer ${isDarkMode ? 'bg-emerald-700 text-white border-emerald-600 hover:bg-emerald-800 focus:ring-emerald-600' : 'bg-emerald-400 text-white border-emerald-300 hover:bg-emerald-500 focus:ring-emerald-400'}`}
-                                >
-                                  บันทึก
-                                </button>
                               </div>
                             </div>
 
-                            {/* Right Column - ข้อมูลผู้ขายและสถานะ */}
+                            {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}
                             <div className="space-y-4">
+                              {/* ข้อมูลผู้ขาย */}
+                              {vendorDetail && (
+                                <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                  <div className="flex items-center space-x-2 mb-4">
+                                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
+                                      <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                      </svg>
+                                    </div>
+                                    <h4 className={`text-lg font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>ข้อมูลผู้ขาย</h4>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสผู้ขาย</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.vendor_code}</div>
+                                      </div>
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เครดิต</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.credit_term || '-'}</div>
+                                      </div>
+                                    </div>
+
+                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ชื่อผู้ขาย</label>
+                                      <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.vendor_name}</div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เบอร์โทร</label>
+                                        <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendorDetail.tel || '-'}</div>
+                                      </div>
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>อีเมล</label>
+                                        <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} truncate`}>{vendorDetail.email || '-'}</div>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ราคา</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                                          {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
+                                            ? ((prWithPO.recent_purchase[0] as { price?: number })?.price !== undefined
+                                              ? `${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()} ฿`
+                                              : '-')
+                                            : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { price?: number })?.price !== undefined)
+                                              ? `${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()} ฿`
+                                              : '-'}
+                                        </div>
+                                      </div>
+                                      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount ? `${prWithPO.recent_purchase[0].discount}%` : '0%'}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* สถานะและข้อมูลเพิ่มเติม */}
                               <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
                                 <div className="flex items-center space-x-2 mb-4">
@@ -1046,11 +1442,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <div className="grid grid-cols-3 gap-3">
                                     <div className={`p-3 rounded-lg border col-span-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>สถานะ</label>
-                                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${isDarkMode ? 'bg-green-900/80 text-green-300 border border-green-700/60' : 'bg-green-100 text-green-800'}`}>เสร็จสิ้น</span>
+                                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${prWithPO.status === 'ORDERED'
+                                        ? (isDarkMode ? 'bg-green-900/80 text-green-300 border border-green-700/60' : 'bg-blue-100 text-green-800')
+                                        : (isDarkMode ? 'bg-green-900/80 text-green-300 border border-green-700/60' : 'bg-green-100 text-green-800')
+                                        }`}>
+                                        {prWithPO.status === 'ORDERED' ? 'ผู้จัดการจัดซื้ออนุมัติ' : prWithPO.status}
+                                      </span>
                                     </div>
                                     <div className={`p-3 rounded-lg border col-span-2 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
 
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่เทียบราคา</label>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
                                       <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                         {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
                                           ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
@@ -1064,7 +1465,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   </div>
 
                                   <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่</label>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
                                     <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.date_compare ? new Date(prWithPO.date_compare).toLocaleDateString('th-TH') : '-'}</div>
                                   </div>
 
@@ -1081,13 +1482,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{compareData.pu_responsible}</div>
                                     </div>
                                   )}
-
-                                  {compareData.reason_choose && (
-                                    <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เหตุผลการเลือก</label>
-                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} line-clamp-2`}>{compareData.reason_choose}</div>
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1097,8 +1491,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     );
                   })()}
                 </div>
-              )}
+              )
+              }
 
+              {/* ANCHOR Purchase History Tab */}
               {!loading && !error && compareData && activeTab === 'purchase' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 flex flex-col ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   {/* Header - Fixed, no scroll */}
@@ -1159,7 +1555,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ผู้ขาย</th>
                           <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ราคา</th>
                           <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ส่วนลด</th>
-                          <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>วันที่เทียบ</th>
+                          <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>วันส่งมอบ</th>
                         </tr>
                       </thead>
                     </table>
@@ -1311,6 +1707,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 </div>
               )}
 
+              {/* ANCHOR Compare Tab */}
               {!loading && !error && compareData && activeTab === 'compare' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 flex flex-col ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`} style={{ minHeight: 0 }}>
                   {/* Header Section - Fixed, no scroll */}
@@ -1335,7 +1732,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Tel.</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">เครดิต</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ราคา</th>
-                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ลด%</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ส่วนลด%</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ส่งมอบ</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Actions</th>
                         </tr>
@@ -1384,6 +1781,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendor.vendor_name}</td>
                                 <td className={`px-4 py-3 text-sm text-left ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.tel}</td>
                                 <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.credit_term}</td>
+                                {/* PRICE EDIT */}
                                 <td className={`px-4 py-3 text-sm font-bold text-right pr-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
                                   <span className="flex items-center justify-center gap-1">
                                     <input
@@ -1402,6 +1800,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       onBlur={handlePriceBlur}
                                       onChange={e => {
                                         const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                        // เก็บราคาที่แก้ไขเฉพาะใน editedPrices เท่านั้น ไม่ sync กับ state อื่น
                                         setEditedPrices(prev => {
                                           const exists = prev.find(p => p.compare_id === vendor.compare_id);
                                           if (exists) {
@@ -1410,15 +1809,45 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                             return [...prev, { compare_id: vendor.compare_id, price: newValue }];
                                           }
                                         });
-                                        // sync เฉพาะ vendor ที่ compare_id ตรงกัน
-                                        setExtraCompareVendors(prev => prev.map(v => v.compare_id === vendor.compare_id ? { ...v, price: newValue } : v));
-                                        setCompareData(prev => prev ? { ...prev, compare_vendors: prev.compare_vendors.map(v => v.compare_id === vendor.compare_id ? { ...v, price: newValue } : v) } : prev);
                                       }}
                                     />
                                     <span>฿</span>
                                   </span>
                                 </td>
-                                <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{(vendor.discount ?? 0)}%</td>
+                                {/* DISCOUNT EDIT */}
+                                <td className={`px-4 py-3 text-sm font-bold text-center ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                  <span className="flex items-center justify-center gap-1">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      className={`w-16 px-2 py-1 rounded border text-right font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-orange-400' : 'bg-white border-slate-200 text-orange-600'} focus:outline-none focus:ring-2 focus:ring-purple-400`}
+                                      value={(() => {
+                                        const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
+                                        if (typeof found?.discount === 'number') return found.discount;
+                                        // fallback: use discount from compare_vendors if available
+                                        const compareVendor = compareData?.compare_vendors?.find(v => v.compare_id === vendor.compare_id);
+                                        if (typeof compareVendor?.discount === 'number') return compareVendor.discount;
+                                        return typeof vendor.discount === 'number' && vendor.discount !== null ? vendor.discount : '0';
+                                      })()}
+                                      onClick={e => e.stopPropagation()}
+                                      onFocus={e => {
+                                        e.target.select();
+                                      }}
+                                      onChange={e => {
+                                        const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                        setEditedPrices(prev => {
+                                          const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                          if (exists) {
+                                            return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, discount: newValue } : p);
+                                          } else {
+                                            return [...prev, { compare_id: vendor.compare_id, discount: newValue }];
+                                          }
+                                        });
+                                      }}
+                                    />
+                                    <span>%</span>
+                                  </span>
+                                </td>
                                 <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                                   {vendor.due_date ? new Date(vendor.due_date).toLocaleDateString('th-TH', {
                                     year: 'numeric',
@@ -1574,6 +2003,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 </div>
               )}
 
+              {/* ANCHOR Summary Tab */}
               {/* Show empty state for compare tab */}
               {!loading && !error && !compareData && activeTab === 'compare' && (
                 <div className={`mb-6 text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -1606,8 +2036,20 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               <div><span className="font-medium">ชื่อผู้ขาย:</span> {selectedRowData.selectedVendor.vendor_name || '-'}</div>
                               <div><span className="font-medium">เบอร์โทร:</span> {selectedRowData.selectedVendor.tel || '-'}</div>
                               <div><span className="font-medium">เครดิต:</span> {selectedRowData.selectedVendor.credit_term || '-'}</div>
-                              <div><span className="font-medium">ราคา:</span> {selectedRowData.selectedVendor.price ? `${selectedRowData.selectedVendor.price.toLocaleString()} ฿` : '-'}</div>
-                              <div><span className="font-medium">ส่วนลด:</span> {selectedRowData.selectedVendor.discount ? `${selectedRowData.selectedVendor.discount}%` : '0%'}</div>
+                              <div><span className="font-medium">ราคา:</span> {
+                                (() => {
+                                  const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
+                                  const price = typeof found?.price === 'number' ? found.price : selectedRowData.selectedVendor.price;
+                                  return price ? `${price.toLocaleString()} ฿` : '-';
+                                })()
+                              }</div>
+                              <div><span className="font-medium">ส่วนลด:</span> {
+                                (() => {
+                                  const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
+                                  const discount = typeof found?.discount === 'number' ? found.discount : selectedRowData.selectedVendor.discount;
+                                  return discount ? `${discount}%` : '0%';
+                                })()
+                              }</div>
                               {/* <div><span className="font-medium">วันที่ส่งมอบ:</span> {selectedRowData.selectedVendor.due_date ? new Date(selectedRowData.selectedVendor.due_date).toLocaleDateString('th-TH') : '-'}</div> */}
                             </div>
                           </div>
