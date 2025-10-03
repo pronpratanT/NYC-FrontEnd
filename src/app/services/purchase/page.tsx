@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useEffect } from "react";
+import React from "react";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { GoDownload } from "react-icons/go";
 import { IoDocumentTextOutline } from "react-icons/io5";
@@ -16,6 +17,7 @@ import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 import { Thai } from "flatpickr/dist/l10n/th.js";
 import { MdOutlineSort } from "react-icons/md";
+import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 
 type PRCard = {
     id: number;
@@ -77,7 +79,6 @@ export default function PurchasePage() {
     const [search, setSearch] = useState("");
     const [departmentFilter, setDepartmentFilter] = useState("");
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
     const [sortBy, setSortBy] = useState("newest");
     const { isDarkMode } = useTheme();
     const [error, setError] = useState<string | null>(null);
@@ -96,6 +97,10 @@ export default function PurchasePage() {
     const [dateRange, setDateRange] = useState<{ start: string; end: string; displayText: string } | null>(null);
 
     const [statusFilter, setStatusFilter] = useState<string>("");
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     // Helper: format ISO date to DD/MM/YYYY
     function formatISOToDisplay(iso: string) {
@@ -407,6 +412,25 @@ export default function PurchasePage() {
         });
     }
 
+    // Calculate pagination (include "Create PR" card in first page)
+    const totalItems = displayedPrCards.length;
+    const totalPages = Math.ceil((totalItems + 1) / itemsPerPage); // +1 for "Create PR" card
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const endIndex = startIndex + itemsPerPage;
+    
+    // On first page, reserve one slot for "Create PR" card
+    const itemsToShow = currentPage === 1 ? itemsPerPage - 1 : itemsPerPage;
+    const actualStartIndex = currentPage === 1 ? 0 : startIndex - 1; // -1 because first page has create card
+    const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
+    const paginatedPrCards = displayedPrCards.slice(actualStartIndex, actualEndIndex);
+    const showCreateCard = currentPage === 1;
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [departmentFilter, statusFilter, search, sortBy]);
+
     return (
         <div className="min-h-screen">
             <Sidebar />
@@ -552,42 +576,84 @@ export default function PurchasePage() {
                             <div className="relative">
                             <button
                                 type="button"
-                                className="flex items-center justify-center h-[48px] w-[48px] rounded-full text-emerald-700 dark:text-emerald-300 hover:text-emerald-500 focus:text-emerald-500 focus:outline-none cursor-pointer bg-transparent border-none shadow-none"
+                                className={`group flex items-center justify-center h-[48px] w-[48px] rounded-xl transition-all duration-300 cursor-pointer border-2 shadow-sm hover:shadow-md ${
+                                    statusSortDropdownOpen 
+                                        ? (isDarkMode 
+                                            ? 'bg-emerald-900/40 border-emerald-600/60 text-emerald-400 shadow-emerald-500/20' 
+                                            : 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-emerald-200/50')
+                                        : (isDarkMode 
+                                            ? 'bg-slate-800/50 border-slate-600/50 text-emerald-400 hover:bg-emerald-900/30 hover:border-emerald-600/40' 
+                                            : 'bg-white border-slate-300 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-400')
+                                }`}
                                 aria-label="Filter by status"
                                 onClick={() => setStatusSortDropdownOpen(!statusSortDropdownOpen)}
                             >
-                                <MdOutlineSort className="w-7 h-7 pointer-events-none" />
+                                <MdOutlineSort className={`w-6 h-6 pointer-events-none transition-transform duration-300 ${statusSortDropdownOpen ? 'rotate-180' : 'group-hover:scale-110'}`} />
                             </button>
                             {statusSortDropdownOpen && (
-                                <ul className={`absolute right-0 mt-2 w-56 rounded-xl shadow-xl z-50 py-2 border max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-400/60 scrollbar-track-transparent ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-gray-200'}`}
+                                <ul className={`absolute right-0 mt-2 w-64 rounded-xl shadow-xl z-50 py-2 border max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-400/60 scrollbar-track-transparent ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-gray-200'}`}
                                     style={{ scrollbarWidth: 'thin', scrollbarColor: '#34d39933 transparent' }}>
+                                    {/* Sort Section */}
+                                    <div className={`px-3 py-2 text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                        เรียงลำดับ
+                                    </div>
                                     <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${statusFilter === '' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                        onClick={() => { setStatusFilter(''); setStatusSortDropdownOpen(false); }}
+                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${sortBy === 'newest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                        onClick={() => { setSortBy('newest'); }}
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                                            </svg>
+                                            ใหม่ไปเก่า
+                                        </span>
+                                    </li>
+                                    <li
+                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${sortBy === 'oldest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                        onClick={() => { setSortBy('oldest'); }}
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+                                            </svg>
+                                            เก่าไปใหม่
+                                        </span>
+                                    </li>
+                                    
+                                    {/* Divider */}
+                                    <div className={`my-2 border-t ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}></div>
+                                    
+                                    {/* Status Filter Section */}
+                                    <div className={`px-3 py-2 text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                        กรองตามสถานะ
+                                    </div>
+                                    <li
+                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === '' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                        onClick={() => { setStatusFilter(''); }}
                                     >
                                         ทุกสถานะ
                                     </li>
                                     <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${statusFilter === 'supervisor' ? (isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800') : (isDarkMode ? 'text-slate-300 hover:bg-blue-900/20 hover:text-blue-200' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800')}`}
-                                        onClick={() => { setStatusFilter('supervisor'); setStatusSortDropdownOpen(false); }}
+                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'supervisor' ? (isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800') : (isDarkMode ? 'text-slate-300 hover:bg-blue-900/20 hover:text-blue-200' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800')}`}
+                                        onClick={() => { setStatusFilter('supervisor'); }}
                                     >
                                         <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอหัวหน้าแผนกอนุมัติ</span>
                                     </li>
                                     <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
-                                        onClick={() => { setStatusFilter('manager'); setStatusSortDropdownOpen(false); }}
+                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
+                                        onClick={() => { setStatusFilter('manager'); }}
                                     >
                                         <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอผู้จัดการแผนกอนุมัติ</span>
                                     </li>
                                     <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
-                                        onClick={() => { setStatusFilter('pu'); setStatusSortDropdownOpen(false); }}
+                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
+                                        onClick={() => { setStatusFilter('pu'); }}
                                     >
                                         <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอแผนกจัดซื้ออนุมัติ</span>
                                     </li>
                                     <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${statusFilter === 'done' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
-                                        onClick={() => { setStatusFilter('done'); setStatusSortDropdownOpen(false); }}
+                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'done' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
+                                        onClick={() => { setStatusFilter('done'); }}
                                     >
                                         <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอดำเนินการ</span>
                                     </li>
@@ -603,66 +669,95 @@ export default function PurchasePage() {
                             )}
                         </div>
                         </form>
-                        {/* Sort Dropdown - เหมือนกับ dropdown แผนก */}
-                        <div className="relative" style={{ minWidth: '180px' }}>
-                            <button
-                                type="button"
-                                className={`h-[48px] w-full flex items-center justify-between px-5 font-medium text-base focus:outline-none transition-all duration-150 rounded-xl ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}
-                                onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                            >
-                                <h1 className={`text-md ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>Sort by :&nbsp;</h1>
-                                <span className={`text-md font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-600'}`}>
-                                    {sortBy === "newest" ? "Newest" : "Oldest"}
-                                </span>
-                                <svg className={`ml-2 h-5 w-5 transition-transform duration-200 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'} ${sortDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            {sortDropdownOpen && (
-                                <ul className={`absolute left-0 w-full rounded-xl shadow-xl z-20 py-2 border ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-gray-200'}`}>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${sortBy === 'newest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                        onClick={() => { setSortBy('newest'); setSortDropdownOpen(false); }}
+
+                        {/* Pagination Controls - Top */}
+                        {totalItems > 0 && (
+                            <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                {/* Items per page dropdown */}
+                                <div className="flex items-center space-x-2">
+                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
+                                    <select
+                                        value={itemsPerPage}
+                                        onChange={(e) => {
+                                            setItemsPerPage(Number(e.target.value));
+                                            setCurrentPage(1);
+                                        }}
+                                        className={`border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
                                     >
-                                        Newest
-                                    </li>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${sortBy === 'oldest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                        onClick={() => { setSortBy('oldest'); setSortDropdownOpen(false); }}
-                                    >
-                                        Oldest
-                                    </li>
-                                </ul>
-                            )}
-                            {/* ปิด dropdown เมื่อคลิกนอก */}
-                            {sortDropdownOpen && (
-                                <div
-                                    className="fixed inset-0 z-10"
-                                    onClick={() => setSortDropdownOpen(false)}
-                                    aria-label="Close dropdown"
-                                />
-                            )}
-                        </div>
+                                        <option value={10}>10 per page</option>
+                                        <option value={25}>25 per page</option>
+                                        <option value={50}>50 per page</option>
+                                        <option value={100}>100 per page</option>
+                                    </select>
+                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
+                                </div>
+
+                                {/* Page info and navigation */}
+                                <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
+                                    <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
+                                        {(() => {
+                                            const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
+                                            const startItem = totalItemsWithCreate === 1 ? 0 : (currentPage === 1 ? 1 : startIndex);
+                                            const endItem = currentPage === 1 ? Math.min(itemsPerPage, totalItemsWithCreate) : Math.min(startIndex + itemsPerPage - 1, totalItemsWithCreate);
+                                            return (
+                                                <>
+                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
+                                                    {' '}จาก{' '}
+                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItemsWithCreate}</span>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Navigation buttons */}
+                                    <div className="flex items-center">
+                                        <button
+                                            type="button"
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
+                                            disabled={currentPage === 1}
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        >
+                                            <IoIosArrowBack className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                            disabled={currentPage >= totalPages}
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        >
+                                            <IoIosArrowForward className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Page numbers */}
+                                <div className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                    หน้า <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentPage}</span> / <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalPages}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
-                        {/* Add New PR Card */}
-                        <div
-                            className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
-                            onClick={() => router.push('/services/purchase/createPR')}
-                        >
-                            {/* Plus Icon */}
-                            <div className="flex flex-col items-center justify-center h-full">
-                                <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-colors duration-200 ${isDarkMode ? 'bg-emerald-900/40 group-hover:bg-emerald-800/50' : 'bg-green-200 group-hover:bg-green-300'}`}>
-                                    <svg className={`w-12 h-12 ${isDarkMode ? 'text-emerald-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                    </svg>
+                        {/* Add New PR Card - Show only on first page */}
+                        {showCreateCard && (
+                            <div
+                                className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
+                                onClick={() => router.push('/services/purchase/createPR')}
+                            >
+                                {/* Plus Icon */}
+                                <div className="flex flex-col items-center justify-center h-full">
+                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-colors duration-200 ${isDarkMode ? 'bg-emerald-900/40 group-hover:bg-emerald-800/50' : 'bg-green-200 group-hover:bg-green-300'}`}>
+                                        <svg className={`w-12 h-12 ${isDarkMode ? 'text-emerald-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </div>
+                                    <h3 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>สร้าง PR ใหม่</h3>
+                                    <p className={`text-sm text-center px-4 ${isDarkMode ? 'text-slate-400' : 'text-green-600'}`}>คลิกเพื่อสร้างใบขอซื้อใหม่</p>
                                 </div>
-                                <h3 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>สร้าง PR ใหม่</h3>
-                                <p className={`text-sm text-center px-4 ${isDarkMode ? 'text-slate-400' : 'text-green-600'}`}>คลิกเพื่อสร้างใบขอซื้อใหม่</p>
                             </div>
-                        </div>
+                        )}
 
-                        {displayedPrCards.map((pr) => (
+                        {paginatedPrCards.map((pr) => (
                             <div
                                 key={pr.pr_no}
                                 className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}

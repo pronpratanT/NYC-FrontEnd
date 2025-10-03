@@ -20,6 +20,7 @@ type Part = {
     stock: number;
     vendor: string;
     price_per_unit: number;
+    ordered: boolean;
 };
 
 // เปลี่ยน type PRs เป็น object
@@ -33,6 +34,7 @@ type PRs = {
     manager_approve: boolean;
     supervisor_approve: boolean;
     pu_operator_approve: boolean;
+    count_ordered: number;
     pr_lists: Part[];
 };
 
@@ -300,8 +302,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
                         <div className={`rounded-3xl shadow border overflow-visible ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
                             <div className={`px-8 pt-6 pb-4 flex items-center justify-between rounded-t-3xl overflow-visible ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
                                 <div className="flex items-center gap-3">
-                                    <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
-                                    <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>{ } รายการ</span>
+                                                <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
+                                                <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>
+                                                    อนุมัติ {prData.count_ordered} / {prData.pr_lists?.length ?? 0} รายการ
+                                                </span>
                                 </div>
                                 <button
                                     type="button"
@@ -315,6 +319,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <table className="min-w-full text-sm overflow-visible">
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
+                                            {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
+                                                <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                                            )}
                                             <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
@@ -328,6 +335,23 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     <tbody className={`divide-y transition-all duration-150 ${isDarkMode ? 'bg-slate-900/50 divide-slate-700/50 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-white divide-green-100 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
                                         {pagedParts.map((part, idx) => (
                                             <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 cursor-pointer ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-green-50'}`} onClick={() => handleItemClick(part)}>
+                                                {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
+                                                    <td className={`px-2 py-3 text-center w-20`}>
+                                                        <div className="flex items-center justify-center">
+                                                            {part.ordered ? (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700/50">
+                                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                                                    <span className="text-xs font-medium text-green-700 dark:text-green-300">approved</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700/50">
+                                                                    <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
+                                                                    <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">waiting</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
                                                 <td className={`px-2 py-3 text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
                                                 <td className={`px-2 py-3 font-medium w-32 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.part_no}</td>
                                                 <td className={`px-2 py-3 w-64 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.part_name}</td>
@@ -341,7 +365,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         {/* Pagination row */}
                                         {totalRows > rowsPerPage && (
                                             <tr>
-                                                <td colSpan={8} className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
+                                                <td colSpan={prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve ? 9 : 8} className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
                                                     <div className="inline-flex items-center gap-2">
                                                         <button
                                                             type="button"

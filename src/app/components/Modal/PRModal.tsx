@@ -1,6 +1,7 @@
 import React, { JSX } from "react";
 import { useEffect, useState, useRef } from "react";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
+import { IoTrashBinOutline } from "react-icons/io5";
 import { CiEdit } from "react-icons/ci";
 import { useToken } from "../../context/TokenContext";
 import { TiPlus } from "react-icons/ti";
@@ -160,6 +161,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [vendors, setVendors] = useState<string[]>([]);
 
   // State for selected vendor details
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedVendorDetail, setSelectedVendorDetail] = useState<VendorSelected | null>(null);
   // State for extra vendors in compare table
   const [extraCompareVendors, setExtraCompareVendors] = useState<CompareData[]>([]);
@@ -171,8 +173,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [showEditVendor, setShowEditVendor] = useState(false);
   const [editVendorData, setEditVendorData] = useState<VendorSelected | null>(null);
 
-  // ตรวจสอบว่า PR ล่าสุดไม่มี po_no และเลข PR ตรงกัน
-  const latestNoPO = !!(latestInventoryItem && !latestInventoryItem.po_no && latestInventoryItem.pr_no === prNumber);
+  // ตรวจสอบว่ามี PR ที่ตรงกับ prNumber และยังไม่มี po_no หรือไม่
+  const latestNoPO = React.useMemo(() => {
+    if (!compareData?.part_inventory_and_pr) return false;
+    // หา PR ที่ตรงกับ prNumber และยังไม่มี po_no
+    const matchingPR = compareData.part_inventory_and_pr.find(item => item.pr_no === prNumber && !item.po_no);
+    return !!matchingPR;
+  }, [compareData, prNumber]);
 
   // ถ้า PR ล่าสุดไม่มี po_no ให้เปลี่ยน tab เป็น 'approve'
   // useEffect(() => {
@@ -180,13 +187,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   //     setActiveTab('approve');
   //   }
   // }, [latestNoPO]);
-
-  // Handler to open EditVendor modal with vendor data
-  const handleEditVendor = (vendor: VendorSelected) => {
-    console.log("Editing vendor:", vendor);
-    setEditVendorData(vendor);
-    setShowEditVendor(true);
-  };
 
   // Define type for selected row data
   type SelectedRowData = Omit<InventoryItem, 'qty' | 'unit'> & {
@@ -246,6 +246,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no);
       if (prWithPO && compareData?.compare_vendors) {
         // ...existing code...
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         let vendorDetail: CompareData | undefined = undefined;
         const vendorId = prWithPO.recent_purchase?.[0]?.vendor_id;
         if (vendorId) {
@@ -253,6 +254,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         }
 
         // คำนวณ previousPurchase สำหรับ PR นี้เฉพาะ
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         let currentPreviousPurchase: RecentPurchase | null = null;
         if (totalCount > 1) {
           const previousIndex = totalCount - 1;
@@ -344,7 +346,20 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   // ฟังก์ชันจัดการการคลิกแถวในตารางเปรียบเทียบราคา
   const handleCompareRowClick = (vendor: CompareData) => {
-    if (!latestInventoryItem) return; // ตรวจสอบว่ามีข้อมูลล่าสุดหรือไม่
+    if (!latestInventoryItem) {
+      // ถ้าไม่มีข้อมูลล่าสุด แสดงว่าเป็นรายการขอซื้อใหม่
+      setSelectedRowData({
+        selectedVendor: vendor,
+        previousPurchase: null,
+        prNumber: prNumber,
+        department: department,
+        prDate: prDate,
+        qty: qty,
+        unit: unit
+      } as any);
+      setActiveTab('summary');
+      return;
+    }
 
     setSelectedRowData({
       ...latestInventoryItem, // ใช้ข้อมูลการขอซื้อล่าสุด
@@ -433,15 +448,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const fetchVendorDetail = async () => {
       const formattedVendorCode = formatPartForFetch(vendorCode);
       try {
-        const res = await fetch(`http://127.0.0.1:6100/api/purchase/vendors?vendorCode=${encodeURIComponent(formattedVendorCode)}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/vendors?vendorCode=${encodeURIComponent(formattedVendorCode)}`);
         if (!res.ok) throw new Error('ไม่พบข้อมูล Vendor');
         const data = await res.json();
         const vendorData = Array.isArray(data) ? data[0] : (data.data ? data.data : data);
         setSelectedVendorDetail(vendorData as VendorSelected);
         if (vendorData && vendorData.vendor_code) {
 
-          try{
-            const response = await fetch(`http://127.0.0.1:6100/api/purchase/insert-vendor-for-compare`,{
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/insert-vendor-for-compare`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({ vendor_id: vendorData.ID, pcl_id: compareData?.pcl_id })
@@ -450,7 +466,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             if (typeof fetchCompareData === 'function') {
               await fetchCompareData();
             }
-          }catch(e){
+          } catch (e) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             console.error("Error inserting vendor for compare:", e);
           }
           // setExtraCompareVendors(prev => {
@@ -476,13 +493,44 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           // });
         }
       } catch (e) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         setSelectedVendorDetail(null);
       }
     };
     fetchVendorDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVendors]);
 
-  //handleSubmit
+  // Handler to open EditVendor modal with vendor data
+  const handleEditVendor = (vendor: VendorSelected) => {
+    console.log("Editing vendor:", vendor);
+    setEditVendorData(vendor);
+    setShowEditVendor(true);
+  };
+
+  const handleDeleteVendor = async (vendor: CompareData) => {
+    console.log("Deleting vendor:", vendor.compare_id);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/remove-vendor-from-clv?clvId=${vendor.compare_id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'ลบผู้ขายไม่สำเร็จ');
+      }
+      // Reload compare data after delete
+      if (typeof fetchCompareData === 'function') {
+        await fetchCompareData();
+      }
+      alert('ลบผู้ขายเรียบร้อยแล้ว');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลบผู้ขาย');
+      console.error(err);
+    }
+  }
+
+  //handleSubmit REASON CHOOSE
   const handleSubmit = async () => {
     if (!pr_list_id) {
       alert('ไม่พบข้อมูล PR List ID');
@@ -501,12 +549,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       new_qty: qty,
     };
 
-    // สร้าง array edited_prices[] สำหรับ vendor ที่มีการแก้ไขราคา
-    const edited_prices = editedPrices.map(item => ({
-      clv_id: item.compare_id,
-      price: item.price,
-      discount: item.discount
-    }));
+    // สร้าง array edited_prices[] โดยรวมทุก vendor และใช้ค่าจาก editedPrices หรือค่าเดิม
+    const allVendors = compareData?.compare_vendors || [];
+    const edited_prices = allVendors.map(vendor => {
+      const edited = editedPrices.find(item => item.compare_id === vendor.compare_id);
+      return {
+        clv_id: vendor.compare_id,
+        price: edited?.price !== undefined && edited?.price !== null ? parseFloat(edited.price as any) : (vendor.price !== undefined && vendor.price !== null ? parseFloat(vendor.price as any) : 0),
+        discount: edited?.discount !== undefined && edited?.discount !== null ? parseFloat(edited.discount as any) : (vendor.discount !== undefined && vendor.discount !== null ? parseFloat(vendor.discount as any) : 0)
+      };
+    });
 
     console.log("Submitting payload:", payload);
     console.log("Edited prices:", edited_prices);
@@ -514,7 +566,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     try {
       // PUT edited_prices to /edit-price-in-clv if there are any edited prices
       if (edited_prices.length > 0) {
-        const editRes = await fetch('http://127.0.0.1:6100/api/purchase/edit-price-in-clv', {
+        const editRes = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/edit-price-in-clv`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -527,8 +579,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           throw new Error(data.message || 'แก้ไขราคาผู้ขายไม่สำเร็จ');
         }
       }
-      //PUT payload to /send-pcl-to-approve
-      const res = await fetch('http://127.0.0.1:6100/api/purchase/send-pcl-to-approve', {
+      // PUT payload to /send-pcl-to-approve
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/send-pcl-to-approve`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -549,18 +601,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }
 
   const handleApproveSubmit = async () => {
-    const approvedPCL = {
-      id: compareData?.pcl_id,
-    }
-    console.log("Approving PCL with data:", approvedPCL);
+    console.log("Approving PCL ID:", compareData?.pcl_id);
     try {
-      const res = await fetch('http://127.0.0.1:6100/api/purchase/approve-pcl', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${compareData?.pcl_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(approvedPCL)
+        }
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -585,7 +633,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
     console.log("Creating PO with data:", poCreate);
     try {
-      const res = await fetch('http://127.0.0.1:6100/api/purchase/po/create', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -838,56 +886,97 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 </div>
               </button>
 
-              {/* Show only 'ผลสรุป' tab when latestNoPO is false and no PO exists for prNumber */}
-              {!latestNoPO && !compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no) && (
-                <button type="button" onClick={() => setActiveTab('summary')}
-                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50 transform scale-105'
-                    : isDarkMode
-                      ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
-                      : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
-                    }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>ผลสรุป</span>
-                  </div>
-                </button>
-              )}
-
-              {/* Show 'ผลสรุป' tab when there's PO data for prNumber */}
-              {compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no) && (
-                <button type="button" onClick={() => setActiveTab('completed-summary')}
-                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200/50 transform scale-105'
-                    : isDarkMode
-                      ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
-                      : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
-                    }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>ผลสรุปรายละเอียด</span>
-                  </div>
-                </button>
-              )}
-
-              {/* Show only 'อนุมัติ' tab when latestNoPO is true */}
-              {latestNoPO && (
-                <button type="button" onClick={() => setActiveTab('approve')}
-                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
-                    ? 'bg-gradient-to-r from-green-500 to-lime-600 text-white shadow-lg shadow-green-200/50 transform scale-105'
-                    : isDarkMode
-                      ? 'text-slate-300 hover:text-green-400 hover:bg-green-900/30 hover:shadow-md'
-                      : 'text-slate-600 hover:text-green-700 hover:bg-green-50/80 hover:shadow-md'
-                    }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>อนุมัติ</span>
-                  </div>
-                </button>
-              )}
+              {/* TODO - implement tab logic by status */}
+              {/* Tab logic by status: pending = compare, Pending Approval = approve, Approved = completed-summary, no PR = summary */}
+              {(() => {
+                const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
+                console.log("Current PR Item for tab logic:", prItem?.status);
+                if (!prItem) {
+                  // ถ้าไม่พบ PR ให้แสดง summary
+                  return (
+                    <button type="button" onClick={() => setActiveTab('summary')}
+                      className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50 transform scale-105'
+                        : isDarkMode
+                          ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
+                          : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
+                        }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                        <span>ผลสรุป</span>
+                      </div>
+                    </button>
+                  );
+                }
+                switch (prItem.status) {
+                  // case 'pending':
+                  //   return (
+                  //     <button type="button" onClick={() => setActiveTab('compare')}
+                  //       className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
+                  //         ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-200/50 transform scale-105'
+                  //         : isDarkMode
+                  //           ? 'text-slate-300 hover:text-purple-400 hover:bg-purple-900/30 hover:shadow-md'
+                  //           : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/80 hover:shadow-md'
+                  //         }`}
+                  //     >
+                  //       <div className="flex items-center space-x-2">
+                  //         <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                  //         <span>เปรียบเทียบราคา</span>
+                  //       </div>
+                  //     </button>
+                  //   );
+                  case 'Pending Approval':
+                    return (
+                      <button type="button" onClick={() => setActiveTab('approve')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
+                          ? 'bg-gradient-to-r from-green-500 to-lime-600 text-white shadow-lg shadow-green-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-green-400 hover:bg-green-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-green-700 hover:bg-green-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>อนุมัติ</span>
+                        </div>
+                      </button>
+                    );
+                  case 'Approved':
+                    return (
+                      <button type="button" onClick={() => setActiveTab('completed-summary')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>ผลสรุปรายละเอียด</span>
+                        </div>
+                      </button>
+                    );
+                  default:
+                    // สำหรับ status อื่นๆ ที่ไม่อยู่ใน case ให้แสดง summary
+                    return (
+                      <button type="button" onClick={() => setActiveTab('summary')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>ผลสรุป</span>
+                        </div>
+                      </button>
+                    );
+                }
+              })()}
             </nav>
           </div>
           {/* Modal body */}
@@ -1805,7 +1894,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       value={(() => {
                                         const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
                                         if (typeof found?.price === 'number') return found.price;
-                                        return typeof vendor.price === 'number' && vendor.price !== null ? vendor.price : '';
+                                        if (typeof vendor.price === 'number' && vendor.price !== null) return vendor.price;
+                                        return 0;
                                       })()}
                                       onClick={e => e.stopPropagation()}
                                       onFocus={e => {
@@ -1813,8 +1903,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       }}
                                       onBlur={handlePriceBlur}
                                       onChange={e => {
-                                        const newValue = e.target.value === '' ? 0 : Number(e.target.value);
-                                        // เก็บราคาที่แก้ไขเฉพาะใน editedPrices เท่านั้น ไม่ sync กับ state อื่น
+                                        let newValue = Number(e.target.value);
+                                        if (isNaN(newValue) || e.target.value === '' || newValue === undefined || newValue === null) newValue = 0;
                                         setEditedPrices(prev => {
                                           const exists = prev.find(p => p.compare_id === vendor.compare_id);
                                           if (exists) {
@@ -1838,17 +1928,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       value={(() => {
                                         const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
                                         if (typeof found?.discount === 'number') return found.discount;
-                                        // fallback: use discount from compare_vendors if available
                                         const compareVendor = compareData?.compare_vendors?.find(v => v.compare_id === vendor.compare_id);
                                         if (typeof compareVendor?.discount === 'number') return compareVendor.discount;
-                                        return typeof vendor.discount === 'number' && vendor.discount !== null ? vendor.discount : '0';
+                                        if (typeof vendor.discount === 'number' && vendor.discount !== null) return vendor.discount;
+                                        return 0;
                                       })()}
                                       onClick={e => e.stopPropagation()}
                                       onFocus={e => {
                                         e.target.select();
                                       }}
                                       onChange={e => {
-                                        const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                        let newValue = Number(e.target.value);
+                                        if (isNaN(newValue) || e.target.value === '' || newValue === undefined || newValue === null) newValue = 0;
                                         setEditedPrices(prev => {
                                           const exists = prev.find(p => p.compare_id === vendor.compare_id);
                                           if (exists) {
@@ -1870,26 +1961,40 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   }) : '-'}
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <button
-                                    type="button"
-                                    className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'}`}
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      handleEditVendor({
-                                        ID: vendor.vendor_id,
-                                        vendor_code: vendor.vendor_code,
-                                        vendor_name: vendor.vendor_name,
-                                        tax_id: vendor.tax_id ?? null,
-                                        credit_term: vendor.credit_term,
-                                        tel_no: vendor.tel,
-                                        fax_no: vendor.fax_no ?? '',
-                                        contact_person: vendor.contact_name ?? '',
-                                        email: vendor.email ?? '',
-                                      });
-                                    }}
-                                  >
-                                    <CiEdit size={24} className="inline align-middle" />
-                                  </button>
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      type="button"
+                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'}`}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        handleEditVendor({
+                                          ID: vendor.vendor_id,
+                                          vendor_code: vendor.vendor_code,
+                                          vendor_name: vendor.vendor_name,
+                                          tax_id: vendor.tax_id ?? null,
+                                          credit_term: vendor.credit_term,
+                                          tel_no: vendor.tel,
+                                          fax_no: vendor.fax_no ?? '',
+                                          contact_person: vendor.contact_name ?? '',
+                                          email: vendor.email ?? '',
+                                        });
+                                      }}
+                                    >
+                                      <CiEdit size={24} className="inline align-middle" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-300 hover:text-white hover:bg-red-700/30' : 'text-red-600 hover:text-white hover:bg-red-500/80'}`}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        if (window.confirm(`ต้องการลบ ${vendor.vendor_name} ออกจากรายการเปรียบเทียบ?`)) {
+                                          handleDeleteVendor(vendor);
+                                        }
+                                      }}
+                                    >
+                                      <IoTrashBinOutline size={20} className="inline align-middle" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -2018,12 +2123,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               )}
 
               {/* ANCHOR Summary Tab */}
-              {/* Show empty state for compare tab */}
-              {!loading && !error && !compareData && activeTab === 'compare' && (
-                <div className={`mb-6 text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  ไม่พบข้อมูลเปรียบเทียบผู้ขายสำหรับ Part No: {partNo}
-                </div>
-              )}
               {!loading && !error && activeTab === 'summary' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 p-6 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ผลสรุปข้อมูลที่เลือก</h3>

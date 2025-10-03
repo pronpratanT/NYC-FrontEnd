@@ -160,6 +160,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [vendors, setVendors] = useState<string[]>([]);
 
   // State for selected vendor details
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedVendorDetail, setSelectedVendorDetail] = useState<VendorSelected | null>(null);
   // State for extra vendors in compare table
   const [extraCompareVendors, setExtraCompareVendors] = useState<CompareData[]>([]);
@@ -246,14 +247,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no);
       if (prWithPO && compareData?.compare_vendors) {
         // ...existing code...
-        let vendorDetail: CompareData | undefined = undefined;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let vendorDetail: CompareData | undefined = undefined;
         const vendorId = prWithPO.recent_purchase?.[0]?.vendor_id;
         if (vendorId) {
           vendorDetail = compareData.compare_vendors.find((v: CompareData) => v.vendor_id === vendorId);
         }
 
         // คำนวณ previousPurchase สำหรับ PR นี้เฉพาะ
-        let currentPreviousPurchase: RecentPurchase | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let currentPreviousPurchase: RecentPurchase | null = null;
         if (totalCount > 1) {
           const previousIndex = totalCount - 1;
           const previousItem = sortedItems[previousIndex];
@@ -462,7 +465,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           });
         }
       } catch (e) {
-        setSelectedVendorDetail(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setSelectedVendorDetail(null);
       }
     };
     fetchVendorDetail();
