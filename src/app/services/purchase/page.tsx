@@ -831,7 +831,7 @@ export default function PurchasePage() {
                                             <GoDownload className="w-7 h-7" />
                                         </button>
                                     </div>
-                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></span>
+                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ออก PO {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></span>
                                 </div>
                             </div>
                         ))}

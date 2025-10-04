@@ -56,12 +56,12 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [selectedPartNo, setSelectedPartNo] = useState<string>("");
     const [selectedPart, setSelectedPart] = useState<Part | null>(null);
 
-        // Pagination
-        const [page, setPage] = useState(1);
-        const rowsPerPage = 10;
-        const totalRows = prData?.pr_lists?.length || 0;
-        const totalPages = Math.ceil(totalRows / rowsPerPage);
-        const pagedParts = prData?.pr_lists?.slice((page - 1) * rowsPerPage, page * rowsPerPage) || [];
+    // Pagination
+    const [page, setPage] = useState(1);
+    const rowsPerPage = 10;
+    const totalRows = prData?.pr_lists?.length || 0;
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+    const pagedParts = prData?.pr_lists?.slice((page - 1) * rowsPerPage, page * rowsPerPage) || [];
 
     const handleItemClick = (part: Part) => {
         setSelectedPartNo(part.part_no);
@@ -302,10 +302,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
                         <div className={`rounded-3xl shadow border overflow-visible ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
                             <div className={`px-8 pt-6 pb-4 flex items-center justify-between rounded-t-3xl overflow-visible ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
                                 <div className="flex items-center gap-3">
-                                                <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
-                                                <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>
-                                                    อนุมัติ {prData.count_ordered} / {prData.pr_lists?.length ?? 0} รายการ
-                                                </span>
+                                    <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
+                                    <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>
+                                        อนุมัติ {prData.count_ordered} / {prData.pr_lists?.length ?? 0} รายการ
+                                    </span>
                                 </div>
                                 <button
                                     type="button"
@@ -320,7 +320,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
                                             {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                                <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                                                <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
                                             )}
                                             <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
@@ -336,17 +336,17 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         {pagedParts.map((part, idx) => (
                                             <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 cursor-pointer ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-green-50'}`} onClick={() => handleItemClick(part)}>
                                                 {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                                    <td className={`px-2 py-3 text-center w-20`}>
+                                                    <td className={`px-2 py-3 text-center w-16`}>
                                                         <div className="flex items-center justify-center">
                                                             {part.ordered ? (
-                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700/50">
-                                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                                                    <span className="text-xs font-medium text-green-700 dark:text-green-300">approved</span>
+                                                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[85px] justify-center ${isDarkMode ? 'bg-green-900/30 border-green-700/50' : 'bg-green-100 border-green-300'}`}>
+                                                                    <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
+                                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
                                                                 </div>
                                                             ) : (
-                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700/50">
-                                                                    <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
-                                                                    <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">waiting</span>
+                                                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[85px] justify-center ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-300'}`}>
+                                                                    <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
+                                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
                                                                 </div>
                                                             )}
                                                         </div>

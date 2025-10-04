@@ -1,3 +1,4 @@
+'use client';
 import React, { JSX } from "react";
 import { useEffect, useState, useRef } from "react";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
@@ -90,7 +91,8 @@ type InventoryItem = {
 type RecentPurchase = {
   vendor_id: number;
   vendor_name: string;
-  price: number;
+  price: number | null;
+  price_for_approve: number | null;
   discount: number | null;
   date: string;
 }
@@ -246,7 +248,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no);
       if (prWithPO && compareData?.compare_vendors) {
         // ...existing code...
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         let vendorDetail: CompareData | undefined = undefined;
         const vendorId = prWithPO.recent_purchase?.[0]?.vendor_id;
         if (vendorId) {
@@ -254,7 +255,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         }
 
         // คำนวณ previousPurchase สำหรับ PR นี้เฉพาะ
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         let currentPreviousPurchase: RecentPurchase | null = null;
         if (totalCount > 1) {
           const previousIndex = totalCount - 1;
@@ -356,7 +356,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         prDate: prDate,
         qty: qty,
         unit: unit
-      } as any);
+      } as SelectedRowData);
       setActiveTab('summary');
       return;
     }
@@ -456,7 +456,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         if (vendorData && vendorData.vendor_code) {
 
           try {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/insert-vendor-for-compare`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -492,8 +491,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           //   return [...prev, newCompare];
           // });
         }
-      } catch (e) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
         setSelectedVendorDetail(null);
       }
     };
@@ -555,8 +553,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const edited = editedPrices.find(item => item.compare_id === vendor.compare_id);
       return {
         clv_id: vendor.compare_id,
-        price: edited?.price !== undefined && edited?.price !== null ? parseFloat(edited.price as any) : (vendor.price !== undefined && vendor.price !== null ? parseFloat(vendor.price as any) : 0),
-        discount: edited?.discount !== undefined && edited?.discount !== null ? parseFloat(edited.discount as any) : (vendor.discount !== undefined && vendor.discount !== null ? parseFloat(vendor.discount as any) : 0)
+        price: edited?.price !== undefined && edited?.price !== null ? parseFloat(edited.price as unknown as string) : (vendor.price !== undefined && vendor.price !== null ? parseFloat(vendor.price as unknown as string) : 0),
+        discount: edited?.discount !== undefined && edited?.discount !== null ? parseFloat(edited.discount as unknown as string) : (vendor.discount !== undefined && vendor.discount !== null ? parseFloat(vendor.discount as unknown as string) : 0)
       };
     });
 
@@ -705,6 +703,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, compareData]);
+
+  useEffect(() => {
+    console.log('prNumber:', prNumber);
+    console.log('part_inventory_and_pr:', compareData?.part_inventory_and_pr);
+  }, [prNumber, compareData]);
 
   return (
     <>
@@ -958,6 +961,22 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
                       </button>
                     );
+                  case 'ORDERED':
+                    return (
+                      <button type="button" onClick={() => setActiveTab('completed-summary')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>ผลสรุปรายละเอียด</span>
+                        </div>
+                      </button>
+                    );
                   default:
                     // สำหรับ status อื่นๆ ที่ไม่อยู่ใน case ให้แสดง summary
                     return (
@@ -1027,7 +1046,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
+                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800"
+                          style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth' }}>
                           {/* Form Layout - 2 Column Grid */}
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ */}
@@ -1139,7 +1159,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             <div className="space-y-4">
                               {/* ข้อมูลผู้ขาย */}
                               {vendorDetail && (
-                                <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}
+                                  style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth' }}>
                                   <div className="flex items-center space-x-2 mb-4">
                                     <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
                                       <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1182,12 +1203,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ราคา</label>
                                         <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
                                           {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
-                                            ? ((prWithPO.recent_purchase[0] as { price?: number })?.price !== undefined
-                                              ? `${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()} ฿`
+                                            ? (prWithPO.recent_purchase[0]?.price_for_approve !== undefined && prWithPO.recent_purchase[0]?.price_for_approve !== null
+                                              ? `${prWithPO.recent_purchase[0].price_for_approve.toLocaleString()} ฿`
                                               : '-')
-                                            : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { price?: number })?.price !== undefined)
-                                              ? `${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()} ฿`
-                                              : '-'}
+                                            : (!Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase && (prWithPO.recent_purchase as { price_for_approve?: number }).price_for_approve !== undefined && (prWithPO.recent_purchase as { price_for_approve?: number }).price_for_approve !== null
+                                              ? `${((prWithPO.recent_purchase as { price_for_approve: number }).price_for_approve).toLocaleString()} ฿`
+                                              : '-')}
                                         </div>
                                       </div>
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
@@ -1200,7 +1221,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               )}
 
                               {/* สถานะและข้อมูลเพิ่มเติม */}
-                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}
+                                style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth' }}>
                                 <div className="flex items-center space-x-2 mb-4">
                                   <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-900/50' : 'bg-orange-100'}`}>
                                     <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1265,7 +1287,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               {!loading && !error && compareData && activeTab === 'completed-summary' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   {(() => {
-                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no);
+                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
                     if (!prWithPO) return <div className="p-6">ไม่พบข้อมูล</div>;
 
                     // หา vendor_id จาก recent_purchase เหมือนกับใน left column
@@ -1287,7 +1309,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
+                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800"
+                          style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth', transform: 'translateZ(0)' }}>
                           {/* Form Layout - 2 Column Grid */}
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ + ประเภทการซื้อ */}
@@ -1467,7 +1490,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             </div>
 
                             {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}
-                            <div className="space-y-4">
+                            <div className="space-y-4" style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}>
                               {/* ข้อมูลผู้ขาย */}
                               {vendorDetail && (
                                 <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
