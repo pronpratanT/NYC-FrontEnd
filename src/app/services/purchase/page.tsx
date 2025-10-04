@@ -10,6 +10,7 @@ import { useTheme } from "../../components/ThemeProvider";
 import Sidebar from "@/app/components/sidebar";
 import Header from "@/app/components/header";
 import { useToken } from "@/app/context/TokenContext";
+import { useUser } from "@/app/context/UserContext";
 // Removed unused import FiSearch
 import { LuCalendarFold } from "react-icons/lu";
 import { useRef } from "react";
@@ -87,6 +88,8 @@ export default function PurchasePage() {
     const [loading, setLoading] = useState(true);
 
     const token = useToken();
+    const { user } = useUser();
+    const departmentId = user?.Department?.ID;
 
     const [departments, setDepartments] = useState<Department[]>([]);
 
@@ -217,7 +220,7 @@ export default function PurchasePage() {
                 fp.destroy();
             };
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [calendarOpen]);
 
     useEffect(() => {
@@ -371,8 +374,10 @@ export default function PurchasePage() {
                 return pr.supervisor_approved && !pr.manager_approved;
             } else if (statusFilter === 'pu') {
                 return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved;
-            } else if (statusFilter === 'done') {
-                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved;
+            } else if (statusFilter === 'processing') {
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list;
+            } else if (statusFilter === 'complete') {
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list;
             }
             return true;
         });
@@ -418,7 +423,7 @@ export default function PurchasePage() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const endIndex = startIndex + itemsPerPage;
-    
+
     // On first page, reserve one slot for "Create PR" card
     const itemsToShow = currentPage === 1 ? itemsPerPage - 1 : itemsPerPage;
     const actualStartIndex = currentPage === 1 ? 0 : startIndex - 1; // -1 because first page has create card
@@ -465,7 +470,10 @@ export default function PurchasePage() {
                                         style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                                     >
                                         <span>
-                                            {departmentFilter ? departmentFilter : "ทุกแผนก"}
+                                            {departmentId === 10086
+                                                ? (departmentFilter ? departmentFilter : "ทุกแผนก")
+                                                : (departmentFilter ? departmentFilter : (departments.find(dep => dep.ID === departmentId)?.name || ""))
+                                            }
                                         </span>
                                         <svg className={`ml-2 h-5 w-5 transition-transform duration-200 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'} ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -474,30 +482,46 @@ export default function PurchasePage() {
                                     {dropdownOpen && (
                                         <ul className={`absolute left-0 mt-2 w-full rounded-xl shadow-xl z-20 py-2 border max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-400/60 scrollbar-track-transparent ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-gray-200'}`}
                                             style={{ scrollbarWidth: 'thin', scrollbarColor: '#34d39933 transparent' }}>
-                                            <li
-                                                className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${!departmentFilter ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                                onClick={() => { setDepartmentFilter(''); setDropdownOpen(false); }}
-                                            >
-                                                ทุกแผนก
-                                            </li>
-                                            {departments
-                                                .filter(dep => ![
-                                                    'Tenพนักงานรักษาความปลอดภัย',
-                                                    'นักศึกษาฝึกงาน',
-                                                    'ลาออก',
-                                                    'COPพนักงานรักษาความปลอดภัย',
-                                                    'SKY รักษาความปลอดภัย'
-                                                ].includes(dep.name) &&
-                                                    !['Ten', 'intern', 'COP', 'SKY', ''].includes(dep.short_name))
-                                                .map(dep => (
+                                            {departmentId === 10086 ? (
+                                                <>
                                                     <li
-                                                        key={dep.ID}
-                                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${departmentFilter === dep.name ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                                        onClick={() => { setDepartmentFilter(dep.name); setDropdownOpen(false); }}
+                                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${!departmentFilter ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                                        onClick={() => { setDepartmentFilter(''); setDropdownOpen(false); }}
                                                     >
-                                                        {dep.name} <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}></span>
+                                                        ทุกแผนก
                                                     </li>
-                                                ))}
+                                                    {departments
+                                                        .filter(dep => ![
+                                                            'Tenพนักงานรักษาความปลอดภัย',
+                                                            'นักศึกษาฝึกงาน',
+                                                            'ลาออก',
+                                                            'COPพนักงานรักษาความปลอดภัย',
+                                                            'SKY รักษาความปลอดภัย'
+                                                        ].includes(dep.name) &&
+                                                            !['Ten', 'intern', 'COP', 'SKY', ''].includes(dep.short_name))
+                                                        .map(dep => (
+                                                            <li
+                                                                key={dep.ID}
+                                                                className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${departmentFilter === dep.name ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                                                onClick={() => { setDepartmentFilter(dep.name); setDropdownOpen(false); }}
+                                                            >
+                                                                {dep.name} <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}></span>
+                                                            </li>
+                                                        ))}
+                                                </>
+                                            ) : (
+                                                departments
+                                                    .filter(dep => dep.ID === departmentId)
+                                                    .map(dep => (
+                                                        <li
+                                                            key={dep.ID}
+                                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 bg-emerald-900/30 text-emerald-400`}
+                                                            onClick={() => { setDepartmentFilter(dep.name); setDropdownOpen(false); }}
+                                                        >
+                                                            {dep.name} <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}></span>
+                                                        </li>
+                                                    ))
+                                            )}
                                         </ul>
                                     )}
                                     {/* ปิด dropdown เมื่อคลิกนอก */}
@@ -574,100 +598,105 @@ export default function PurchasePage() {
                                 </div>
                             </div>
                             <div className="relative">
-                            <button
-                                type="button"
-                                className={`group flex items-center justify-center h-[48px] w-[48px] rounded-xl transition-all duration-300 cursor-pointer border-2 shadow-sm hover:shadow-md ${
-                                    statusSortDropdownOpen 
-                                        ? (isDarkMode 
-                                            ? 'bg-emerald-900/40 border-emerald-600/60 text-emerald-400 shadow-emerald-500/20' 
+                                <button
+                                    type="button"
+                                    className={`group flex items-center justify-center h-[48px] w-[48px] rounded-xl transition-all duration-300 cursor-pointer border-2 shadow-sm hover:shadow-md ${statusSortDropdownOpen
+                                        ? (isDarkMode
+                                            ? 'bg-emerald-900/40 border-emerald-600/60 text-emerald-400 shadow-emerald-500/20'
                                             : 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-emerald-200/50')
-                                        : (isDarkMode 
-                                            ? 'bg-slate-800/50 border-slate-600/50 text-emerald-400 hover:bg-emerald-900/30 hover:border-emerald-600/40' 
+                                        : (isDarkMode
+                                            ? 'bg-slate-800/50 border-slate-600/50 text-emerald-400 hover:bg-emerald-900/30 hover:border-emerald-600/40'
                                             : 'bg-white border-slate-300 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-400')
-                                }`}
-                                aria-label="Filter by status"
-                                onClick={() => setStatusSortDropdownOpen(!statusSortDropdownOpen)}
-                            >
-                                <MdOutlineSort className={`w-6 h-6 pointer-events-none transition-transform duration-300 ${statusSortDropdownOpen ? 'rotate-180' : 'group-hover:scale-110'}`} />
-                            </button>
-                            {statusSortDropdownOpen && (
-                                <ul className={`absolute right-0 mt-2 w-64 rounded-xl shadow-xl z-50 py-2 border max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-400/60 scrollbar-track-transparent ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-gray-200'}`}
-                                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#34d39933 transparent' }}>
-                                    {/* Sort Section */}
-                                    <div className={`px-3 py-2 text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                        เรียงลำดับ
-                                    </div>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${sortBy === 'newest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                        onClick={() => { setSortBy('newest'); }}
-                                    >
-                                        <span className="inline-flex items-center gap-2">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                                            </svg>
-                                            ใหม่ไปเก่า
-                                        </span>
-                                    </li>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${sortBy === 'oldest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                        onClick={() => { setSortBy('oldest'); }}
-                                    >
-                                        <span className="inline-flex items-center gap-2">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
-                                            </svg>
-                                            เก่าไปใหม่
-                                        </span>
-                                    </li>
-                                    
-                                    {/* Divider */}
-                                    <div className={`my-2 border-t ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}></div>
-                                    
-                                    {/* Status Filter Section */}
-                                    <div className={`px-3 py-2 text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                        กรองตามสถานะ
-                                    </div>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === '' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
-                                        onClick={() => { setStatusFilter(''); }}
-                                    >
-                                        ทุกสถานะ
-                                    </li>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'supervisor' ? (isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800') : (isDarkMode ? 'text-slate-300 hover:bg-blue-900/20 hover:text-blue-200' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800')}`}
-                                        onClick={() => { setStatusFilter('supervisor'); }}
-                                    >
-                                        <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอหัวหน้าแผนกอนุมัติ</span>
-                                    </li>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
-                                        onClick={() => { setStatusFilter('manager'); }}
-                                    >
-                                        <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอผู้จัดการแผนกอนุมัติ</span>
-                                    </li>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
-                                        onClick={() => { setStatusFilter('pu'); }}
-                                    >
-                                        <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอแผนกจัดซื้ออนุมัติ</span>
-                                    </li>
-                                    <li
-                                        className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'done' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
-                                        onClick={() => { setStatusFilter('done'); }}
-                                    >
-                                        <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอดำเนินการ</span>
-                                    </li>
-                                </ul>
-                            )}
-                            {/* ปิด dropdown เมื่อคลิกนอก */}
-                            {statusSortDropdownOpen && (
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setStatusSortDropdownOpen(false)}
-                                    aria-label="Close status dropdown"
-                                />
-                            )}
-                        </div>
+                                        }`}
+                                    aria-label="Filter by status"
+                                    onClick={() => setStatusSortDropdownOpen(!statusSortDropdownOpen)}
+                                >
+                                    <MdOutlineSort className={`w-6 h-6 pointer-events-none transition-transform duration-300 ${statusSortDropdownOpen ? 'rotate-180' : 'group-hover:scale-110'}`} />
+                                </button>
+                                {statusSortDropdownOpen && (
+                                    <ul className={`absolute right-0 mt-2 w-64 rounded-xl shadow-xl z-50 py-2 border max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-400/60 scrollbar-track-transparent ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-gray-200'}`}
+                                        style={{ scrollbarWidth: 'thin', scrollbarColor: '#34d39933 transparent' }}>
+                                        {/* Sort Section */}
+                                        <div className={`px-3 py-2 text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                            เรียงลำดับ
+                                        </div>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${sortBy === 'newest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                            onClick={() => { setSortBy('newest'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                                                </svg>
+                                                ใหม่ไปเก่า
+                                            </span>
+                                        </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${sortBy === 'oldest' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                            onClick={() => { setSortBy('oldest'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+                                                </svg>
+                                                เก่าไปใหม่
+                                            </span>
+                                        </li>
+
+                                        {/* Divider */}
+                                        <div className={`my-2 border-t ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}></div>
+
+                                        {/* Status Filter Section */}
+                                        <div className={`px-3 py-2 text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                            กรองตามสถานะ
+                                        </div>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === '' ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                            onClick={() => { setStatusFilter(''); }}
+                                        >
+                                            ทุกสถานะ
+                                        </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'supervisor' ? (isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800') : (isDarkMode ? 'text-slate-300 hover:bg-blue-900/20 hover:text-blue-200' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800')}`}
+                                            onClick={() => { setStatusFilter('supervisor'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอหัวหน้าแผนกอนุมัติ</span>
+                                        </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
+                                            onClick={() => { setStatusFilter('manager'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอผู้จัดการแผนกอนุมัติ</span>
+                                        </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
+                                            onClick={() => { setStatusFilter('pu'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอแผนกจัดซื้ออนุมัติ</span>
+                                        </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'processing' ? (isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800') : (isDarkMode ? 'text-slate-300 hover:bg-yellow-900/20 hover:text-yellow-200' : 'text-gray-700 hover:bg-yellow-50 hover:text-yellow-800')}`}
+                                            onClick={() => { setStatusFilter('processing'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอดำเนินการ</span>
+                                        </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'complete' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
+                                            onClick={() => { setStatusFilter('complete'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>เสร็จสมบูรณ์</span>
+                                        </li>
+                                    </ul>
+                                )}
+                                {/* ปิด dropdown เมื่อคลิกนอก */}
+                                {statusSortDropdownOpen && (
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setStatusSortDropdownOpen(false)}
+                                        aria-label="Close status dropdown"
+                                    />
+                                )}
+                            </div>
                         </form>
 
                         {/* Pagination Controls - Top */}
@@ -770,7 +799,7 @@ export default function PurchasePage() {
                                 {/* Status badge top right */}
                                 <div className="absolute top-2 right-2 z-10">
                                     {!pr.supervisor_approved ? (
-                                        // Blue
+                                        // Blue - รอหัวหน้าแผนกอนุมัติ
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
                                             <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
@@ -778,7 +807,7 @@ export default function PurchasePage() {
                                             รอหัวหน้าแผนกอนุมัติ
                                         </span>
                                     ) : !pr.manager_approved ? (
-                                        // Purple
+                                        // Purple - รอผู้จัดการแผนกอนุมัติ
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-200' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
                                             <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
@@ -786,17 +815,25 @@ export default function PurchasePage() {
                                             รอผู้จัดการแผนกอนุมัติ
                                         </span>
                                     ) : !pr.pu_operator_approved ? (
-                                        // Orange
+                                        // Orange - รอแผนกจัดซื้ออนุมัติ
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
                                             <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
                                             </svg>
                                             รอแผนกจัดซื้ออนุมัติ
                                         </span>
-                                    ) : (
-                                        // Green
+                                    ) : pr.waiting === pr.count_list ? (
+                                        // Green - Complete (เสร็จสมบูรณ์)
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            เสร็จสมบูรณ์
+                                        </span>
+                                    ) : (
+                                        // Yellow/Amber - รอดำเนินการ
+                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
+                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
                                             </svg>
                                             รอดำเนินการ
@@ -831,7 +868,7 @@ export default function PurchasePage() {
                                             <GoDownload className="w-7 h-7" />
                                         </button>
                                     </div>
-                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ออก PO {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></span>
+                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></span>
                                 </div>
                             </div>
                         ))}

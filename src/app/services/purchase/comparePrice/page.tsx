@@ -10,6 +10,7 @@ import { useToken } from "../../../context/TokenContext";
 import { useTheme } from "../../../components/ThemeProvider";
 import { IoIosCheckmark } from "react-icons/io";
 import { FaXmark } from "react-icons/fa6";
+import { useUser } from "@/app/context/UserContext";
 
 type Part = {
     pr_list_id: number;
@@ -40,6 +41,11 @@ type PRs = {
 
 function ComparePriceContent({ token }: { token: string | null }) {
     const { isDarkMode } = useTheme();
+    // Assume user info is available from context or prop
+    // You may need to adjust this to your actual user context
+    const {user} = useUser();
+    const departmentId = user?.Department?.ID;
+
     const searchParams = useSearchParams();
     const prId = searchParams.get("id");
     const router = useRouter();
@@ -70,6 +76,28 @@ function ComparePriceContent({ token }: { token: string | null }) {
         console.log("Selected part_no:", part.part_no);
         console.log("Selected part data:", part);
         console.log("PR Data:", prData);
+    };
+
+    // Function to refresh data after PO creation
+    const handleRefreshData = async () => {
+        if (!prId || !token) return;
+
+        try {
+            setError("");
+            const response = await fetch(`/api/purchase/pr/request/list?pr_id=${prId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
+            const data = await response.json();
+            setPrData(data.data);
+            console.log("Refreshed PR Data:", data.data);
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || "เกิดข้อผิดพลาด");
+            } else {
+                setError("เกิดข้อผิดพลาด");
+            }
+        }
     };
 
     useEffect(() => {
@@ -126,6 +154,38 @@ function ComparePriceContent({ token }: { token: string | null }) {
             }
             setError("");
             window.alert("อนุมัติสำเร็จ");
+            router.push("/services/purchase");
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || "เกิดข้อผิดพลาด");
+            } else {
+                setError("เกิดข้อผิดพลาด");
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const handleReject = async () => {
+        if (!prId) {
+            setError("ไม่พบ PR ID");
+            return;
+        }
+        setLoading(true);
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/reject/${prId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || `HTTP ${response.status}`);
+            }
+            setError("");
+            window.alert("ปฏิเสธสำเร็จ");
             router.push("/services/purchase");
         } catch (err) {
             if (err instanceof Error) {
@@ -257,17 +317,46 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no}</div>
                                 <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                                     สถานะ : {' '}
-                                    {!prData.supervisor_approve && (
-                                        <span className={`font-semibold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`}>รอหัวหน้าแผนกอนุมัติ</span>
-                                    )}
-                                    {prData.supervisor_approve && !prData.manager_approve && (
-                                        <span className={`font-semibold ${isDarkMode ? 'text-orange-300' : 'text-orange-500'}`}>รอผู้จัดการแผนกอนุมัติ</span>
-                                    )}
-                                    {prData.supervisor_approve && prData.manager_approve && !prData.pu_operator_approve && (
-                                        <span className={`font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>รอแผนกจัดซื้ออนุมัติ</span>
-                                    )}
-                                    {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                        <span className={`font-semibold ${isDarkMode ? 'text-green-300' : 'text-green-600'}`}>รอดำเนินการ</span>
+                                    {!prData.supervisor_approve ? (
+                                        // Blue - รอหัวหน้าแผนกอนุมัติ
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                            </svg>
+                                            รอหัวหน้าแผนกอนุมัติ
+                                        </span>
+                                    ) : !prData.manager_approve ? (
+                                        // Purple - รอผู้จัดการแผนกอนุมัติ
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-purple-200' : 'text-purple-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                            </svg>
+                                            รอผู้จัดการแผนกอนุมัติ
+                                        </span>
+                                    ) : !prData.pu_operator_approve ? (
+                                        // Orange - รอแผนกจัดซื้ออนุมัติ
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-orange-200' : 'text-orange-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                            </svg>
+                                            รอแผนกจัดซื้ออนุมัติ
+                                        </span>
+                                    ) : prData.count_ordered === (prData.pr_lists?.length ?? 0) ? (
+                                        // Green - Complete (เสร็จสมบูรณ์)
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-green-200' : 'text-green-900'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            เสร็จสมบูรณ์
+                                        </span>
+                                    ) : (
+                                        // Yellow/Amber - รอดำเนินการ
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
+                                            </svg>
+                                            รอดำเนินการ
+                                        </span>
                                     )}
                                 </div>
                             </div>
@@ -304,7 +393,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <div className="flex items-center gap-3">
                                     <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
                                     <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>
-                                        อนุมัติ {prData.count_ordered} / {prData.pr_lists?.length ?? 0} รายการ
+                                        ดำเนินการ {prData.count_ordered} / {prData.pr_lists?.length ?? 0} รายการ
                                     </span>
                                 </div>
                                 <button
@@ -334,7 +423,14 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     </thead>
                                     <tbody className={`divide-y transition-all duration-150 ${isDarkMode ? 'bg-slate-900/50 divide-slate-700/50 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-white divide-green-100 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
                                         {pagedParts.map((part, idx) => (
-                                            <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 cursor-pointer ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-green-50'}`} onClick={() => handleItemClick(part)}>
+                                            <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
+                                                className={`transition-all duration-150 ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-green-50'} ${!(prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                                onClick={() => {
+                                                    if (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) {
+                                                        handleItemClick(part);
+                                                    }
+                                                }}
+                                            >
                                                 {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
                                                     <td className={`px-2 py-3 text-center w-16`}>
                                                         <div className="flex items-center justify-center">
@@ -402,6 +498,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 unit={selectedPart.unit}
                                 pr_list_id={selectedPart.pr_list_id}
                                 onClose={() => setModalOpen(false)}
+                                onSuccess={handleRefreshData}
                             />
                         )}
                     </div>

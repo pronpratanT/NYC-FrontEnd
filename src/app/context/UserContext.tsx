@@ -16,6 +16,7 @@ export type Me = {
 interface UserContextType {
   user: Me | null;
   setUser: React.Dispatch<React.SetStateAction<Me | null>>;
+  // Department is available via user.Department
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
