@@ -12,6 +12,9 @@ import { useTheme } from "../../../components/ThemeProvider";
 import { IoIosCheckmark } from "react-icons/io";
 import { FaXmark } from "react-icons/fa6";
 import { useUser } from "@/app/context/UserContext";
+import { BsCalendar2Event } from "react-icons/bs";
+import { MdOutlineGroups3 } from "react-icons/md";
+import { IoDocumentTextOutline } from "react-icons/io5";
 
 type Part = {
     pr_list_id: number;
@@ -269,9 +272,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <div className="flex items-center gap-3 mb-2 justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+                                                <IoDocumentTextOutline className={`h-6 w-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                                            </div>
                                         </div>
                                         <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>หมายเลข PR</span>
                                     </div>
@@ -387,9 +390,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/30' : 'bg-green-100'}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v4a1 1 0 001 1h3m10-5h-3a1 1 0 00-1 1v4a1 1 0 001 1h3m-10 4h10" />
-                                        </svg>
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/30' : 'bg-green-100'}`}>
+                                            <MdOutlineGroups3 className={`h-6 w-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-500'}`} />
+                                        </div>
                                     </div>
                                     <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>แผนก/หน่วยงาน</span>
                                 </div>
@@ -400,9 +403,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
+                                            <BsCalendar2Event className={`h-6 w-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                                        </div>
                                     </div>
                                     <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>วันที่ทำ PR</span>
                                 </div>
@@ -542,6 +545,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 qty={selectedPart.qty}
                                 unit={selectedPart.unit}
                                 pr_list_id={selectedPart.pr_list_id}
+                                pu_operator_approve={prData.pu_operator_approve}
                                 onClose={() => setModalOpen(false)}
                                 onSuccess={handleRefreshData}
                             />

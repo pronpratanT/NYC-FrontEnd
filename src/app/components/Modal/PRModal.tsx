@@ -122,6 +122,7 @@ export type PRModalProps = {
   qty?: number;
   unit?: string;
   pr_list_id?: number;
+  pu_operator_approve?: boolean;
   onClose: () => void;
   onSuccess?: () => Promise<void> | void;
 };
@@ -138,7 +139,7 @@ type VendorSelected = {
   email: string;
 }
 
-const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, onClose, onSuccess }) => {
+const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pu_operator_approve, onClose, onSuccess }) => {
   const router = useRouter();
   // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
   const [isSaving, setIsSaving] = useState(false);
@@ -2092,14 +2093,26 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           placeholder="ค้นหา/เพิ่ม Vendor..."
                           className={`px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 text-sm w-full shadow-sm transition-all duration-200 pr-10 ${isDarkMode ? 'border-slate-600 focus:ring-purple-500/30 bg-slate-800/50 text-slate-200 placeholder-slate-500' : 'border-purple-300 focus:ring-purple-200 bg-white'}`}
                           value={search}
-                          onChange={e => setSearch(e.target.value)}
-                          onFocus={() => search && vendors.length > 0 ? setShowDropdown(true) : undefined}
+                          onChange={e => {
+                            if (pu_operator_approve === false) return;
+                            setSearch(e.target.value);
+                          }}
+                          onFocus={() => {
+                            if (pu_operator_approve === false) return;
+                            if (search && vendors.length > 0) setShowDropdown(true);
+                          }}
+                          disabled={pu_operator_approve === false}
+                          readOnly={pu_operator_approve === false}
                         />
                         <button
                           type="button"
-                          className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-white font-bold shadow transition-all duration-150 cursor-pointer ${isDarkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'}`}
+                          className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-white font-bold shadow transition-all duration-150 ${pu_operator_approve === false ? 'bg-gray-400 cursor-not-allowed opacity-60' : (isDarkMode ? 'bg-purple-600 hover:bg-purple-700 cursor-pointer' : 'bg-purple-500 hover:bg-purple-600 cursor-pointer')}`}
                           style={{ zIndex: 2 }}
-                          onClick={() => setShowCreateVendor(true)}
+                          onClick={() => {
+                            if (pu_operator_approve === false) return;
+                            setShowCreateVendor(true);
+                          }}
+                          disabled={pu_operator_approve === false}
                         >
                           <TiPlus size={16} />
                           <span className="sr-only">เพิ่ม Vendor.</span>

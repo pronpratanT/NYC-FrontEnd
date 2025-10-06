@@ -8,7 +8,7 @@ import { FaRegCalendarAlt } from "react-icons/fa";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import { useTheme } from '../../../components/ThemeProvider';
 import { BsCalendar2Event } from "react-icons/bs";
-import { MdBusinessCenter } from "react-icons/md";
+import { MdOutlineGroups3 } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import Sidebar from '@/app/components/sidebar';
 import Header from '@/app/components/header';
@@ -419,7 +419,7 @@ export default function TestPage() {
             <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/30' : 'bg-green-100'}`}>
-                  <MdBusinessCenter className={`h-6 w-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-500'}`} />
+                  <MdOutlineGroups3 className={`h-6 w-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-500'}`} />
                 </div>
                 <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>แผนก/หน่วยงาน</span>
               </div>
