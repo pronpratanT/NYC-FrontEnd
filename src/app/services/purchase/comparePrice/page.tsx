@@ -3,6 +3,7 @@
 import Sidebar from "../../../components/sidebar";
 import Header from "../../../components/header";
 import PRModal from '../../../components/Modal/PRModal';
+import RejectPRModal from '../../../components/Modal/Reject_PRModal';
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,10 @@ type PRs = {
     manager_approve: boolean;
     supervisor_approve: boolean;
     pu_operator_approve: boolean;
+    supervisor_reject_at: string | null;
+    manager_reject_at: string | null;
+    pu_operator_reject_at: string | null;
+    reason_reject: string | null;
     count_ordered: number;
     pr_lists: Part[];
 };
@@ -43,7 +48,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const { isDarkMode } = useTheme();
     // Assume user info is available from context or prop
     // You may need to adjust this to your actual user context
-    const {user} = useUser();
+    const { user } = useUser();
     const departmentId = user?.Department?.ID;
 
     const searchParams = useSearchParams();
@@ -61,6 +66,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPartNo, setSelectedPartNo] = useState<string>("");
     const [selectedPart, setSelectedPart] = useState<Part | null>(null);
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectPrNo, setRejectPrNo] = useState<string | null>(null);
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -166,9 +173,14 @@ function ComparePriceContent({ token }: { token: string | null }) {
         }
     }
 
-    const handleReject = async () => {
+    const handleReject = () => {
+        setRejectPrNo(prData?.pr_no ?? null);
+        setRejectModalOpen(true);
+    };
+
+    const handleConfirmReject = async (reason: string) => {
         if (!prId) {
-            setError("ไม่พบ PR ID");
+            setError("ไม่พบ PR No");
             return;
         }
         setLoading(true);
@@ -178,7 +190,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
-                }
+                },
+                body: JSON.stringify({ reason })
             });
             if (!response.ok) {
                 const errorText = await response.text();
@@ -195,8 +208,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
             }
         } finally {
             setLoading(false);
+            setRejectModalOpen(false);
+            setRejectPrNo(null);
         }
-    }
+    };
 
     if (loading) return <div>กำลังโหลดข้อมูล...</div>;
     if (error) return <div style={{ color: "red" }}>{error}</div>;
@@ -261,7 +276,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>หมายเลข PR</span>
                                     </div>
                                     {/* Approve / Reject Buttons */}
-                                    {!(prData?.manager_approve && prData?.supervisor_approve && prData?.pu_operator_approve) && (
+                                    {!(prData?.manager_approve && prData?.supervisor_approve && prData?.pu_operator_approve) && !(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at) && (
                                         <div className="flex items-center gap-2 relative">
                                             <div className="flex items-center">
                                                 <button
@@ -290,7 +305,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <button
                                                     type="button"
                                                     className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
-                                                    onClick={() => alert('ปฏิเสธ PR นี้')}
+                                                    onClick={handleReject}
                                                     style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
                                                     onMouseEnter={e => {
                                                         e.currentTarget.style.width = '112px';
@@ -317,42 +332,50 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no}</div>
                                 <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                                     สถานะ : {' '}
-                                    {!prData.supervisor_approve ? (
+                                    {prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at ? (
+                                        // Red - ปฏิเสธ (Rejected)
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-300' : 'bg-red-50 border-red-300 text-red-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-red-300' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            {prData.supervisor_reject_at ? 'หัวหน้าแผนกปฏิเสธ' : prData.manager_reject_at ? 'ผู้จัดการแผนกปฏิเสธ' : prData.pu_operator_reject_at ? 'แผนกจัดซื้อปฏิเสธ' : 'ปฏิเสธ'}
+                                        </span>
+                                    ) : !prData.supervisor_approve ? (
                                         // Blue - รอหัวหน้าแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-300' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
                                             </svg>
                                             รอหัวหน้าแผนกอนุมัติ
                                         </span>
                                     ) : !prData.manager_approve ? (
                                         // Purple - รอผู้จัดการแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-purple-200' : 'text-purple-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-300' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-purple-300' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
                                             </svg>
                                             รอผู้จัดการแผนกอนุมัติ
                                         </span>
                                     ) : !prData.pu_operator_approve ? (
                                         // Orange - รอแผนกจัดซื้ออนุมัติ
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-orange-200' : 'text-orange-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-300' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-orange-300' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
                                             </svg>
                                             รอแผนกจัดซื้ออนุมัติ
                                         </span>
                                     ) : prData.count_ordered === (prData.pr_lists?.length ?? 0) ? (
                                         // Green - Complete (เสร็จสมบูรณ์)
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-green-200' : 'text-green-900'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-300' : 'bg-green-50 border-green-500 text-green-900'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-green-300' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                             </svg>
                                             เสร็จสมบูรณ์
                                         </span>
                                     ) : (
                                         // Yellow/Amber - รอดำเนินการ
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold text-xs ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-300' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
+                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
                                             </svg>
                                             รอดำเนินการ
@@ -389,20 +412,42 @@ function ComparePriceContent({ token }: { token: string | null }) {
                         </div>
                         {/* Part No Input and Table */}
                         <div className={`rounded-3xl shadow border overflow-visible ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
-                            <div className={`px-8 pt-6 pb-4 flex items-center justify-between rounded-t-3xl overflow-visible ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
-                                <div className="flex items-center gap-3">
-                                    <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
-                                    <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>
-                                        ดำเนินการ {prData.count_ordered} / {prData.pr_lists?.length ?? 0} รายการ
-                                    </span>
+                            <div className={`px-8 pt-6 pb-4 rounded-t-3xl overflow-visible ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
+                                            <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>
+                                                {prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at
+                                                    ? `${prData.pr_lists?.length ?? 0} รายการ`
+                                                    : `ดำเนินการ ${prData.count_ordered} / ${prData.pr_lists?.length ?? 0} รายการ`
+                                                }
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
+                                            onClick={() => router.push("/services/purchase")}
+                                        >
+                                            เลือก PR ใหม่
+                                        </button>
+                                    </div>
+
+                                    {/* แสดงเหตุผลการปฏิเสธในส่วนหัวตาราง */}
+                                    {(prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at) && prData.reason_reject && (
+                                        <div className={`px-4 py-3 rounded-lg border ${isDarkMode ? 'bg-red-900/30 border-red-800/50 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                                            <div className="flex items-start gap-2">
+                                                <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <div>
+                                                    <span className={`font-semibold ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>เหตุผลในการปฏิเสธ : </span>
+                                                    <span className={isDarkMode ? 'text-red-300' : 'text-red-700'}>{prData.reason_reject}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <button
-                                    type="button"
-                                    className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
-                                    onClick={() => router.push("/services/purchase")}
-                                >
-                                    เลือก PR ใหม่
-                                </button>
                             </div>
                             <div className="overflow-visible">
                                 <table className="min-w-full text-sm overflow-visible">
@@ -501,12 +546,20 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 onSuccess={handleRefreshData}
                             />
                         )}
+                        {/* Reject PR Modal */}
+                        <RejectPRModal
+                            open={rejectModalOpen}
+                            onClose={() => { setRejectModalOpen(false); setRejectPrNo(null); }}
+                            onConfirm={handleConfirmReject}
+                            prNo={rejectPrNo}
+                        />
                     </div>
                 ) : (
                     <div className={`p-8 text-center ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>กรุณาเลือก PR จากหน้าแรก</div>
-                )}
-            </main>
-        </div>
+                )
+                }
+            </main >
+        </div >
     );
 }
 

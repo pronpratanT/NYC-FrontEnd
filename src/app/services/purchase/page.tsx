@@ -37,6 +37,10 @@ type PRCard = {
     manager_approved: boolean;
     supervisor_approved: boolean;
     pu_operator_approved: boolean;
+    supervisor_reject_at: string | null;
+    manager_reject_at: string | null;
+    pu_operator_reject_at: string | null;
+    reason_rejected: string | null;
     waiting: number;
 }
 
@@ -368,16 +372,18 @@ export default function PurchasePage() {
     }
     if (statusFilter) {
         displayedPrCards = displayedPrCards.filter(pr => {
-            if (statusFilter === 'supervisor') {
-                return !pr.supervisor_approved;
+            if (statusFilter === 'rejected') {
+                return pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at;
+            } else if (statusFilter === 'supervisor') {
+                return !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             } else if (statusFilter === 'manager') {
-                return pr.supervisor_approved && !pr.manager_approved;
+                return pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             } else if (statusFilter === 'pu') {
-                return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved;
+                return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             } else if (statusFilter === 'processing') {
-                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list;
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             } else if (statusFilter === 'complete') {
-                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list;
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             }
             return true;
         });
@@ -686,6 +692,12 @@ export default function PurchasePage() {
                                         >
                                             <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>เสร็จสมบูรณ์</span>
                                         </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'rejected' ? (isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-50 text-red-800') : (isDarkMode ? 'text-slate-300 hover:bg-red-900/20 hover:text-red-200' : 'text-gray-700 hover:bg-red-50 hover:text-red-800')}`}
+                                            onClick={() => { setStatusFilter('rejected'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>ปฏิเสธ</span>
+                                        </li>
                                     </ul>
                                 )}
                                 {/* ปิด dropdown เมื่อคลิกนอก */}
@@ -798,7 +810,15 @@ export default function PurchasePage() {
                                 </div>
                                 {/* Status badge top right */}
                                 <div className="absolute top-2 right-2 z-10">
-                                    {!pr.supervisor_approved ? (
+                                    {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                        // Red - ปฏิเสธ (Rejected)
+                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
+                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            {pr.supervisor_reject_at ? 'หัวหน้าแผนกปฏิเสธ' : pr.manager_reject_at ? 'ผู้จัดการแผนกปฏิเสธ' : pr.pu_operator_reject_at ? 'แผนกจัดซื้อปฏิเสธ' : 'ปฏิเสธ'}
+                                        </span>
+                                    ) : !pr.supervisor_approved ? (
                                         // Blue - รอหัวหน้าแผนกอนุมัติ
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
                                             <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -868,7 +888,13 @@ export default function PurchasePage() {
                                             <GoDownload className="w-7 h-7" />
                                         </button>
                                     </div>
-                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></span>
+                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                        {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                            <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list} รายการ</span></>
+                                        ) : (
+                                            <>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></>
+                                        )}
+                                    </span>
                                 </div>
                             </div>
                         ))}
