@@ -10,11 +10,11 @@ import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 
 // components
-import Sidebar from "../../components/sidebar";
-import Header from "../../components/header";
-import { useTheme } from "../../components/ThemeProvider";
-import { useToken } from "../../context/TokenContext";
-import { useUser } from "../../context/UserContext";
+import Sidebar from "../../../components/sidebar";
+import Header from "../../../components/header";
+import { useTheme } from "../../../components/ThemeProvider";
+import { useToken } from "../../../context/TokenContext";
+import { useUser } from "../../../context/UserContext";
 
 // icons
 import { LuCalendarFold } from "react-icons/lu";
@@ -23,6 +23,7 @@ import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import { GoDownload } from "react-icons/go";
 
+// Types
 type PRCard = {
     id: number;
     pr_no: string;
@@ -46,6 +47,24 @@ type PRCard = {
     reason_rejected: string | null;
     waiting: number;
 }
+type PoDocs = {
+    poDocs: string[];
+}
+type POCard = {
+    ID: number;
+    po_no: string;
+    po_date: string;
+    issued_by: string;
+    approved_by: string;
+    approved_reason: string;
+    rejected_by: string;
+    reject_reason: string;
+    send_to_vendor_at: string;
+    vendor_confirmed_at: string;
+    pu_validated_at: string;
+    edit_reason: string;
+    edit_user: string;
+}
 
 type Department = {
     ID: number;
@@ -54,7 +73,6 @@ type Department = {
     dep_no: string;
 }
 
-// Icon mapping for departments with consistent IoDocumentTextOutline icon
 const departmentColors: { [key: string]: string } = {
     "Production": "text-blue-500",
     "Maintenance": "text-green-500",
@@ -65,370 +83,365 @@ const departmentColors: { [key: string]: string } = {
     "R&D": "text-red-500"
 };
 
-// Convert JS Date to CalendarDate
-// Removed unused function toCalendarDate
-
-export default function PurchasePage() {
+export default function PurchaseOrderPage() {
     // Theme context
-        const { isDarkMode } = useTheme();
-    
-        // Router
-        const router = useRouter();
-    
-        // Error and loading states
-        const [error, setError] = useState<string | null>(null);
-        const [loading, setLoading] = useState(false);
-    
-        // NOTE: Data states
-        const [prCards, setPrCards] = useState<PRCard[]>([]);
-        const token = useToken();
-        const { user } = useUser();
-        const departmentId = user?.Department?.ID;
-        const [departments, setDepartments] = useState<Department[]>([]);
-    
-        // NOTE: Search and filter states
-        const [search, setSearch] = useState("");
-        const [dropdownOpen, setDropdownOpen] = useState(false);
-        const [calendarOpen, setCalendarOpen] = useState(false);
-        const [dateRange, setDateRange] = useState<{ start: string; end: string; displayText: string } | null>(null);
-        const [departmentFilter, setDepartmentFilter] = useState("");
-        const dateRangeInputRef = useRef<HTMLInputElement>(null);
-        // Sort states
-        const [statusSortDropdownOpen, setStatusSortDropdownOpen] = useState(false);
-        const [sortBy, setSortBy] = useState("newest");
-        const [statusFilter, setStatusFilter] = useState<string>("");
-    
-        // TODO: Card Display Logic
-        // Filtered and searched PR cards
-        let displayedPrCards = prCards;
-        if (departmentFilter) {
-            displayedPrCards = displayedPrCards.filter(pr => pr.dept_name === departmentFilter);
+    const { isDarkMode } = useTheme();
+
+    // Router
+    const router = useRouter();
+
+    // Error and loading states
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    // NOTE: Data states
+    const [prCards, setPrCards] = useState<PRCard[]>([]);
+    const [poCards, setPoCards] = useState<POCard[]>([]);
+    const token = useToken();
+    const { user } = useUser();
+    const departmentId = user?.Department?.ID;
+    const [departments, setDepartments] = useState<Department[]>([]);
+
+    // NOTE: Search and filter states
+    const [search, setSearch] = useState("");
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
+    const [dateRange, setDateRange] = useState<{ start: string; end: string; displayText: string } | null>(null);
+    const [departmentFilter, setDepartmentFilter] = useState("");
+    const dateRangeInputRef = useRef<HTMLInputElement>(null);
+    // Sort states
+    const [statusSortDropdownOpen, setStatusSortDropdownOpen] = useState(false);
+    const [sortBy, setSortBy] = useState("newest");
+    const [statusFilter, setStatusFilter] = useState<string>("");
+
+    // TODO: Card Display Logic
+    // Filtered and searched PO cards
+    let displayedPoCards = poCards;
+    // if (departmentFilter) {
+    //     displayedPoCards = displayedPoCards.filter(po => po.dept_name === departmentFilter);
+    // }
+    // Status filter Cards
+    // if (statusFilter) {
+    //     displayedPrCards = displayedPrCards.filter(pr => {
+    //         if (statusFilter === 'rejected') {
+    //             return pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at;
+    //         } else if (statusFilter === 'supervisor') {
+    //             return !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+    //         } else if (statusFilter === 'manager') {
+    //             return pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+    //         } else if (statusFilter === 'pu') {
+    //             return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+    //         } else if (statusFilter === 'processing') {
+    //             return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+    //         } else if (statusFilter === 'complete') {
+    //             return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+    //         }
+    //         return true;
+    //     });
+    // }
+    // Search filter Cards
+    // if (search && search.trim() !== "") {
+    //     const lower = search.trim().toLowerCase();
+    //     displayedPrCards = displayedPrCards.filter(pr =>
+    //         (pr.pr_no && pr.pr_no.toLowerCase().includes(lower)) ||
+    //         (pr.requester_name && pr.requester_name.toLowerCase().includes(lower)) ||
+    //         (pr.pu_responsible && pr.pu_responsible.toLowerCase().includes(lower))
+    //     );
+    // }
+    // NEWEST or OLDEST sort
+    // if (sortBy === 'newest') {
+    //     displayedPrCards = [...displayedPrCards].sort((a, b) => {
+    //         // Sort by PR number descending (newest first) for format PR25A###
+    //         const extract = (pr_no: string) => {
+    //             const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
+    //             if (match) {
+    //                 // Combine year and number for sorting, e.g. 25 + 001 => 25001
+    //                 return parseInt(match[1] + match[2]);
+    //             }
+    //             return 0;
+    //         };
+    //         return extract(b.pr_no) - extract(a.pr_no);
+    //     });
+    // } else if (sortBy === 'oldest') {
+    //     displayedPrCards = [...displayedPrCards].sort((a, b) => {
+    //         // Sort by PR number ascending (oldest first) for format PR25A###
+    //         const extract = (pr_no: string) => {
+    //             const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
+    //             if (match) {
+    //                 return parseInt(match[1] + match[2]);
+    //             }
+    //             return 0;
+    //         };
+    //         return extract(a.pr_no) - extract(b.pr_no);
+    //     });
+    // }
+
+    // NOTE: Pagination states
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(1);
+    // const totalItems = displayedPrCards.length;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    // const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
+    // const showCreateCard = currentPage === 1;
+    const itemsToShow = currentPage === 1 ? itemsPerPage : itemsPerPage; // -1 is createPR card
+    const actualStartIndex = currentPage === 1 ? 0 : startIndex; // -1 because first page has create card
+    const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
+    const paginatedPoCards = displayedPoCards.slice(actualStartIndex, actualEndIndex);
+    // Reset to page 1 when filters change
+    // React.useEffect(() => {
+    //     setCurrentPage(1);
+    // }, [departmentFilter, statusFilter, search, sortBy]);
+
+    // Format ISO date to DD/MM/YYYY
+    function formatISOToDisplay(iso: string) {
+        const d = new Date(iso);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // Format date string to DD/MM/YYYY or return original if invalid
+    function formatDate(dateStr: string) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // TODO: Handler
+    // Handle closing calendar popup
+    function handleCloseCalendar() {
+        if (dateRange && dateRange.start && !dateRange.end) {
+            setDateRange({
+                start: dateRange.start,
+                end: dateRange.start,
+                displayText: formatISOToDisplay(dateRange.start)
+            });
         }
-        // Status filter Cards
-        if (statusFilter) {
-            displayedPrCards = displayedPrCards.filter(pr => {
-                if (statusFilter === 'rejected') {
-                    return pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at;
-                } else if (statusFilter === 'supervisor') {
-                    return !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'manager') {
-                    return pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'pu') {
-                    return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'processing') {
-                    return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'complete') {
-                    return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+        setCalendarOpen(false);
+    }
+
+    // TODO: GET Data
+    {/* PO DATA */ }
+    useEffect(() => {
+        const fetchPoCards = async () => {
+            try {
+                setError(null);
+                setLoading(true);
+
+                if (!token) {
+                    setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
+                    setLoading(false);
+                    return;
                 }
-                return true;
-            });
-        }
-        // Search filter Cards
-        if (search && search.trim() !== "") {
-            const lower = search.trim().toLowerCase();
-            displayedPrCards = displayedPrCards.filter(pr =>
-                (pr.pr_no && pr.pr_no.toLowerCase().includes(lower)) ||
-                (pr.requester_name && pr.requester_name.toLowerCase().includes(lower)) ||
-                (pr.pu_responsible && pr.pu_responsible.toLowerCase().includes(lower))
-            );
-        }
-        // NEWEST or OLDEST sort
-        if (sortBy === 'newest') {
-            displayedPrCards = [...displayedPrCards].sort((a, b) => {
-                // Sort by PR number descending (newest first) for format PR25A###
-                const extract = (pr_no: string) => {
-                    const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-                    if (match) {
-                        // Combine year and number for sorting, e.g. 25 + 001 => 25001
-                        return parseInt(match[1] + match[2]);
-                    }
-                    return 0;
-                };
-                return extract(b.pr_no) - extract(a.pr_no);
-            });
-        } else if (sortBy === 'oldest') {
-            displayedPrCards = [...displayedPrCards].sort((a, b) => {
-                // Sort by PR number ascending (oldest first) for format PR25A###
-                const extract = (pr_no: string) => {
-                    const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-                    if (match) {
-                        return parseInt(match[1] + match[2]);
-                    }
-                    return 0;
-                };
-                return extract(a.pr_no) - extract(b.pr_no);
-            });
-        }
-    
-        // NOTE: Pagination states
-        const [itemsPerPage, setItemsPerPage] = useState(10);
-        const [currentPage, setCurrentPage] = useState(1);
-        const totalItems = displayedPrCards.length;
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
-        const showCreateCard = currentPage === 1;
-        const itemsToShow = currentPage === 1 ? itemsPerPage - 1 : itemsPerPage; // -1 is createPR card
-        const actualStartIndex = currentPage === 1 ? 0 : startIndex - 1; // -1 because first page has create card
-        const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
-        const paginatedPrCards = displayedPrCards.slice(actualStartIndex, actualEndIndex);
-        // Reset to page 1 when filters change
-        React.useEffect(() => {
-            setCurrentPage(1);
-        }, [departmentFilter, statusFilter, search, sortBy]);
-    
-        // Format ISO date to DD/MM/YYYY
-        function formatISOToDisplay(iso: string) {
-            const d = new Date(iso);
-            const day = d.getDate().toString().padStart(2, '0');
-            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            const year = d.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-    
-        // Format date string to DD/MM/YYYY or return original if invalid
-        function formatDate(dateStr: string) {
-            if (!dateStr) return '';
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            const day = d.getDate().toString().padStart(2, '0');
-            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            const year = d.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-    
-        // TODO: Handler
-        // Handle closing calendar popup
-        function handleCloseCalendar() {
-            if (dateRange && dateRange.start && !dateRange.end) {
-                setDateRange({
-                    start: dateRange.start,
-                    end: dateRange.start,
-                    displayText: formatISOToDisplay(dateRange.start)
+
+                const responsePO = await fetch("http://127.0.0.1:6100/api/purchase/po/all", {
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
                 });
-            }
-            setCalendarOpen(false);
-        }
-    
-        // TODO: GET Data
-        {/* PR data */ }
-        useEffect(() => {
-            const fetchPrCards = async () => {
-                try {
-                    setError(null);
-                    setLoading(true);
-    
-                    if (!token) {
-                        setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
-                        setLoading(false);
-                        return;
-                    }
-    
-                    let url = "/api/proxy/purchase/request/departments";
-                    let fetchOptions: RequestInit = {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    };
-    
-                    // ถ้ามี search ให้ใช้ API search-pr
-                    if (search && search.trim() !== "") {
-                        url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
-                        fetchOptions = {
-                            ...fetchOptions,
-                            cache: "no-store",
-                            headers: {
-                                ...(fetchOptions.headers || {}),
-                                Authorization: `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            }
-                        };
-                    }
-    
-                    const response = await fetch(url, fetchOptions);
-                    if (response.status === 401) {
-                        setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
-                        document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                        router.push("/login");
-                        return;
-                    }
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-    
-                    const data = await response.json();
-                    let prsArray = Array.isArray(data) ? data : data.data || [];
-    
-                    // Filter by date range
-                    if (dateRange && dateRange.start && dateRange.end) {
-                        prsArray = prsArray.filter((pr: PRCard) => {
-                            if (!pr.pr_date) return false;
-                            // แปลง pr_date เป็น Date object
-                            // ถ้า pr_date เป็น ISO format (YYYY-MM-DD)
-                            const prDate = new Date(pr.pr_date);
-                            // แปลง dateRange.start และ dateRange.end จาก YYYY-MM-DD เป็น Date
-                            const startDate = new Date(dateRange.start);
-                            const endDate = new Date(dateRange.end);
-                            // ตั้งเวลาให้ครอบคลุมทั้งวัน
-                            startDate.setHours(0, 0, 0, 0);
-                            endDate.setHours(23, 59, 59, 999);
-                            // เปรียบเทียบ
-                            return prDate >= startDate && prDate <= endDate;
-                        });
-                    }
-                    setPrCards(prsArray);
-                    console.log("Filtered PR cards:", prsArray.length, "items");
-                } catch (error: unknown) {
-                    console.error("Failed to fetch PR cards:", error);
-                    if (error instanceof Error) {
-                        setError(error.message || "ไม่สามารถโหลดข้อมูล PR ได้");
-                    } else {
-                        setError("ไม่สามารถโหลดข้อมูล PR ได้");
-                    }
-                } finally {
-                    setLoading(false);
+
+                // ถ้ามี search ให้ใช้ API search-pr
+                // if (search && search.trim() !== "") {
+                //     url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
+                //     fetchOptions = {
+                //         ...fetchOptions,
+                //         cache: "no-store",
+                //         headers: {
+                //             ...(fetchOptions.headers || {}),
+                //             Authorization: `Bearer ${token}`,
+                //             'Content-Type': 'application/json'
+                //         }
+                //     };
+                // }
+
+                // const response = await fetch(url, fetchOptions);
+                if (responsePO.status === 401) {
+                    setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+                    document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    router.push("/login");
+                    return;
                 }
-            };
-            if (token !== null) {
-                fetchPrCards();
-            }
-        }, [token, router, search, dateRange]);
-    
-        {/* departments */ }
-        useEffect(() => {
-            const fetchDepartments = async () => {
-                try {
-                    setError(null);
-                    const response = await fetch("/api/proxy/user/deps", { cache: "no-store" });
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    const data = await response.json();
-                    const depsArray = Array.isArray(data) ? data : data.data || [];
-    
-                    setDepartments(depsArray);
-                    console.log("Loaded departments:", depsArray);
-    
-                } catch (error: unknown) {
-                    console.error("Failed to fetch departments:", error);
-                    if (error instanceof Error) {
-                        setError(error.message || "ไม่สามารถโหลดข้อมูลแผนกได้");
-                    } else {
-                        setError("ไม่สามารถโหลดข้อมูลแผนกได้");
-                    }
-                } finally {
-                    setLoading(false);
+                if (!responsePO.ok) {
+                    throw new Error(`HTTP ${responsePO.status}: ${responsePO.statusText}`);
                 }
-            };
-            fetchDepartments();
-        }, []);
-    
-        // ANCHOR Calendar customization
-        function injectFlatpickrTheme() {
-            let style = document.getElementById('flatpickr-green-theme');
-            if (!style) {
-                style = document.createElement('style');
-                style.id = 'flatpickr-green-theme';
-                document.head.appendChild(style);
+
+                const data = await responsePO.json();
+                console.log("Fetched PO data:", data);
+                let prsArray = Array.isArray(data.poDocs) ? data.poDocs : [];
+                setPoCards(prsArray);
+
+                // Filter by date range
+                // if (dateRange && dateRange.start && dateRange.end) {
+                //     prsArray = prsArray.filter((pr: PRCard) => {
+                //         if (!pr.pr_date) return false;
+                //         // แปลง pr_date เป็น Date object
+                //         // ถ้า pr_date เป็น ISO format (YYYY-MM-DD)
+                //         const prDate = new Date(pr.pr_date);
+                //         // แปลง dateRange.start และ dateRange.end จาก YYYY-MM-DD เป็น Date
+                //         const startDate = new Date(dateRange.start);
+                //         const endDate = new Date(dateRange.end);
+                //         // ตั้งเวลาให้ครอบคลุมทั้งวัน
+                //         startDate.setHours(0, 0, 0, 0);
+                //         endDate.setHours(23, 59, 59, 999);
+                //         // เปรียบเทียบ
+                //         return prDate >= startDate && prDate <= endDate;
+                //     });
+                // }
+                console.log("Filtered PO cards:", prsArray.length, "items");
+            } catch (error: unknown) {
+                console.error("Failed to fetch PO cards:", error);
+                if (error instanceof Error) {
+                    setError(error.message || "ไม่สามารถโหลดข้อมูล PO ได้");
+                } else {
+                    setError("ไม่สามารถโหลดข้อมูล PO ได้");
+                }
+            } finally {
+                setLoading(false);
             }
-            style.innerHTML = `
-            /* Remove all horizontal gap and force days to fill cell for seamless range */
-            .flatpickr-day {
-                margin: 0 !important;
-                gap: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                width: 100% !important;
-                min-width: 0 !important;
-                max-width: none !important;
-                display: flex !important;
-                align-items: center;
-                justify-content: center;
-            }
-            .flatpickr-days .dayContainer {
-                gap: 0 !important;
-                padding: 0 !important;
-            }
-            .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
-                background: #16a34a !important;
-                color: #fff !important;
-            }
-            .flatpickr-day.inRange:not(.startRange):not(.endRange) {
-                background: #9ef5bcff !important;
-                color: #fff !important;
-            }
-            .flatpickr-day:not(.selected):not(.inRange):hover {
-                background: #bbf7d0 !important;
-                color: #15803d !important;
-            }
-            .flatpickr-day.today:not(.selected) {
-                border: 1.5px solid #22c55e !important;
-            }
-            `;
+        };
+        if (token !== null) {
+            fetchPoCards();
         }
-        useEffect(() => {
-            if (calendarOpen) injectFlatpickrTheme();
-            if (calendarOpen && dateRangeInputRef.current) {
-                const options: Record<string, unknown> = {
-                    mode: "range",
-                    dateFormat: "d/m/Y",
-                    locale: {
-                        ...Thai,
-                        firstDayOfWeek: 0 // Sunday
-                    },
-                    rangeSeparator: " ถึง ",
-                    defaultDate: dateRange && dateRange.start && dateRange.end
-                        ? [dateRange.start, dateRange.end]
-                        : undefined,
-                    onChange: (selectedDates: Date[], dateStr: string) => {
-                        setDateRange({
-                            start: selectedDates[0] ? selectedDates[0].toISOString() : "",
-                            end: selectedDates[1] ? selectedDates[1].toISOString() : "",
-                            displayText: dateStr
-                        });
-                    },
-                    onMonthChange: () => {
-                        setTimeout(hideExtraCalendarRow, 0);
-                    },
-                    onReady: () => {
-                        setTimeout(hideExtraCalendarRow, 0);
-                    }
-                };
-                const fp = flatpickr(dateRangeInputRef.current as HTMLInputElement, options);
-                // Hide extra calendar row if needed
-                function hideExtraCalendarRow() {
-                    const calendar = fp.calendarContainer;
-                    if (!calendar) return;
-                    const weeks = calendar.querySelectorAll('.flatpickr-days .dayContainer');
-                    if (!weeks.length) return;
-                    // flatpickr uses a single .dayContainer with 42 day elements (6 rows x 7 days)
-                    const days = calendar.querySelectorAll('.flatpickr-day');
-                    if (days.length !== 42) return;
-                    // Find the last row (days 36-41)
-                    const lastRow = Array.from(days).slice(35, 42);
-                    // If all days in lastRow are from next month, hide them
-                    const allNextMonth = lastRow.every(day => day.classList.contains('nextMonthDay'));
-                    // Remove previous hiding if any
-                    lastRow.forEach(day => {
-                        (day as HTMLElement).style.display = '';
+    }, [token, router, search, dateRange]);
+
+    {/* departments */ }
+    useEffect(() => {
+        const fetchDepartments = async () => {
+            try {
+                setError(null);
+                const response = await fetch("/api/proxy/user/deps", { cache: "no-store" });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const data = await response.json();
+                const depsArray = Array.isArray(data) ? data : data.data || [];
+
+                setDepartments(depsArray);
+                console.log("Loaded departments:", depsArray);
+
+            } catch (error: unknown) {
+                console.error("Failed to fetch departments:", error);
+                if (error instanceof Error) {
+                    setError(error.message || "ไม่สามารถโหลดข้อมูลแผนกได้");
+                } else {
+                    setError("ไม่สามารถโหลดข้อมูลแผนกได้");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDepartments();
+    }, []);
+
+    // ANCHOR Calendar customization
+    function injectFlatpickrTheme() {
+        let style = document.getElementById('flatpickr-green-theme');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'flatpickr-green-theme';
+            document.head.appendChild(style);
+        }
+        style.innerHTML = `
+        /* Remove all horizontal gap and force days to fill cell for seamless range */
+        .flatpickr-day {
+            margin: 0 !important;
+            gap: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+        .flatpickr-days .dayContainer {
+            gap: 0 !important;
+            padding: 0 !important;
+        }
+        .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
+            background: #16a34a !important;
+            color: #fff !important;
+        }
+        .flatpickr-day.inRange:not(.startRange):not(.endRange) {
+            background: #9ef5bcff !important;
+            color: #fff !important;
+        }
+        .flatpickr-day:not(.selected):not(.inRange):hover {
+            background: #bbf7d0 !important;
+            color: #15803d !important;
+        }
+        .flatpickr-day.today:not(.selected) {
+            border: 1.5px solid #22c55e !important;
+        }
+        `;
+    }
+    useEffect(() => {
+        if (calendarOpen) injectFlatpickrTheme();
+        if (calendarOpen && dateRangeInputRef.current) {
+            const options: Record<string, unknown> = {
+                mode: "range",
+                dateFormat: "d/m/Y",
+                locale: {
+                    ...Thai,
+                    firstDayOfWeek: 0 // Sunday
+                },
+                rangeSeparator: " ถึง ",
+                defaultDate: dateRange && dateRange.start && dateRange.end
+                    ? [dateRange.start, dateRange.end]
+                    : undefined,
+                onChange: (selectedDates: Date[], dateStr: string) => {
+                    setDateRange({
+                        start: selectedDates[0] ? selectedDates[0].toISOString() : "",
+                        end: selectedDates[1] ? selectedDates[1].toISOString() : "",
+                        displayText: dateStr
                     });
-                    if (allNextMonth) {
-                        lastRow.forEach(day => {
-                            (day as HTMLElement).style.display = 'none';
-                        });
-                    }
+                },
+                onMonthChange: () => {
+                    setTimeout(hideExtraCalendarRow, 0);
+                },
+                onReady: () => {
+                    setTimeout(hideExtraCalendarRow, 0);
                 }
-                setTimeout(hideExtraCalendarRow, 0);
-    
-                // Patch: when closing calendar, if only one date is selected, treat as range (start = end)
-                return () => {
-                    fp.destroy();
-                };
+            };
+            const fp = flatpickr(dateRangeInputRef.current as HTMLInputElement, options);
+            // Hide extra calendar row if needed
+            function hideExtraCalendarRow() {
+                const calendar = fp.calendarContainer;
+                if (!calendar) return;
+                const weeks = calendar.querySelectorAll('.flatpickr-days .dayContainer');
+                if (!weeks.length) return;
+                // flatpickr uses a single .dayContainer with 42 day elements (6 rows x 7 days)
+                const days = calendar.querySelectorAll('.flatpickr-day');
+                if (days.length !== 42) return;
+                // Find the last row (days 36-41)
+                const lastRow = Array.from(days).slice(35, 42);
+                // If all days in lastRow are from next month, hide them
+                const allNextMonth = lastRow.every(day => day.classList.contains('nextMonthDay'));
+                // Remove previous hiding if any
+                lastRow.forEach(day => {
+                    (day as HTMLElement).style.display = '';
+                });
+                if (allNextMonth) {
+                    lastRow.forEach(day => {
+                        (day as HTMLElement).style.display = 'none';
+                    });
+                }
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [calendarOpen]);
+            setTimeout(hideExtraCalendarRow, 0);
+
+            // Patch: when closing calendar, if only one date is selected, treat as range (start = end)
+            return () => {
+                fp.destroy();
+            };
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [calendarOpen]);
 
     return (
         <div className="min-h-screen">
@@ -700,104 +713,23 @@ export default function PurchasePage() {
                         </form>
 
                         {/* Pagination Controls - Top */}
-                        {totalItems > 0 && (
-                            <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                {/* Items per page dropdown */}
-                                <div className="flex items-center space-x-2">
-                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
-                                    <select
-                                        value={itemsPerPage}
-                                        onChange={(e) => {
-                                            setItemsPerPage(Number(e.target.value));
-                                            setCurrentPage(1);
-                                        }}
-                                        className={`border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
-                                    >
-                                        <option value={10}>10 per page</option>
-                                        <option value={25}>25 per page</option>
-                                        <option value={50}>50 per page</option>
-                                        <option value={100}>100 per page</option>
-                                    </select>
-                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
-                                </div>
 
-                                {/* Page info and navigation */}
-                                <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
-                                    <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
-                                        {(() => {
-                                            const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
-                                            const startItem = totalItemsWithCreate === 1 ? 0 : (currentPage === 1 ? 1 : startIndex);
-                                            const endItem = currentPage === 1 ? Math.min(itemsPerPage, totalItemsWithCreate) : Math.min(startIndex + itemsPerPage - 1, totalItemsWithCreate);
-                                            return (
-                                                <>
-                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
-                                                    {' '}จาก{' '}
-                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItemsWithCreate}</span>
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
-
-                                    {/* Navigation buttons */}
-                                    <div className="flex items-center">
-                                        <button
-                                            type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
-                                            disabled={currentPage === 1}
-                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        >
-                                            <IoIosArrowBack className="w-5 h-5" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-                                            disabled={currentPage >= totalPages}
-                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                        >
-                                            <IoIosArrowForward className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Page numbers */}
-                                <div className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                    หน้า <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentPage}</span> / <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalPages}</span>
-                                </div>
-                            </div>
-                        )}
                     </div>
                     <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
                         {/* Add New PR Card - Show only on first page */}
-                        {showCreateCard && (
-                            <div
-                                className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
-                                onClick={() => router.push('/services/purchase/createPR')}
-                            >
-                                {/* Plus Icon */}
-                                <div className="flex flex-col items-center justify-center h-full">
-                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-colors duration-200 ${isDarkMode ? 'bg-emerald-900/40 group-hover:bg-emerald-800/50' : 'bg-green-200 group-hover:bg-green-300'}`}>
-                                        <svg className={`w-12 h-12 ${isDarkMode ? 'text-emerald-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                        </svg>
-                                    </div>
-                                    <h3 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>สร้าง PR ใหม่</h3>
-                                    <p className={`text-sm text-center px-4 ${isDarkMode ? 'text-slate-400' : 'text-green-600'}`}>คลิกเพื่อสร้างใบขอซื้อใหม่</p>
-                                </div>
-                            </div>
-                        )}
 
-                        {paginatedPrCards.map((pr) => (
+                        {paginatedPoCards.map((po) => (
                             <div
-                                key={pr.pr_no}
+                                key={po.po_no}
                                 className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
-                                onClick={() => router.push(`/services/purchase/comparePrice?${pr.id ? `id=${pr.id}` : ''}`)}
+                            // onClick={() => router.push(`/services/purchase/comparePrice?${po.id ? `id=${po.id}` : ''}`)}
                             >
                                 {/* Top: Department Icon */}
                                 <div className="w-full flex justify-center pt-12 pb-2">
-                                    <IoDocumentTextOutline className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                    <IoDocumentTextOutline className={`h-14 w-14 ${departmentColors[po.po_no] || 'text-blue-400'}`} />
                                 </div>
                                 {/* Status badge top right */}
-                                <div className="absolute top-2 right-2 z-10">
+                                {/* <div className="absolute top-2 right-2 z-10">
                                     {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
                                         // Red - ปฏิเสธ (Rejected)
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
@@ -847,25 +779,25 @@ export default function PurchasePage() {
                                             รอดำเนินการ
                                         </span>
                                     )}
-                                </div>
+                                </div> */}
                                 {/* Middle: Table info */}
                                 <div className="w-full px-6 pt-2">
                                     <table className="w-full text-sm mb-2">
                                         <tbody>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>{pr.pr_no}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.dept_name}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{pr.requester_name}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{pr.pu_responsible}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PO</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>{po.po_no}</td></tr>
+                                            {/* <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{po.dept_name}</td></tr> */}
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.issued_by}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.approved_by}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
                                 {/* Bottom: Actions */}
                                 <div className="w-full px-6 pb-5 flex flex-col gap-2 items-center">
-                                    <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(pr.pr_date)}</span>
+                                    <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(po.po_date)}</span>
                                     <div className="flex w-full justify-center">
                                         <button
                                             className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
-                                            onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
+                                        // onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
                                         >
                                             <MdOutlineRemoveRedEye className="w-7 h-7" />
                                         </button>
@@ -876,13 +808,13 @@ export default function PurchasePage() {
                                             <GoDownload className="w-7 h-7" />
                                         </button>
                                     </div>
-                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                    {/* <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
                                         {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
                                             <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list} รายการ</span></>
                                         ) : (
                                             <>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></>
                                         )}
-                                    </span>
+                                    </span> */}
                                 </div>
                             </div>
                         ))}
