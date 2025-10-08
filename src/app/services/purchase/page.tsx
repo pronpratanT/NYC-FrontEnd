@@ -70,268 +70,268 @@ const departmentColors: { [key: string]: string } = {
 
 export default function PurchasePage() {
     // Theme context
-        const { isDarkMode } = useTheme();
-    
-        // Router
-        const router = useRouter();
-    
-        // Error and loading states
-        const [error, setError] = useState<string | null>(null);
-        const [loading, setLoading] = useState(false);
-    
-        // NOTE: Data states
-        const [prCards, setPrCards] = useState<PRCard[]>([]);
-        const token = useToken();
-        const { user } = useUser();
-        const departmentId = user?.Department?.ID;
-        const [departments, setDepartments] = useState<Department[]>([]);
-    
-        // NOTE: Search and filter states
-        const [search, setSearch] = useState("");
-        const [dropdownOpen, setDropdownOpen] = useState(false);
-        const [calendarOpen, setCalendarOpen] = useState(false);
-        const [dateRange, setDateRange] = useState<{ start: string; end: string; displayText: string } | null>(null);
-        const [departmentFilter, setDepartmentFilter] = useState("");
-        const dateRangeInputRef = useRef<HTMLInputElement>(null);
-        // Sort states
-        const [statusSortDropdownOpen, setStatusSortDropdownOpen] = useState(false);
-        const [sortBy, setSortBy] = useState("newest");
-        const [statusFilter, setStatusFilter] = useState<string>("");
-    
-        // TODO: Card Display Logic
-        // Filtered and searched PR cards
-        let displayedPrCards = prCards;
-        if (departmentFilter) {
-            displayedPrCards = displayedPrCards.filter(pr => pr.dept_name === departmentFilter);
-        }
-        // Status filter Cards
-        if (statusFilter) {
-            displayedPrCards = displayedPrCards.filter(pr => {
-                if (statusFilter === 'rejected') {
-                    return pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at;
-                } else if (statusFilter === 'supervisor') {
-                    return !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'manager') {
-                    return pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'pu') {
-                    return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'processing') {
-                    return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                } else if (statusFilter === 'complete') {
-                    return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-                }
-                return true;
-            });
-        }
-        // Search filter Cards
-        if (search && search.trim() !== "") {
-            const lower = search.trim().toLowerCase();
-            displayedPrCards = displayedPrCards.filter(pr =>
-                (pr.pr_no && pr.pr_no.toLowerCase().includes(lower)) ||
-                (pr.requester_name && pr.requester_name.toLowerCase().includes(lower)) ||
-                (pr.pu_responsible && pr.pu_responsible.toLowerCase().includes(lower))
-            );
-        }
-        // NEWEST or OLDEST sort
-        if (sortBy === 'newest') {
-            displayedPrCards = [...displayedPrCards].sort((a, b) => {
-                // Sort by PR number descending (newest first) for format PR25A###
-                const extract = (pr_no: string) => {
-                    const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-                    if (match) {
-                        // Combine year and number for sorting, e.g. 25 + 001 => 25001
-                        return parseInt(match[1] + match[2]);
-                    }
-                    return 0;
-                };
-                return extract(b.pr_no) - extract(a.pr_no);
-            });
-        } else if (sortBy === 'oldest') {
-            displayedPrCards = [...displayedPrCards].sort((a, b) => {
-                // Sort by PR number ascending (oldest first) for format PR25A###
-                const extract = (pr_no: string) => {
-                    const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-                    if (match) {
-                        return parseInt(match[1] + match[2]);
-                    }
-                    return 0;
-                };
-                return extract(a.pr_no) - extract(b.pr_no);
-            });
-        }
-    
-        // NOTE: Pagination states
-        const [itemsPerPage, setItemsPerPage] = useState(10);
-        const [currentPage, setCurrentPage] = useState(1);
-        const totalItems = displayedPrCards.length;
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
-        const showCreateCard = currentPage === 1;
-        const itemsToShow = currentPage === 1 ? itemsPerPage - 1 : itemsPerPage; // -1 is createPR card
-        const actualStartIndex = currentPage === 1 ? 0 : startIndex - 1; // -1 because first page has create card
-        const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
-        const paginatedPrCards = displayedPrCards.slice(actualStartIndex, actualEndIndex);
-        // Reset to page 1 when filters change
-        React.useEffect(() => {
-            setCurrentPage(1);
-        }, [departmentFilter, statusFilter, search, sortBy]);
-    
-        // Format ISO date to DD/MM/YYYY
-        function formatISOToDisplay(iso: string) {
-            const d = new Date(iso);
-            const day = d.getDate().toString().padStart(2, '0');
-            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            const year = d.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-    
-        // Format date string to DD/MM/YYYY or return original if invalid
-        function formatDate(dateStr: string) {
-            if (!dateStr) return '';
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            const day = d.getDate().toString().padStart(2, '0');
-            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            const year = d.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-    
-        // TODO: Handler
-        // Handle closing calendar popup
-        function handleCloseCalendar() {
-            if (dateRange && dateRange.start && !dateRange.end) {
-                setDateRange({
-                    start: dateRange.start,
-                    end: dateRange.start,
-                    displayText: formatISOToDisplay(dateRange.start)
-                });
+    const { isDarkMode } = useTheme();
+
+    // Router
+    const router = useRouter();
+
+    // Error and loading states
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    // NOTE: Data states
+    const [prCards, setPrCards] = useState<PRCard[]>([]);
+    const token = useToken();
+    const { user } = useUser();
+    const departmentId = user?.Department?.ID;
+    const [departments, setDepartments] = useState<Department[]>([]);
+
+    // NOTE: Search and filter states
+    const [search, setSearch] = useState("");
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
+    const [dateRange, setDateRange] = useState<{ start: string; end: string; displayText: string } | null>(null);
+    const [departmentFilter, setDepartmentFilter] = useState("");
+    const dateRangeInputRef = useRef<HTMLInputElement>(null);
+    // Sort states
+    const [statusSortDropdownOpen, setStatusSortDropdownOpen] = useState(false);
+    const [sortBy, setSortBy] = useState("newest");
+    const [statusFilter, setStatusFilter] = useState<string>("");
+
+    // TODO: Card Display Logic
+    // Filtered and searched PR cards
+    let displayedPrCards = prCards;
+    if (departmentFilter) {
+        displayedPrCards = displayedPrCards.filter(pr => pr.dept_name === departmentFilter);
+    }
+    // Status filter Cards
+    if (statusFilter) {
+        displayedPrCards = displayedPrCards.filter(pr => {
+            if (statusFilter === 'rejected') {
+                return pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at;
+            } else if (statusFilter === 'supervisor') {
+                return !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+            } else if (statusFilter === 'manager') {
+                return pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+            } else if (statusFilter === 'pu') {
+                return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+            } else if (statusFilter === 'processing') {
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+            } else if (statusFilter === 'complete') {
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             }
-            setCalendarOpen(false);
+            return true;
+        });
+    }
+    // Search filter Cards
+    if (search && search.trim() !== "") {
+        const lower = search.trim().toLowerCase();
+        displayedPrCards = displayedPrCards.filter(pr =>
+            (pr.pr_no && pr.pr_no.toLowerCase().includes(lower)) ||
+            (pr.requester_name && pr.requester_name.toLowerCase().includes(lower)) ||
+            (pr.pu_responsible && pr.pu_responsible.toLowerCase().includes(lower))
+        );
+    }
+    // NEWEST or OLDEST sort
+    if (sortBy === 'newest') {
+        displayedPrCards = [...displayedPrCards].sort((a, b) => {
+            // Sort by PR number descending (newest first) for format PR25A###
+            const extract = (pr_no: string) => {
+                const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
+                if (match) {
+                    // Combine year and number for sorting, e.g. 25 + 001 => 25001
+                    return parseInt(match[1] + match[2]);
+                }
+                return 0;
+            };
+            return extract(b.pr_no) - extract(a.pr_no);
+        });
+    } else if (sortBy === 'oldest') {
+        displayedPrCards = [...displayedPrCards].sort((a, b) => {
+            // Sort by PR number ascending (oldest first) for format PR25A###
+            const extract = (pr_no: string) => {
+                const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
+                if (match) {
+                    return parseInt(match[1] + match[2]);
+                }
+                return 0;
+            };
+            return extract(a.pr_no) - extract(b.pr_no);
+        });
+    }
+
+    // NOTE: Pagination states
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(1);
+    const totalItems = displayedPrCards.length;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
+    const showCreateCard = currentPage === 1;
+    const itemsToShow = currentPage === 1 ? itemsPerPage - 1 : itemsPerPage; // -1 is createPR card
+    const actualStartIndex = currentPage === 1 ? 0 : startIndex - 1; // -1 because first page has create card
+    const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
+    const paginatedPrCards = displayedPrCards.slice(actualStartIndex, actualEndIndex);
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [departmentFilter, statusFilter, search, sortBy]);
+
+    // Format ISO date to DD/MM/YYYY
+    function formatISOToDisplay(iso: string) {
+        const d = new Date(iso);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // Format date string to DD/MM/YYYY or return original if invalid
+    function formatDate(dateStr: string) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // TODO: Handler
+    // Handle closing calendar popup
+    function handleCloseCalendar() {
+        if (dateRange && dateRange.start && !dateRange.end) {
+            setDateRange({
+                start: dateRange.start,
+                end: dateRange.start,
+                displayText: formatISOToDisplay(dateRange.start)
+            });
         }
-    
-        // TODO: GET Data
-        {/* PR data */ }
-        useEffect(() => {
-            const fetchPrCards = async () => {
-                try {
-                    setError(null);
-                    setLoading(true);
-    
-                    if (!token) {
-                        setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
-                        setLoading(false);
-                        return;
+        setCalendarOpen(false);
+    }
+
+    // TODO: GET Data
+    {/* PR data */ }
+    useEffect(() => {
+        const fetchPrCards = async () => {
+            try {
+                setError(null);
+                setLoading(true);
+
+                if (!token) {
+                    setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
+                    setLoading(false);
+                    return;
+                }
+
+                let url = "/api/proxy/purchase/request/departments";
+                let fetchOptions: RequestInit = {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     }
-    
-                    let url = "/api/proxy/purchase/request/departments";
-                    let fetchOptions: RequestInit = {
+                };
+
+                // ถ้ามี search ให้ใช้ API search-pr
+                if (search && search.trim() !== "") {
+                    url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
+                    fetchOptions = {
+                        ...fetchOptions,
+                        cache: "no-store",
                         headers: {
+                            ...(fetchOptions.headers || {}),
                             Authorization: `Bearer ${token}`,
                             'Content-Type': 'application/json'
                         }
                     };
-    
-                    // ถ้ามี search ให้ใช้ API search-pr
-                    if (search && search.trim() !== "") {
-                        url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
-                        fetchOptions = {
-                            ...fetchOptions,
-                            cache: "no-store",
-                            headers: {
-                                ...(fetchOptions.headers || {}),
-                                Authorization: `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            }
-                        };
-                    }
-    
-                    const response = await fetch(url, fetchOptions);
-                    if (response.status === 401) {
-                        setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
-                        document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                        router.push("/login");
-                        return;
-                    }
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-    
-                    const data = await response.json();
-                    let prsArray = Array.isArray(data) ? data : data.data || [];
-    
-                    // Filter by date range
-                    if (dateRange && dateRange.start && dateRange.end) {
-                        prsArray = prsArray.filter((pr: PRCard) => {
-                            if (!pr.pr_date) return false;
-                            // แปลง pr_date เป็น Date object
-                            // ถ้า pr_date เป็น ISO format (YYYY-MM-DD)
-                            const prDate = new Date(pr.pr_date);
-                            // แปลง dateRange.start และ dateRange.end จาก YYYY-MM-DD เป็น Date
-                            const startDate = new Date(dateRange.start);
-                            const endDate = new Date(dateRange.end);
-                            // ตั้งเวลาให้ครอบคลุมทั้งวัน
-                            startDate.setHours(0, 0, 0, 0);
-                            endDate.setHours(23, 59, 59, 999);
-                            // เปรียบเทียบ
-                            return prDate >= startDate && prDate <= endDate;
-                        });
-                    }
-                    setPrCards(prsArray);
-                    console.log("Filtered PR cards:", prsArray.length, "items");
-                } catch (error: unknown) {
-                    console.error("Failed to fetch PR cards:", error);
-                    if (error instanceof Error) {
-                        setError(error.message || "ไม่สามารถโหลดข้อมูล PR ได้");
-                    } else {
-                        setError("ไม่สามารถโหลดข้อมูล PR ได้");
-                    }
-                } finally {
-                    setLoading(false);
                 }
-            };
-            if (token !== null) {
-                fetchPrCards();
-            }
-        }, [token, router, search, dateRange]);
-    
-        {/* departments */ }
-        useEffect(() => {
-            const fetchDepartments = async () => {
-                try {
-                    setError(null);
-                    const response = await fetch("/api/proxy/user/deps", { cache: "no-store" });
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    const data = await response.json();
-                    const depsArray = Array.isArray(data) ? data : data.data || [];
-    
-                    setDepartments(depsArray);
-                    console.log("Loaded departments:", depsArray);
-    
-                } catch (error: unknown) {
-                    console.error("Failed to fetch departments:", error);
-                    if (error instanceof Error) {
-                        setError(error.message || "ไม่สามารถโหลดข้อมูลแผนกได้");
-                    } else {
-                        setError("ไม่สามารถโหลดข้อมูลแผนกได้");
-                    }
-                } finally {
-                    setLoading(false);
+
+                const response = await fetch(url, fetchOptions);
+                if (response.status === 401) {
+                    setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+                    document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    router.push("/login");
+                    return;
                 }
-            };
-            fetchDepartments();
-        }, []);
-    
-        // ANCHOR Calendar customization
-        function injectFlatpickrTheme() {
-            let style = document.getElementById('flatpickr-green-theme');
-            if (!style) {
-                style = document.createElement('style');
-                style.id = 'flatpickr-green-theme';
-                document.head.appendChild(style);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                let prsArray = Array.isArray(data) ? data : data.data || [];
+
+                // Filter by date range
+                if (dateRange && dateRange.start && dateRange.end) {
+                    prsArray = prsArray.filter((pr: PRCard) => {
+                        if (!pr.pr_date) return false;
+                        // แปลง pr_date เป็น Date object
+                        // ถ้า pr_date เป็น ISO format (YYYY-MM-DD)
+                        const prDate = new Date(pr.pr_date);
+                        // แปลง dateRange.start และ dateRange.end จาก YYYY-MM-DD เป็น Date
+                        const startDate = new Date(dateRange.start);
+                        const endDate = new Date(dateRange.end);
+                        // ตั้งเวลาให้ครอบคลุมทั้งวัน
+                        startDate.setHours(0, 0, 0, 0);
+                        endDate.setHours(23, 59, 59, 999);
+                        // เปรียบเทียบ
+                        return prDate >= startDate && prDate <= endDate;
+                    });
+                }
+                setPrCards(prsArray);
+                console.log("Filtered PR cards:", prsArray.length, "items");
+            } catch (error: unknown) {
+                console.error("Failed to fetch PR cards:", error);
+                if (error instanceof Error) {
+                    setError(error.message || "ไม่สามารถโหลดข้อมูล PR ได้");
+                } else {
+                    setError("ไม่สามารถโหลดข้อมูล PR ได้");
+                }
+            } finally {
+                setLoading(false);
             }
-            style.innerHTML = `
+        };
+        if (token !== null) {
+            fetchPrCards();
+        }
+    }, [token, router, search, dateRange]);
+
+    {/* departments */ }
+    useEffect(() => {
+        const fetchDepartments = async () => {
+            try {
+                setError(null);
+                const response = await fetch("/api/proxy/user/deps", { cache: "no-store" });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const data = await response.json();
+                const depsArray = Array.isArray(data) ? data : data.data || [];
+
+                setDepartments(depsArray);
+                console.log("Loaded departments:", depsArray);
+
+            } catch (error: unknown) {
+                console.error("Failed to fetch departments:", error);
+                if (error instanceof Error) {
+                    setError(error.message || "ไม่สามารถโหลดข้อมูลแผนกได้");
+                } else {
+                    setError("ไม่สามารถโหลดข้อมูลแผนกได้");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDepartments();
+    }, []);
+
+    // ANCHOR Calendar customization
+    function injectFlatpickrTheme() {
+        let style = document.getElementById('flatpickr-green-theme');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'flatpickr-green-theme';
+            document.head.appendChild(style);
+        }
+        style.innerHTML = `
             /* Remove all horizontal gap and force days to fill cell for seamless range */
             .flatpickr-day {
                 margin: 0 !important;
@@ -367,68 +367,68 @@ export default function PurchasePage() {
                 border: 1.5px solid #22c55e !important;
             }
             `;
-        }
-        useEffect(() => {
-            if (calendarOpen) injectFlatpickrTheme();
-            if (calendarOpen && dateRangeInputRef.current) {
-                const options: Record<string, unknown> = {
-                    mode: "range",
-                    dateFormat: "d/m/Y",
-                    locale: {
-                        ...Thai,
-                        firstDayOfWeek: 0 // Sunday
-                    },
-                    rangeSeparator: " ถึง ",
-                    defaultDate: dateRange && dateRange.start && dateRange.end
-                        ? [dateRange.start, dateRange.end]
-                        : undefined,
-                    onChange: (selectedDates: Date[], dateStr: string) => {
-                        setDateRange({
-                            start: selectedDates[0] ? selectedDates[0].toISOString() : "",
-                            end: selectedDates[1] ? selectedDates[1].toISOString() : "",
-                            displayText: dateStr
-                        });
-                    },
-                    onMonthChange: () => {
-                        setTimeout(hideExtraCalendarRow, 0);
-                    },
-                    onReady: () => {
-                        setTimeout(hideExtraCalendarRow, 0);
-                    }
-                };
-                const fp = flatpickr(dateRangeInputRef.current as HTMLInputElement, options);
-                // Hide extra calendar row if needed
-                function hideExtraCalendarRow() {
-                    const calendar = fp.calendarContainer;
-                    if (!calendar) return;
-                    const weeks = calendar.querySelectorAll('.flatpickr-days .dayContainer');
-                    if (!weeks.length) return;
-                    // flatpickr uses a single .dayContainer with 42 day elements (6 rows x 7 days)
-                    const days = calendar.querySelectorAll('.flatpickr-day');
-                    if (days.length !== 42) return;
-                    // Find the last row (days 36-41)
-                    const lastRow = Array.from(days).slice(35, 42);
-                    // If all days in lastRow are from next month, hide them
-                    const allNextMonth = lastRow.every(day => day.classList.contains('nextMonthDay'));
-                    // Remove previous hiding if any
-                    lastRow.forEach(day => {
-                        (day as HTMLElement).style.display = '';
+    }
+    useEffect(() => {
+        if (calendarOpen) injectFlatpickrTheme();
+        if (calendarOpen && dateRangeInputRef.current) {
+            const options: Record<string, unknown> = {
+                mode: "range",
+                dateFormat: "d/m/Y",
+                locale: {
+                    ...Thai,
+                    firstDayOfWeek: 0 // Sunday
+                },
+                rangeSeparator: " ถึง ",
+                defaultDate: dateRange && dateRange.start && dateRange.end
+                    ? [dateRange.start, dateRange.end]
+                    : undefined,
+                onChange: (selectedDates: Date[], dateStr: string) => {
+                    setDateRange({
+                        start: selectedDates[0] ? selectedDates[0].toISOString() : "",
+                        end: selectedDates[1] ? selectedDates[1].toISOString() : "",
+                        displayText: dateStr
                     });
-                    if (allNextMonth) {
-                        lastRow.forEach(day => {
-                            (day as HTMLElement).style.display = 'none';
-                        });
-                    }
+                },
+                onMonthChange: () => {
+                    setTimeout(hideExtraCalendarRow, 0);
+                },
+                onReady: () => {
+                    setTimeout(hideExtraCalendarRow, 0);
                 }
-                setTimeout(hideExtraCalendarRow, 0);
-    
-                // Patch: when closing calendar, if only one date is selected, treat as range (start = end)
-                return () => {
-                    fp.destroy();
-                };
+            };
+            const fp = flatpickr(dateRangeInputRef.current as HTMLInputElement, options);
+            // Hide extra calendar row if needed
+            function hideExtraCalendarRow() {
+                const calendar = fp.calendarContainer;
+                if (!calendar) return;
+                const weeks = calendar.querySelectorAll('.flatpickr-days .dayContainer');
+                if (!weeks.length) return;
+                // flatpickr uses a single .dayContainer with 42 day elements (6 rows x 7 days)
+                const days = calendar.querySelectorAll('.flatpickr-day');
+                if (days.length !== 42) return;
+                // Find the last row (days 36-41)
+                const lastRow = Array.from(days).slice(35, 42);
+                // If all days in lastRow are from next month, hide them
+                const allNextMonth = lastRow.every(day => day.classList.contains('nextMonthDay'));
+                // Remove previous hiding if any
+                lastRow.forEach(day => {
+                    (day as HTMLElement).style.display = '';
+                });
+                if (allNextMonth) {
+                    lastRow.forEach(day => {
+                        (day as HTMLElement).style.display = 'none';
+                    });
+                }
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [calendarOpen]);
+            setTimeout(hideExtraCalendarRow, 0);
+
+            // Patch: when closing calendar, if only one date is selected, treat as range (start = end)
+            return () => {
+                fp.destroy();
+            };
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [calendarOpen]);
 
     return (
         <div className="min-h-screen">
@@ -654,37 +654,43 @@ export default function PurchasePage() {
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'supervisor' ? (isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800') : (isDarkMode ? 'text-slate-300 hover:bg-blue-900/20 hover:text-blue-200' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800')}`}
                                             onClick={() => { setStatusFilter('supervisor'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอหัวหน้าแผนกอนุมัติ</span>
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอหัวหน้าแผนกอนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
                                             onClick={() => { setStatusFilter('manager'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอผู้จัดการแผนกอนุมัติ</span>
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอผู้จัดการแผนกอนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
                                             onClick={() => { setStatusFilter('pu'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอแผนกจัดซื้ออนุมัติ</span>
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอแผนกจัดซื้ออนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'processing' ? (isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800') : (isDarkMode ? 'text-slate-300 hover:bg-yellow-900/20 hover:text-yellow-200' : 'text-gray-700 hover:bg-yellow-50 hover:text-yellow-800')}`}
                                             onClick={() => { setStatusFilter('processing'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอดำเนินการ</span>
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอดำเนินการ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'complete' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
                                             onClick={() => { setStatusFilter('complete'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>เสร็จสมบูรณ์</span>
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>เสร็จสมบูรณ์</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'rejected' ? (isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-50 text-red-800') : (isDarkMode ? 'text-slate-300 hover:bg-red-900/20 hover:text-red-200' : 'text-gray-700 hover:bg-red-50 hover:text-red-800')}`}
                                             onClick={() => { setStatusFilter('rejected'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>ปฏิเสธ</span>
+                                            <span className="inline-flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>ปฏิเสธ</span>
                                         </li>
                                     </ul>
                                 )}
@@ -852,7 +858,7 @@ export default function PurchasePage() {
                                 <div className="w-full px-6 pt-2">
                                     <table className="w-full text-sm mb-2">
                                         <tbody>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>{pr.pr_no}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>{pr.pr_no}</td></tr>
                                             <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.dept_name}</td></tr>
                                             <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{pr.requester_name}</td></tr>
                                             <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{pr.pu_responsible}</td></tr>

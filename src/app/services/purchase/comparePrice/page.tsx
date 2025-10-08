@@ -1,20 +1,23 @@
 "use client";
 
-import Sidebar from "../../../components/sidebar";
-import Header from "../../../components/header";
-import PRModal from '../../../components/Modal/PRModal';
 import RejectPRModal from '../../../components/Modal/Reject_PRModal';
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
+
 import { useToken } from "../../../context/TokenContext";
 import { useTheme } from "../../../components/ThemeProvider";
-import { IoIosCheckmark } from "react-icons/io";
-import { FaXmark } from "react-icons/fa6";
 import { useUser } from "@/app/context/UserContext";
+import Sidebar from "../../../components/sidebar";
+import Header from "../../../components/header";
+import PRModal from '../../../components/Modal/PRModal';
+
 import { BsCalendar2Event } from "react-icons/bs";
 import { MdOutlineGroups3 } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
+import { FaXmark } from "react-icons/fa6";
+import { IoIosCheckmark } from "react-icons/io";
+import { FaRegClock } from "react-icons/fa6";
 
 type Part = {
     pr_list_id: number;
@@ -227,41 +230,6 @@ function ComparePriceContent({ token }: { token: string | null }) {
                 className="mt-[7.5rem] mr-6 transition-all duration-300"
                 style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft: 'calc(18rem + 55px)' }}
             >
-                {/* Stepper */}
-                {/* <div className="px-8 pt-8 pb-2">
-                    <ol className="flex items-center w-full text-sm font-medium text-center sm:text-base">
-
-                        <li className="flex items-center gap-2">
-                            <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 ${prData ? `bg-green-100 border-green-500 text-green-700 ${isDarkMode ? 'dark:bg-green-900 dark:border-green-400 dark:text-green-300' : ''}` : `bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}`}>
-                                {prData ? (
-                                    <svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
-                                        <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 10l4 4 6-8" />
-                                    </svg>
-                                ) : (
-                                    <span className="font-bold">1</span>
-                                )}
-                            </span>
-                            <span className={`ml-2 ${prData ? `text-green-700 font-semibold ${isDarkMode ? 'dark:text-green-300' : ''}` : `text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}`}>Select PR</span>
-                        </li>
-                        <span className={`flex-1 h-1 mx-4 block ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}></span>
-
-                        <li className="flex items-center gap-2">
-                            <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}>
-                                <span className="font-bold">2</span>
-                            </span>
-                            <span className={`ml-2 text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}>Compare Price</span>
-                        </li>
-                        <span className={`flex-1 h-1 mx-4 block ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}></span>
-
-                        <li className="flex items-center gap-2">
-                            <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 bg-gray-100 border-gray-300 text-gray-400 ${isDarkMode ? 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400' : ''}`}>
-                                <span className="font-bold">3</span>
-                            </span>
-                            <span className={`ml-2 text-gray-400 font-medium ${isDarkMode ? 'dark:text-gray-400' : ''}`}>Confirmation</span>
-                        </li>
-                    </ol>
-                </div> */}
-
                 {/* Content: Show PR info and table only if prData exists */}
                 {prData ? (
                     <div className="max-w-none w-full space-y-8 mb-2">
@@ -346,25 +314,19 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     ) : !prData.supervisor_approve ? (
                                         // Blue - รอหัวหน้าแผนกอนุมัติ
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-300' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
+                                            <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`} />
                                             รอหัวหน้าแผนกอนุมัติ
                                         </span>
                                     ) : !prData.manager_approve ? (
                                         // Purple - รอผู้จัดการแผนกอนุมัติ
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-300' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-purple-300' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
+                                            <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-300' : 'text-purple-500'}`} />
                                             รอผู้จัดการแผนกอนุมัติ
                                         </span>
                                     ) : !prData.pu_operator_approve ? (
                                         // Orange - รอแผนกจัดซื้ออนุมัติ
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-300' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-orange-300' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
+                                            <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-orange-300 text-bold' : 'text-orange-500'}`} />
                                             รอแผนกจัดซื้ออนุมัติ
                                         </span>
                                     ) : prData.count_ordered === (prData.pr_lists?.length ?? 0) ? (
@@ -378,9 +340,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     ) : (
                                         // Yellow/Amber - รอดำเนินการ
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-300' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
-                                            <svg className={`w-3 h-3 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" />
-                                            </svg>
+                                            <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`} />
                                             รอดำเนินการ
                                         </span>
                                     )}
@@ -540,6 +500,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             <PRModal
                                 partNo={selectedPartNo}
                                 prNumber={prData.pr_no}
+                                pr_id={prData.pr_id}
                                 department={prData.dept_name}
                                 prDate={prData.pr_date}
                                 qty={selectedPart.qty}

@@ -20,50 +20,36 @@ import { useUser } from "../../../context/UserContext";
 import { LuCalendarFold } from "react-icons/lu";
 import { MdOutlineSort, MdOutlineRemoveRedEye } from "react-icons/md";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
-import { IoDocumentTextOutline } from "react-icons/io5";
 import { GoDownload } from "react-icons/go";
-
+import { HiDocumentText } from "react-icons/hi2";
+import { IoDocumentTextOutline } from "react-icons/io5";
 // Types
-type PRCard = {
-    id: number;
-    pr_no: string;
-    pr_date: string;
-    dept_name: string;
-    dept_short_name: string;
-    count_list: number;
-    supervisor_id: string;
-    manager_id: string;
-    pu_responsible_id: string;
-    supervisor_name: string;
-    manager_name: string;
-    pu_responsible: string;
-    requester_name: string
-    manager_approved: boolean;
-    supervisor_approved: boolean;
-    pu_operator_approved: boolean;
-    supervisor_reject_at: string | null;
-    manager_reject_at: string | null;
-    pu_operator_reject_at: string | null;
-    reason_rejected: string | null;
-    waiting: number;
-}
 type PoDocs = {
-    poDocs: string[];
+    po: POCard;
+    issued_by: string | null;
+    approved_by: string | null;
+    rejected_by: string | null;
 }
 type POCard = {
     ID: number;
+    CreatedAt: string;
+    UpdatedAt: string;
+    DeletedAt: string | null;
     po_no: string;
     po_date: string;
-    issued_by: string;
-    approved_by: string;
-    approved_reason: string;
-    rejected_by: string;
-    reject_reason: string;
-    send_to_vendor_at: string;
-    vendor_confirmed_at: string;
-    pu_validated_at: string;
-    edit_reason: string;
-    edit_user: string;
+    issued_by: string | null;
+    approved_by: string | null;
+    approved_reason: string | null;
+    approved_at: string | null;
+    reject_at: string | null;
+    rejected_by: string | null;
+    reject_reason: string | null;
+    send_to_vendor_at: string | null;
+    vendor_confirmed_at: string | null;
+    pu_validated_at: string | null;
+    edit_reason: string | null;
+    edit_at: string | null;
+    edit_user: string | null;
 }
 
 type Department = {
@@ -95,8 +81,7 @@ export default function PurchaseOrderPage() {
     const [loading, setLoading] = useState(false);
 
     // NOTE: Data states
-    const [prCards, setPrCards] = useState<PRCard[]>([]);
-    const [poCards, setPoCards] = useState<POCard[]>([]);
+    const [poCards, setPoCards] = useState<PoDocs[]>([]);
     const token = useToken();
     const { user } = useUser();
     const departmentId = user?.Department?.ID;
@@ -115,8 +100,9 @@ export default function PurchaseOrderPage() {
     const [statusFilter, setStatusFilter] = useState<string>("");
 
     // TODO: Card Display Logic
-    // Filtered and searched PO cards
-    let displayedPoCards = poCards;
+    // รวม POCard ทั้งหมดจากทุก PoDocs
+    const allPoCards: POCard[] = poCards.map(doc => doc.po);
+    let displayedPoCards = allPoCards;
     // if (departmentFilter) {
     //     displayedPoCards = displayedPoCards.filter(po => po.dept_name === departmentFilter);
     // }
@@ -149,39 +135,48 @@ export default function PurchaseOrderPage() {
     //     );
     // }
     // NEWEST or OLDEST sort
-    // if (sortBy === 'newest') {
-    //     displayedPrCards = [...displayedPrCards].sort((a, b) => {
-    //         // Sort by PR number descending (newest first) for format PR25A###
-    //         const extract = (pr_no: string) => {
-    //             const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-    //             if (match) {
-    //                 // Combine year and number for sorting, e.g. 25 + 001 => 25001
-    //                 return parseInt(match[1] + match[2]);
-    //             }
-    //             return 0;
-    //         };
-    //         return extract(b.pr_no) - extract(a.pr_no);
-    //     });
-    // } else if (sortBy === 'oldest') {
-    //     displayedPrCards = [...displayedPrCards].sort((a, b) => {
-    //         // Sort by PR number ascending (oldest first) for format PR25A###
-    //         const extract = (pr_no: string) => {
-    //             const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-    //             if (match) {
-    //                 return parseInt(match[1] + match[2]);
-    //             }
-    //             return 0;
-    //         };
-    //         return extract(a.pr_no) - extract(b.pr_no);
-    //     });
-    // }
+    if (sortBy === 'newest') {
+        displayedPoCards = [...displayedPoCards].sort((a, b) => {
+            // Sort by date (po_date) descending, ถ้าเท่ากันใช้เลข PO
+            const dateA = a.po_date ? new Date(a.po_date).getTime() : 0;
+            const dateB = b.po_date ? new Date(b.po_date).getTime() : 0;
+            if (dateB !== dateA) return dateB - dateA;
+            // ถ้าวันเดียวกัน ให้ใช้เลข PO
+            const extract = (po_no: string | undefined | null) => {
+                if (!po_no) return 0;
+                const match = po_no.match(/^([DI])(\d{2})(\d{2})(\d{3})$/i);
+                if (match) {
+                    return parseInt(match[2] + match[3] + match[4]);
+                }
+                return 0;
+            };
+            return extract(b.po_no) - extract(a.po_no);
+        });
+    } else if (sortBy === 'oldest') {
+        displayedPoCards = [...displayedPoCards].sort((a, b) => {
+            // Sort by date (po_date) ascending, ถ้าเท่ากันใช้เลข PO
+            const dateA = a.po_date ? new Date(a.po_date).getTime() : 0;
+            const dateB = b.po_date ? new Date(b.po_date).getTime() : 0;
+            if (dateA !== dateB) return dateA - dateB;
+            // ถ้าวันเดียวกัน ให้ใช้เลข PO
+            const extract = (po_no: string | undefined | null) => {
+                if (!po_no) return 0;
+                const match = po_no.match(/^([DI])(\d{2})(\d{2})(\d{3})$/i);
+                if (match) {
+                    return parseInt(match[2] + match[3] + match[4]);
+                }
+                return 0;
+            };
+            return extract(a.po_no) - extract(b.po_no);
+        });
+    }
 
     // NOTE: Pagination states
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
-    // const totalItems = displayedPrCards.length;
+    const totalItems = displayedPoCards.length;
     const startIndex = (currentPage - 1) * itemsPerPage;
-    // const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
+    const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
     // const showCreateCard = currentPage === 1;
     const itemsToShow = currentPage === 1 ? itemsPerPage : itemsPerPage; // -1 is createPR card
     const actualStartIndex = currentPage === 1 ? 0 : startIndex; // -1 because first page has create card
@@ -239,7 +234,7 @@ export default function PurchaseOrderPage() {
                     return;
                 }
 
-                const responsePO = await fetch("http://127.0.0.1:6100/api/purchase/po/all", {
+                const responsePO = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all`, {
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
                 });
 
@@ -262,7 +257,7 @@ export default function PurchaseOrderPage() {
                     setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
                     document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                     router.push("/login");
-                    return;
+                    return; ``
                 }
                 if (!responsePO.ok) {
                     throw new Error(`HTTP ${responsePO.status}: ${responsePO.statusText}`);
@@ -270,27 +265,23 @@ export default function PurchaseOrderPage() {
 
                 const data = await responsePO.json();
                 console.log("Fetched PO data:", data);
-                let prsArray = Array.isArray(data.poDocs) ? data.poDocs : [];
-                setPoCards(prsArray);
+                let posArray = Array.isArray(data.poDocs) ? data.poDocs : [];
+                setPoCards(posArray);
 
-                // Filter by date range
-                // if (dateRange && dateRange.start && dateRange.end) {
-                //     prsArray = prsArray.filter((pr: PRCard) => {
-                //         if (!pr.pr_date) return false;
-                //         // แปลง pr_date เป็น Date object
-                //         // ถ้า pr_date เป็น ISO format (YYYY-MM-DD)
-                //         const prDate = new Date(pr.pr_date);
-                //         // แปลง dateRange.start และ dateRange.end จาก YYYY-MM-DD เป็น Date
-                //         const startDate = new Date(dateRange.start);
-                //         const endDate = new Date(dateRange.end);
-                //         // ตั้งเวลาให้ครอบคลุมทั้งวัน
-                //         startDate.setHours(0, 0, 0, 0);
-                //         endDate.setHours(23, 59, 59, 999);
-                //         // เปรียบเทียบ
-                //         return prDate >= startDate && prDate <= endDate;
-                //     });
-                // }
-                console.log("Filtered PO cards:", prsArray.length, "items");
+                //Filter by date range
+                if (dateRange && dateRange.start && dateRange.end) {
+                    posArray = posArray.filter((doc: PoDocs) => {
+                        // ตรวจสอบ PO ใน doc.po object
+                        if (!doc.po.po_date) return false;
+                        const poDate = new Date(doc.po.po_date);
+                        const startDate = new Date(dateRange.start);
+                        const endDate = new Date(dateRange.end);
+                        startDate.setHours(0, 0, 0, 0);
+                        endDate.setHours(23, 59, 59, 999);
+                        return poDate >= startDate && poDate <= endDate;
+                    });
+                }
+                console.log("Filtered PO cards:", posArray.length, "items");
             } catch (error: unknown) {
                 console.error("Failed to fetch PO cards:", error);
                 if (error instanceof Error) {
@@ -546,7 +537,7 @@ export default function PurchaseOrderPage() {
                                         type="search"
                                         id="search-dropdown"
                                         className={`block p-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
-                                        placeholder="ค้นหา PR, ผู้จัดทำ..."
+                                        placeholder="ค้นหา PO, ผู้จัดทำ..."
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                     />
@@ -713,7 +704,71 @@ export default function PurchaseOrderPage() {
                         </form>
 
                         {/* Pagination Controls - Top */}
+                        {totalItems > 0 && (
+                            <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                {/* Items per page dropdown */}
+                                <div className="flex items-center space-x-2">
+                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
+                                    <select
+                                        value={itemsPerPage}
+                                        onChange={(e) => {
+                                            setItemsPerPage(Number(e.target.value));
+                                            setCurrentPage(1);
+                                        }}
+                                        className={`border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
+                                    >
+                                        <option value={10}>10 per page</option>
+                                        <option value={25}>25 per page</option>
+                                        <option value={50}>50 per page</option>
+                                        <option value={100}>100 per page</option>
+                                    </select>
+                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
+                                </div>
 
+                                {/* Page info and navigation */}
+                                <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
+                                    <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
+                                        {(() => {
+                                            const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
+                                            const startItem = totalItemsWithCreate === 1 ? 0 : (currentPage === 1 ? 1 : startIndex);
+                                            const endItem = currentPage === 1 ? Math.min(itemsPerPage, totalItemsWithCreate) : Math.min(startIndex + itemsPerPage - 1, totalItemsWithCreate);
+                                            return (
+                                                <>
+                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
+                                                    {' '}จาก{' '}
+                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItemsWithCreate}</span>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Navigation buttons */}
+                                    <div className="flex items-center">
+                                        <button
+                                            type="button"
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
+                                            disabled={currentPage === 1}
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        >
+                                            <IoIosArrowBack className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                            disabled={currentPage >= totalPages}
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        >
+                                            <IoIosArrowForward className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Page numbers */}
+                                <div className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                    หน้า <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentPage}</span> / <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalPages}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
                         {/* Add New PR Card - Show only on first page */}
@@ -722,72 +777,58 @@ export default function PurchaseOrderPage() {
                             <div
                                 key={po.po_no}
                                 className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
-                            // onClick={() => router.push(`/services/purchase/comparePrice?${po.id ? `id=${po.id}` : ''}`)}
+                                onClick={() => router.push(`/services/purchase/PO2/ReviewedPO?poNo=${po.po_no}`)}
                             >
                                 {/* Top: Department Icon */}
                                 <div className="w-full flex justify-center pt-12 pb-2">
-                                    <IoDocumentTextOutline className={`h-14 w-14 ${departmentColors[po.po_no] || 'text-blue-400'}`} />
+                                    <HiDocumentText className={`h-14 w-14 ${departmentColors[po.po_no] || 'text-emerald-400'}`} />
                                 </div>
                                 {/* Status badge top right */}
-                                {/* <div className="absolute top-2 right-2 z-10">
-                                    {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                <div className="absolute top-2 right-2 z-10">
+                                    {!po.rejected_by && !po.issued_by && !po.approved_by ? (
+                                        // ไม่มีข้อมูลอะไรเลย
+                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-gray-900/30 border-gray-700/60 text-gray-200' : 'bg-gray-50 border-gray-300 text-gray-800'}`}>
+                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                            </svg>
+                                            รอการตรวจสอบ
+                                        </span>
+                                    ) : po.rejected_by ? (
                                         // Red - ปฏิเสธ (Rejected)
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
                                             <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                             </svg>
-                                            {pr.supervisor_reject_at ? 'หัวหน้าแผนกปฏิเสธ' : pr.manager_reject_at ? 'ผู้จัดการแผนกปฏิเสธ' : pr.pu_operator_reject_at ? 'แผนกจัดซื้อปฏิเสธ' : 'ปฏิเสธ'}
+                                            ปฏิเสธ
                                         </span>
-                                    ) : !pr.supervisor_approved ? (
-                                        // Blue - รอหัวหน้าแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            รอหัวหน้าแผนกอนุมัติ
-                                        </span>
-                                    ) : !pr.manager_approved ? (
-                                        // Purple - รอผู้จัดการแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-200' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            รอผู้จัดการแผนกอนุมัติ
-                                        </span>
-                                    ) : !pr.pu_operator_approved ? (
-                                        // Orange - รอแผนกจัดซื้ออนุมัติ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            รอแผนกจัดซื้ออนุมัติ
-                                        </span>
-                                    ) : pr.waiting === pr.count_list ? (
-                                        // Green - Complete (เสร็จสมบูรณ์)
+                                    ) : po.approved_by ? (
+                                        // Green - อนุมัติเสร็จสิ้น
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
                                             <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                             </svg>
-                                            เสร็จสมบูรณ์
+                                            อนุมัติเสร็จสิ้น
                                         </span>
-                                    ) : (
-                                        // Yellow/Amber - รอดำเนินการ
+                                    ) : po.issued_by ? (
+                                        // Yellow - รอดำเนินการ
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
                                             </svg>
                                             รอดำเนินการ
                                         </span>
-                                    )}
-                                </div> */}
+                                    ) : null}
+                                </div>
                                 {/* Middle: Table info */}
                                 <div className="w-full px-6 pt-2">
                                     <table className="w-full text-sm mb-2">
                                         <tbody>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PO</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>{po.po_no}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PO</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{po.po_no}</td></tr>
                                             {/* <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{po.dept_name}</td></tr> */}
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.issued_by}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.approved_by}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ออกโดย</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.issued_by}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>อนุมัติโดย</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.approved_by}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -797,7 +838,7 @@ export default function PurchaseOrderPage() {
                                     <div className="flex w-full justify-center">
                                         <button
                                             className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
-                                        // onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
+                                            onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`); }}
                                         >
                                             <MdOutlineRemoveRedEye className="w-7 h-7" />
                                         </button>
