@@ -131,131 +131,221 @@ export default function ReviewedPOPage() {
             >
                 {
                     poData ? (
-                        <div className="max-w-none w-full space-y-8 mb-2">
-                            {/* ส่วนบน - ข้อมูลใบ PO และข้อมูลรายละเอียด */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                {/* ข้อมูลใบ PO */}
-                                <div className={`rounded-2xl p-5 shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-green-900/30' : 'bg-green-100'}`}>
-                                            <IoDocumentTextOutline className={`h-6 w-6 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-                                        </div>
-                                        <h3 className={`font-bold text-lg ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>ข้อมูลใบ PO</h3>
+                        <div className={`max-w-none w-full space-y-4 p-4 rounded-2xl ${isDarkMode ? 'bg-slate-900/20' : 'bg-gray-50/50'}`}>
+                            {/* Compact Header Section */}
+                            <div className={`flex items-center justify-between p-4 rounded-xl ${isDarkMode ? 'bg-gradient-to-r from-green-900/20 to-emerald-900/10' : 'bg-gradient-to-r from-green-50 to-emerald-50'}`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-green-900/40' : 'bg-green-100'}`}>
+                                        <IoDocumentTextOutline className={`h-5 w-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                                     </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>หมายเลข PO</p>
-                                            <p className={`text-xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{poData.po_no}</p>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>วันที่ออกใบ PO</p>
-                                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{new Date(poData.po_date).toLocaleDateString('th-TH')}</p>
-                                            </div>
-                                            <div>
-                                                <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>จำนวนรายการ</p>
-                                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.po_lists?.length || 0} รายการ</p>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ยอดรวม</p>
-                                            <p className={`text-lg font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>฿{poData.total?.toLocaleString() || '0'}</p>
-                                        </div>
+                                    <div>
+                                        <h1 className={`text-xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>Purchase Order #{poData.po_no}</h1>
+                                        <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                                            {new Date(poData.po_date).toLocaleDateString('th-TH')} • {poData.po_lists?.length || 0} รายการ
+                                        </p>
                                     </div>
                                 </div>
-
-                                {/* ข้อมูลรายละเอียด */}
-                                <div className={`rounded-2xl p-5 shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-orange-100'}`}>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-orange-900/30' : 'bg-orange-100'}`}>
-                                            <svg className={`h-6 w-6 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <h3 className={`font-bold text-lg ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>ข้อมูลรายละเอียด</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>แผนกผู้ขอ</p>
-                                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.dept_request}</p>
-                                        </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>สถานที่จัดส่ง</p>
-                                            <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.delivery_place}</p>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>วันที่จัดส่ง</p>
-                                                <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                    {poData.delivery_date ? new Date(poData.delivery_date).toLocaleDateString('th-TH') : '-'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>วันที่ส่งเมล์</p>
-                                                <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                    {poData.mail_out_date ? new Date(poData.mail_out_date).toLocaleDateString('th-TH') : '-'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {poData.remark && (
-                                            <div>
-                                                <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>หมายเหตุ</p>
-                                                <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.remark}</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                <div className={`px-3 py-1 rounded-full border text-sm font-medium ${isDarkMode ? 'bg-green-900/30 border-green-700/40 text-green-300' : 'bg-green-100 border-green-200 text-green-700'}`}>
+                                    Active PO
                                 </div>
                             </div>
 
-                            {/* ส่วนกลาง - ข้อมูลผู้ขาย (แยกเป็น 2 คอลัมน์) */}
-                            <div className={`rounded-2xl p-5 shadow-sm border mb-6 ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-blue-100'}`}>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                                        <svg className={`h-6 w-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                        </svg>
-                                    </div>
-                                    <h3 className={`font-bold text-lg ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>ข้อมูลผู้ขาย</h3>
-                                </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>รหัสผู้ขาย</p>
-                                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{poData.vendor_code}</p>
+                            {/* Balanced 3-Column Layout - Reduced spacing & better organization */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                {/* Left Column - PO Summary & Delivery */}
+                                <div className="space-y-4">
+                                    {/* PO Basic Info - Compact */}
+                                    <div className={`rounded-lg p-3 border ${isDarkMode ? 'bg-slate-900/60 border-green-700/30' : 'bg-white border-green-200'}`}>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <BsCalendar2Event className={`h-4 w-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                                            <h3 className={`font-semibold text-md ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>สรุปข้อมูล PO</h3>
                                         </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ชื่อผู้ขาย</p>
+                                        <div className="space-y-2">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className={`p-2 rounded text-center ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>วันที่ออกใบ PO</p>
+                                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{new Date(poData.po_date).toLocaleDateString('th-TH')}</p>
+                                                </div>
+                                                <div className={`p-2 rounded text-center ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>จำนวนรายการ</p>
+                                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.po_lists?.length || 0}</p>
+                                                </div>
+                                            </div>
+                                            <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>แผนกผู้ขอ</p>
+                                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.dept_request}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>ผู้จัดทำ</p>
+                                                    <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.issued_by || '-'}</p>
+                                                </div>
+                                                <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>ผู้อนุมัติ</p>
+                                                    <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.approved_by || '-'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Delivery Information */}
+                                    <div className={`rounded-lg p-3 border ${isDarkMode ? 'bg-slate-900/60 border-orange-700/30' : 'bg-white border-orange-200'}`}>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <svg className={`h-4 w-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            <h3 className={`font-semibold text-md ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>ข้อมูลจัดส่ง</h3>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>สถานที่จัดส่ง</p>
+                                                <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.delivery_place}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>วันที่จัดส่ง</p>
+                                                    <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                        {poData.delivery_date ? new Date(poData.delivery_date).toLocaleDateString('th-TH') : '-'}
+                                                    </p>
+                                                </div>
+                                                <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>วันที่ส่งเมล์</p>
+                                                    <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                        {poData.mail_out_date ? new Date(poData.mail_out_date).toLocaleDateString('th-TH') : '-'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {poData.remark && (
+                                                <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>หมายเหตุ</p>
+                                                    <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.remark}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Center Column - Vendor Information */}
+                                <div className={`rounded-lg p-3 border ${isDarkMode ? 'bg-slate-900/60 border-blue-700/30' : 'bg-white border-blue-200'}`}>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <MdOutlineGroups3 className={`h-4 w-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                                        <h3 className={`font-semibold text-md ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>ข้อมูลผู้ขาย</h3>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>รหัสผู้ขาย</p>
+                                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{poData.vendor_code}</p>
+                                            </div>
+                                            <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>โทรศัพท์</p>
+                                                <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.tel_no}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>ชื่อผู้ขาย</p>
                                             <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{poData.vendor_name}</p>
                                         </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>เลขประจำตัวผู้เสียภาษี</p>
+
+                                        <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>เลขประจำตัวผู้เสียภาษี</p>
                                             <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.tax_id}</p>
                                         </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>เครดิต</p>
-                                            <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.credit_term}</p>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>ผู้ติดต่อ</p>
+                                                <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.contact_name}</p>
+                                            </div>
+                                            <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>เครดิต</p>
+                                                <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.credit_term}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>โทรศัพท์</p>
-                                            <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.tel_no}</p>
-                                        </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>แฟกซ์</p>
-                                            <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.fax_no}</p>
-                                        </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ผู้ติดต่อ</p>
-                                            <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.contact_name}</p>
-                                        </div>
-                                        <div>
-                                            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>อีเมล</p>
+
+                                        <div className={`p-2 rounded ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'} mb-1`}>อีเมล</p>
                                             <p className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.email}</p>
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Right Column - Total Amount Calculation */}
+                                <div className={`rounded-lg p-3 border ${isDarkMode ? 'bg-slate-900/60 border-green-700/30' : 'bg-white border-green-200'}`}>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <svg className={`h-4 w-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                        </svg>
+                                        <h3 className={`font-semibold text-md ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>ยอดรวมสุทธิ</h3>
+                                    </div>
+                                    
+                                    <div className="text-center mb-3">
+                                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{(() => {
+                                            const sumAmount = poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0) || 0;
+                                            const discount = poData.exit_discount || 0;
+                                            const afterDiscount = sumAmount - discount;
+                                            const vat = afterDiscount * 0.07;
+                                            const totalAmount = afterDiscount + vat;
+                                            return `฿${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        })()}</p>
+                                    </div>
+                                    
+                                    <div className={`space-y-1 p-3 rounded ${isDarkMode ? 'bg-slate-900/50' : 'bg-white/70'}`}>
+                                        <div className={`flex justify-between text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                            <span>รวมรายการ (Σ)</span>
+                                            <span className={`font-semibold ${isDarkMode ? 'text-emerald-300' : 'text-green-700'}`}>฿{poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div className={`flex justify-between text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                            <span>ส่วนลด</span>
+                                            <span className={`font-semibold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>- ฿{(poData.exit_discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div className={`flex justify-between text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                            <span>VAT 7%</span>
+                                            <span className={`font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>+ ฿{(() => {
+                                                const sumAmount = poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0) || 0;
+                                                const discount = poData.exit_discount || 0;
+                                                const afterDiscount = sumAmount - discount;
+                                                return (afterDiscount * 0.07).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                            })()}</span>
+                                        </div>
+                                        <hr className={`my-1 ${isDarkMode ? 'border-slate-600' : 'border-gray-300'}`} />
+                                        <div className={`flex justify-between font-bold text-sm ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
+                                            <span>ยอดรวมสุทธิ</span>
+                                            <span>{(() => {
+                                                const sumAmount = poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0) || 0;
+                                                const discount = poData.exit_discount || 0;
+                                                const afterDiscount = sumAmount - discount;
+                                                const vat = afterDiscount * 0.07;
+                                                const totalAmount = afterDiscount + vat;
+                                                return `฿${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                            })()}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Additional Stats */}
+                                    <div className="grid grid-cols-2 gap-1 mt-3">
+                                        <div className={`p-2 rounded text-center ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>รายการ</p>
+                                            <p className={`text-sm font-bold ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{poData.po_lists?.length || 0}</p>
+                                        </div>
+                                        {/* <div className={`p-2 rounded text-center ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>เฉลี่ย</p>
+                                            <p className={`text-xs font-bold ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>
+                                                ฿{poData.po_lists?.length ? ((poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0) || 0) / poData.po_lists.length).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0'}
+                                            </p>
+                                        </div> */}
+                                        <div className={`p-2 rounded text-center ${isDarkMode ? 'bg-slate-800/40' : 'bg-gray-50'}`}>
+                                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>หน่วย</p>
+                                            <p className={`text-sm font-bold ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{poData.po_lists?.reduce((acc, item) => acc + (item.qty || 0), 0) || 0}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
+
+
                             {/* // ANCHOR Table */}
                             <div className={`rounded-3xl shadow border overflow-visible ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
                                 <div className={`px-8 pt-6 pb-4 rounded-t-3xl overflow-visible ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
@@ -375,29 +465,7 @@ export default function ReviewedPOPage() {
                                 <div className={`pb-6 rounded-b-3xl ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}></div>
                             </div>
 
-                            {/* ส่วนท้าย - ผู้เกี่ยวข้อง (กะทัดรัด) */}
-                            <div className={`rounded-xl p-4 shadow-sm border mt-6 ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
-                                            <svg className={`h-5 w-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                            </svg>
-                                        </div>
-                                        <h3 className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>ผู้เกี่ยวข้อง</h3>
-                                    </div>
-                                    <div className="flex items-center gap-8">
-                                        <div className="text-center">
-                                            <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>ผู้จัดทำ</p>
-                                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.issued_by || '-'}</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>ผู้อนุมัติ</p>
-                                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>{poData.approved_by || '-'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-12">

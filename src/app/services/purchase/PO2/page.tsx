@@ -827,8 +827,8 @@ export default function PurchaseOrderPage() {
                                         <tbody>
                                             <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PO</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{po.po_no}</td></tr>
                                             {/* <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{po.dept_name}</td></tr> */}
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ออกโดย</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.issued_by}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>อนุมัติโดย</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{po.approved_by}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ออกโดย</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poCards.find(doc => doc.po.po_no === po.po_no)?.issued_by ?? '-'}</td></tr>
+                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>อนุมัติโดย</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poCards.find(doc => doc.po.po_no === po.po_no)?.approved_by ?? '-'}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
