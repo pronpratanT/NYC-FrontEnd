@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   FaBook, FaCar, FaTools, FaDesktop, FaWrench, FaClipboardCheck,
-  FaCreditCard, FaServer, FaBoxOpen, FaShoppingCart,FaChevronDown,
+  FaCreditCard, FaServer, FaBoxOpen, FaShoppingCart, FaChevronDown,
   FaLink, FaLeaf, FaDownload, FaCode, FaClock, FaChartLine, FaKey, FaUser,
   FaFileInvoice, FaClipboardList
 } from 'react-icons/fa';
@@ -33,9 +33,9 @@ const programs = [
   { label: 'FeetCard', icon: FaCreditCard },
   { label: 'N.Y.C. Server IS', icon: FaServer },
   { label: 'Packing Check', icon: FaBoxOpen },
-  { 
-    label: 'ระบบจัดซื้อ', 
-    icon: FaShoppingCart, 
+  {
+    label: 'ระบบจัดซื้อ',
+    icon: FaShoppingCart,
     subItems: [
       { label: 'Purchase Request (PR)', icon: FaClipboardList, href: '/services/purchase' },
       { label: 'Purchase Order (PO)', icon: FaFileInvoice, href: '/services/purchase/PO' },
@@ -62,23 +62,25 @@ export default function Sidebar() {
   const { isDarkMode } = useTheme();
   const pathname = usePathname();
   const [showPurchaseMenu, setShowPurchaseMenu] = useState(pathname.startsWith('/services/purchase'));
-  
+
   // Helper function to check if current path matches the item
   const isPathActive = (item: { href?: string; label: string }) => {
     if (!item.href) return false;
     if (item.href === '/' && pathname === '/') return true;
-    
+
     // Special handling for purchase system paths
     if (item.href === '/services/purchase' && pathname === '/services/purchase') return true;
     if (item.href === '/services/purchase/PO' && pathname.startsWith('/services/purchase/PO')) return true;
-    
+
     // For other paths, use exact match or startsWith with additional path segment
     if (item.href !== '/' && item.href !== '/services/purchase' && pathname.startsWith(item.href)) return true;
-    
+
     return false;
   };
 
-  const renderItem = (item: { label: string; icon: React.ComponentType; href?: string; subItems?: any[] }, key: string, isSubItem: boolean = false) => {
+  type SidebarSubItem = { label: string; icon: React.ComponentType; href?: string };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const renderItem = (item: { label: string; icon: React.ComponentType; href?: string; subItems?: SidebarSubItem[] }, key: string, isSubItem: boolean = false) => {
     const isActive = isPathActive(item);
     const Icon = item.icon;
     const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -109,7 +111,7 @@ export default function Sidebar() {
       const isExpanded = showPurchaseMenu;
       // Check if any sub-item is active (for purchase system)
       const hasActiveSubItem = item.subItems?.some((subItem) => isPathActive(subItem));
-      
+
       // Use active styling if any sub-item is active
       const parentClass = `group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm text-left outline-none justify-between cursor-pointer ` +
         (hasActiveSubItem
@@ -132,13 +134,12 @@ export default function Sidebar() {
               </span>
               <span className="truncate font-medium">{item.label}</span>
             </div>
-            <FaChevronDown 
-              className={`text-xs transition-transform duration-200 ${hasActiveSubItem ? (isDarkMode ? 'text-green-400' : 'text-[#0f9015]') : (isDarkMode ? 'text-slate-400' : 'text-slate-400')} ${isExpanded ? 'rotate-180' : ''}`} 
+            <FaChevronDown
+              className={`text-xs transition-transform duration-200 ${hasActiveSubItem ? (isDarkMode ? 'text-green-400' : 'text-[#0f9015]') : (isDarkMode ? 'text-slate-400' : 'text-slate-400')} ${isExpanded ? 'rotate-180' : ''}`}
             />
           </button>
-          <div className={`ml-6 space-y-0.5 transition-all duration-300 ${
-            isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-          }`}>
+          <div className={`ml-6 space-y-0.5 transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+            }`}>
             {item.subItems?.map((subItem, subIndex) => renderItem(subItem, `${key}-sub-${subIndex}`, true))}
           </div>
         </div>
@@ -190,7 +191,7 @@ export default function Sidebar() {
 
   return (
     <aside className={`fixed left-6 top-6 h-[calc(100vh-3rem)] w-72 border rounded-2xl flex flex-col z-40 shadow-xl transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}>
-      
+
       {/* Header */}
       <div className="px-5 py-5 flex items-center gap-4" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #d1d5db' }}>
         <div className="w-12 h-12 rounded-lg flex items-center justify-center shadow-lg" style={{
@@ -216,7 +217,7 @@ export default function Sidebar() {
         scrollbarWidth: 'thin',
         scrollbarColor: isDarkMode ? '#10b981 transparent' : '#10b981 transparent'
       }}>
-        
+
         {/* Menu Section */}
         <section>
           {renderSectionTitle('Menu')}
@@ -260,7 +261,7 @@ export default function Sidebar() {
               v0.1.0-beta
             </span>
           </div>
-          
+
           {/* Developed by */}
           <div className={`text-center space-y-1`}>
             <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>

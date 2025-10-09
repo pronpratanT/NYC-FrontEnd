@@ -151,6 +151,7 @@ type VendorSelected = {
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, pu_operator_approve, onClose, onSuccess }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   // เพิ่ม pr_id เข้า destructure
   const router = useRouter();
   // State สำหรับรายการที่เลือกใน Approved Dropdown
@@ -283,14 +284,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no);
       if (prWithPO && compareData?.compare_vendors) {
         // ...existing code...
-        let vendorDetail: CompareData | undefined = undefined;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let vendorDetail: CompareData | undefined = undefined;
         const vendorId = prWithPO.recent_purchase?.[0]?.vendor_id;
         if (vendorId) {
           vendorDetail = compareData.compare_vendors.find((v: CompareData) => v.vendor_id === vendorId);
         }
 
         // คำนวณ previousPurchase สำหรับ PR นี้เฉพาะ
-        let currentPreviousPurchase: RecentPurchase | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let currentPreviousPurchase: RecentPurchase | null = null;
         if (totalCount > 1) {
           const previousIndex = totalCount - 1;
           const previousItem = sortedItems[previousIndex];
@@ -359,6 +362,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
     fetchCompareData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partNo, pr_list_id, token]);
   const handleApprovedDropdownSelect = (item: SelectedToPOGen) => {
     if (!item.part_no || !item.pr_list_id) return;
@@ -478,6 +482,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         if (vendorData && vendorData.vendor_code) {
 
           try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/insert-vendor-for-compare`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -513,7 +518,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           //   return [...prev, newCompare];
           // });
         }
-      } catch (_) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_) {
         setSelectedVendorDetail(null);
       }
     };
@@ -528,7 +534,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // Only fetch if status is Approved
     if (prItem?.status === 'Approved') {
       setLoading(true);
-      fetch(`http://127.0.0.1:6100/api/purchase/pc/compare/approved-list?prId=${prIdValue}`, {
+      fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/approved-list?prId=${prIdValue}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -701,13 +707,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const handleSubmitPOCreate = async () => {
     // ดึง pcl_id และ material_type จาก multipleOrderDetails ที่ถูกเลือก
     let selectedMaterialType: 'D' | 'I' | undefined = purchaseType;
+    let selectedPclIds: { pcl_id: number | undefined }[] = [];
     if (multipleOrderDetails.length > 0) {
       selectedMaterialType = multipleOrderDetails[0]?.purchaseType;
+      selectedPclIds = multipleOrderDetails.map(item => {
+        const found = selectedToPO.find(sel => sel.pr_list_id === item.pr_list_id);
+        return { pcl_id: found?.pcl_id };
+      });
+    } else if (selectedToPO.length > 0) {
+      // fallback: single item selected
+      selectedPclIds = selectedToPO.map(sel => ({ pcl_id: sel.pcl_id }));
     }
-    const selectedPclIds = multipleOrderDetails.map(item => {
-      const found = selectedToPO.find(sel => sel.pr_list_id === item.pr_list_id);
-      return { pcl_id: found?.pcl_id };
-    });
     const poCreate = {
       material_type: selectedMaterialType,
       po_list: selectedPclIds
@@ -746,9 +756,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   };
 
   const handleConfirmRejectCompare = async () => {
-    console.log("Rejecting PCL ID:", compareData?.pcl_id, "with reason:", rejectReason);
+    const reasonToSend = rejectReason || "";
+    console.log("Rejecting PCL ID:", compareData?.pcl_id, "with reason:", reasonToSend);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/reject-pcl?pclId=${compareData?.pcl_id}&reason=${encodeURIComponent(rejectReason)}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/reject-pcl?pclId=${compareData?.pcl_id}&reason=${encodeURIComponent(reasonToSend)}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

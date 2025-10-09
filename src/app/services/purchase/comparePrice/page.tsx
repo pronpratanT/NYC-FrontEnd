@@ -57,6 +57,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     // Assume user info is available from context or prop
     // You may need to adjust this to your actual user context
     const { user } = useUser();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const departmentId = user?.Department?.ID;
 
     const searchParams = useSearchParams();
@@ -186,7 +187,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
         setRejectModalOpen(true);
     };
 
-    const handleConfirmReject = async (reason: string) => {
+    const handleConfirmReject = async (reason: string | null | undefined) => {
         if (!prId) {
             setError("ไม่พบ PR No");
             return;
@@ -199,7 +200,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ reason })
+                body: JSON.stringify({ reason: reason || "" })
             });
             if (!response.ok) {
                 const errorText = await response.text();
@@ -422,14 +423,14 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
                                             )}
                                             <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
-                                            <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
-                                            <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
-                                            <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
-                                            <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
+                                            <th className={`px-2 py-3 text-right font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
                                         </tr>
                                     </thead>
@@ -468,7 +469,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.unit}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.vendor}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.stock}</td>
-                                                <td className={`px-2 py-3 w-20 text-right pr-10 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
+                                                <td className={`px-2 py-3 w-20 text-right ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.plant}</td>
                                             </tr>
                                         ))}

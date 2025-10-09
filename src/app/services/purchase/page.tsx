@@ -733,8 +733,8 @@ export default function PurchasePage() {
                                     <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
                                             const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
-                                            const startItem = totalItemsWithCreate === 1 ? 0 : (currentPage === 1 ? 1 : startIndex);
-                                            const endItem = currentPage === 1 ? Math.min(itemsPerPage, totalItemsWithCreate) : Math.min(startIndex + itemsPerPage - 1, totalItemsWithCreate);
+                                            const startItem = totalItemsWithCreate === 1 ? 0 : (currentPage === 1 ? 1 : startIndex + 1);
+                                            const endItem = currentPage === 1 ? Math.min(itemsPerPage, totalItemsWithCreate) : Math.min(startIndex + itemsPerPage, totalItemsWithCreate);
                                             return (
                                                 <>
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>

@@ -11,15 +11,16 @@ export type RejectPRModalProps = {
 
 const RejectPRModal: React.FC<RejectPRModalProps> = ({ open, onClose, onConfirm, prNo }) => {
     const [reason, setReason] = useState("");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [error, setError] = useState("");
 
     if (!open) return null;
 
     const handleConfirm = () => {
-        if (!reason.trim()) {
-            setError("กรุณาระบุเหตุผลในการปฏิเสธ");
-            return;
-        }
+        // if (!reason.trim()) {
+        //     setError("กรุณาระบุเหตุผลในการปฏิเสธ");
+        //     return;
+        // }
         setError("");
         onConfirm(reason);
         setReason("");
@@ -61,11 +62,11 @@ const RejectPRModal: React.FC<RejectPRModalProps> = ({ open, onClose, onConfirm,
                     onChange={e => setReason(e.target.value)}
                     placeholder="กรุณาระบุเหตุผล..."
                 />
-                {error && (
+                {/* {error && (
                     <div className="text-red-600 dark:text-red-300 text-sm mb-3 text-center bg-red-50 dark:bg-red-900/20 p-2 rounded-lg border border-red-200 dark:border-red-800/50">
                         {error}
                     </div>
-                )}
+                )} */}
                 <div className="flex justify-end gap-3 mt-6">
                     <button
                         className="px-6 py-2 rounded-xl bg-gradient-to-r from-red-500 to-red-700 dark:from-red-700 dark:to-red-900 text-white font-bold shadow hover:from-red-600 hover:to-red-800 dark:hover:from-red-800 dark:hover:to-red-950 transition-all duration-150 cursor-pointer"
