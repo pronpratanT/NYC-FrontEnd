@@ -26,6 +26,8 @@ type ReviewedPO = {
     mail_out_date: string;
     sub_total: number;
     ext_discount: number;
+    vat: number;
+    total_minus_discount: number;
     total: number;
     vendor_code: string;
     vendor_name: string;
@@ -261,9 +263,15 @@ export default function ReviewedPOPage() {
                                             </div>
                                         </div>
                                         <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/30' : 'bg-gray-50'}`}>
-                                            <div className="flex items-center justify-between">
-                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>โทรศัพท์</span>
-                                                <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.tel_no}</span>
+                                            <div className="grid grid-cols-2 gap-0">
+                                                <div className="flex items-center gap-2 pr-6 border-r-2 border-dashed border-gray-300 dark:border-slate-700">
+                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>โทรศัพท์</span>
+                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.tel_no}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 pl-6 flex justify-end">
+                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>แฟกซ์</span>
+                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.fax_no || '-'}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/30' : 'bg-gray-50'}`}>
@@ -381,39 +389,33 @@ export default function ReviewedPOPage() {
                                     <div className={`space-y-3 p-4 rounded-xl ${isDarkMode ? 'bg-slate-900/50' : 'bg-white/70'}`}>
                                         <div className="flex justify-between items-center">
                                             <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>รวมรายการ</span>
-                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-emerald-300' : 'text-green-700'}`}>
-                                                ฿{poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                                                ฿{(poData.sub_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ส่วนลด</span>
-                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
+                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>
                                                 - ฿{(poData.ext_discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
+                                            <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ราคาหลังหักส่วนลด</span>
+                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                                                ฿{(poData.total_minus_discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
                                             <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>VAT 7%</span>
-                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
-                                                + ฿{(() => {
-                                                    const sumAmount = poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0) || 0;
-                                                    const discount = poData.ext_discount || 0;
-                                                    const afterDiscount = sumAmount - discount;
-                                                    return (afterDiscount * 0.07).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                })()}
+                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+                                                + ฿{(poData.vat || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className={`border-t pt-3 mt-2 ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                                             <div className="flex justify-between items-center">
                                                 <span className={`font-bold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>รวมสุทธิ</span>
-                                                <span className={`text-lg font-bold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
-                                                    {(() => {
-                                                        const sumAmount = poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0) || 0;
-                                                        const discount = poData.ext_discount || 0;
-                                                        const afterDiscount = sumAmount - discount;
-                                                        const vat = afterDiscount * 0.07;
-                                                        const totalAmount = afterDiscount + vat;
-                                                        return `฿${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                    })()}
+                                                <span className={`text-lg font-bold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                                                    ฿{(poData.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
                                         </div>

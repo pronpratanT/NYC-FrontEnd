@@ -1736,7 +1736,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                               ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
                                               : isDarkMode ? 'text-slate-300' : 'text-slate-700'
                                               }`}>DIRECT</div>
-                                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อโดยตรง</div>
+                                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่เกี่ยวข้องกับการผลิต</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1765,7 +1765,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                               ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
                                               : isDarkMode ? 'text-slate-300' : 'text-slate-700'
                                               }`}>INDIRECT</div>
-                                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อผ่านตัวกลาง</div>
+                                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต</div>
                                           </div>
                                         </div>
                                       </div>
@@ -2255,7 +2255,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       ? isDarkMode ? 'text-green-400' : 'text-green-600'
                                       : isDarkMode ? 'text-slate-400' : 'text-slate-600'
                                       }`}>
-                                      ซื้อโดยตรง (D)
+                                      วัตถุดิบที่เกี่ยวข้องกับการผลิต (D)
                                     </div>
                                   </div>
                                   <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'D'
@@ -2312,7 +2312,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
                                       : isDarkMode ? 'text-slate-400' : 'text-slate-600'
                                       }`}>
-                                      ซื้อผ่านตัวกลาง (I)
+                                      วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (I)
                                     </div>
                                   </div>
                                   <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'I'
@@ -2347,7 +2347,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       ? isDarkMode ? 'text-green-300' : 'text-green-700'
                                       : isDarkMode ? 'text-blue-300' : 'text-blue-700'
                                       }`}>
-                                      {multipleOrderDetails[0]?.purchaseType === 'D' ? 'ซื้อโดยตรง (DIRECT)' : 'ซื้อผ่านตัวกลาง (INDIRECT)'}
+                                      {multipleOrderDetails[0]?.purchaseType === 'D' ? 'วัตถุดิบที่เกี่ยวข้องกับการผลิต (DIRECT)' : 'วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (INDIRECT)'}
                                     </span>
                                     <p className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'D'
                                       ? isDarkMode ? 'text-green-400' : 'text-green-600'

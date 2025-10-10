@@ -22,8 +22,6 @@ import { MdOutlineSort, MdOutlineRemoveRedEye } from "react-icons/md";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { GoDownload } from "react-icons/go";
 import { HiDocumentText } from "react-icons/hi2";
-// PDF Component
-import PDF_PO from "../../../components/PDFexport/PDF_PO";
 
 // Types
 type PoDocs = {
@@ -72,10 +70,6 @@ const departmentColors: { [key: string]: string } = {
 };
 
 export default function PurchaseOrderPage() {
-    // PDF Modal states
-    const [showPDFModal, setShowPDFModal] = useState(false);
-    const [selectedPoNo, setSelectedPoNo] = useState<string>("");
-
     // Theme context
     const { isDarkMode } = useTheme();
 
@@ -850,11 +844,34 @@ export default function PurchaseOrderPage() {
                                         </button>
                                         <button
                                             className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
-                                            onClick={e => { 
-                                                e.stopPropagation(); 
-                                                setSelectedPoNo(po.po_no);
-                                                setShowPDFModal(true);
-                                            }}
+                                            // onClick={async e => {
+                                            //     e.stopPropagation();
+                                            //     // Download PDF from API
+                                            //     try {
+                                            //         // 1. สร้าง PDF ก่อน
+                                            //         const res = await fetch('/api/exportPDF/PO', {
+                                            //             method: 'POST',
+                                            //             headers: { 'Content-Type': 'application/json' },
+                                            //             body: JSON.stringify({ po_no: po.po_no, download: true, token })
+                                            //         });
+                                            //         const result = await res.json();
+                                            //         if (!res.ok || !result.success || !result.filePath) throw new Error(result.error || 'ดาวน์โหลด PDF ไม่สำเร็จ');
+                                            //         // 2. ดาวน์โหลด PDF จริงจาก server
+                                            //         const downloadRes = await fetch(`/api/exportPDF/PO?po_no=${po.po_no}`);
+                                            //         if (!downloadRes.ok) throw new Error('ดาวน์โหลด PDF ไม่สำเร็จ');
+                                            //         const blob = await downloadRes.blob();
+                                            //         const url = window.URL.createObjectURL(blob);
+                                            //         const a = document.createElement('a');
+                                            //         a.href = url;
+                                            //         a.download = `PO_${po.po_no}.pdf`;
+                                            //         document.body.appendChild(a);
+                                            //         a.click();
+                                            //         a.remove();
+                                            //         window.URL.revokeObjectURL(url);
+                                            //     } catch (err) {
+                                            //         alert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF');
+                                            //     }
+                                            // }}
                                         >
                                             <GoDownload className="w-7 h-7" />
                                         </button>
@@ -872,28 +889,6 @@ export default function PurchaseOrderPage() {
                     </div>
                 </div>
             </main>
-
-            {/* PDF Modal */}
-            {showPDFModal && selectedPoNo && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className={`p-6 rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-auto ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                Purchase Order PDF - {selectedPoNo}
-                            </h3>
-                            <button
-                                onClick={() => setShowPDFModal(false)}
-                                className={`text-gray-500 hover:text-gray-700 ${isDarkMode ? 'hover:text-gray-300' : ''}`}
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        <PDF_PO po_no={selectedPoNo} />
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

@@ -20,9 +20,9 @@ import { useUser } from "../../context/UserContext";
 import { LuCalendarFold } from "react-icons/lu";
 import { MdOutlineSort, MdOutlineRemoveRedEye } from "react-icons/md";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
-import { IoDocumentTextOutline } from "react-icons/io5";
 import { GoDownload } from "react-icons/go";
 import { FaRegClock } from "react-icons/fa6";
+import { HiDocumentText } from "react-icons/hi2";
 
 type PRCard = {
     id: number;
@@ -801,7 +801,7 @@ export default function PurchasePage() {
                             >
                                 {/* Top: Department Icon */}
                                 <div className="w-full flex justify-center pt-12 pb-2">
-                                    <IoDocumentTextOutline className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                    <HiDocumentText className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
                                 </div>
                                 {/* Status badge top right */}
                                 <div className="absolute top-2 right-2 z-10">
