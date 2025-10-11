@@ -15,6 +15,7 @@ import { MdAttachMoney } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import { LuBriefcaseBusiness } from "react-icons/lu";
 import { HiDocumentText } from "react-icons/hi2";
+import { FaRegEdit } from "react-icons/fa";
 
 type ReviewedPO = {
     po_id: number;
@@ -450,7 +451,9 @@ export default function ReviewedPOPage() {
                                         <tr>
                                             <th className={`px-4 py-4 text-center text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>#</th>
                                             <th className={`px-4 py-4 text-left text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Part No.</th>
+                                            <th className={`px-4 py-4 text-left text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Product Code</th>
                                             <th className={`px-4 py-4 text-left text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Part Name</th>
+                                            <th className={`px-4 py-4 text-center text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>PR/SO</th>
                                             <th className={`px-4 py-4 text-center text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>จำนวน</th>
                                             <th className={`px-4 py-4 text-center text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>หน่วย</th>
                                             <th className={`px-4 py-4 text-right text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ราคา/หน่วย</th>
@@ -470,7 +473,13 @@ export default function ReviewedPOPage() {
                                                     {part.part_no}
                                                 </td>
                                                 <td className={`px-4 py-4 text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                                    {part.prod_code}
+                                                </td>
+                                                <td className={`px-4 py-4 text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
                                                     {part.part_name}
+                                                </td>
+                                                <td className={`px-4 py-4 text-center text-sm font-semibold ${isDarkMode ? 'text-rose-300' : 'text-rose-700'}`}>
+                                                    {part.pr_no}
                                                 </td>
                                                 <td className={`px-4 py-4 text-center text-sm font-semibold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
                                                     {part.qty}

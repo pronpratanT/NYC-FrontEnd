@@ -705,6 +705,40 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }
 
   const handleSubmitPOCreate = async () => {
+    const poCreate = {
+      material_type: purchaseType,
+      po_list: [
+        {
+          pcl_id: compareData?.pcl_id,
+        }
+      ]
+    }
+    console.log("Creating PO with data:", poCreate);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(poCreate)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      }
+      alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      // รีโหลด comparePrice page
+      if (onSuccess) await onSuccess();
+      router.refresh();
+      if (onClose) onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+      console.error(err);
+    }
+  }
+
+  const handleSubmitPOCreateMultiplePart = async () => {
     // ดึง pcl_id และ material_type จาก multipleOrderDetails ที่ถูกเลือก
     let selectedMaterialType: 'D' | 'I' | undefined = purchaseType;
     let selectedPclIds: { pcl_id: number | undefined }[] = [];
@@ -2373,7 +2407,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <div className="flex justify-end pt-4">
                         <button
                           type="button"
-                          onClick={handleSubmitPOCreate}
+                          onClick={handleSubmitPOCreateMultiplePart}
                           disabled={!multipleOrderDetails[0]?.purchaseType}
                           className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all duration-200 border text-sm focus:outline-none focus:ring-2 cursor-pointer ${!multipleOrderDetails[0]?.purchaseType
                             ? 'bg-gray-300 text-gray-500 border-gray-200 cursor-not-allowed'

@@ -17,7 +17,7 @@ import { useTheme } from './ThemeProvider';
 
 const menu = [
   { label: 'Dashboard', icon: RiDashboardFill, href: '/' },
-  { label: 'คู่มือการใช้งาน', icon: FaBook },
+  { label: 'คู่มือการใช้งาน', icon: FaBook, href: '/manual' },
 ];
 
 const system = [

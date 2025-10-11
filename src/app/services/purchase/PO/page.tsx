@@ -103,37 +103,7 @@ export default function PurchaseOrderPage() {
     // รวม POCard ทั้งหมดจากทุก PoDocs
     const allPoCards: POCard[] = poCards.map(doc => doc.po);
     let displayedPoCards = allPoCards;
-    // if (departmentFilter) {
-    //     displayedPoCards = displayedPoCards.filter(po => po.dept_name === departmentFilter);
-    // }
-    // Status filter Cards
-    // if (statusFilter) {
-    //     displayedPrCards = displayedPrCards.filter(pr => {
-    //         if (statusFilter === 'rejected') {
-    //             return pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at;
-    //         } else if (statusFilter === 'supervisor') {
-    //             return !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-    //         } else if (statusFilter === 'manager') {
-    //             return pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-    //         } else if (statusFilter === 'pu') {
-    //             return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-    //         } else if (statusFilter === 'processing') {
-    //             return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-    //         } else if (statusFilter === 'complete') {
-    //             return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
-    //         }
-    //         return true;
-    //     });
-    // }
-    // Search filter Cards
-    // if (search && search.trim() !== "") {
-    //     const lower = search.trim().toLowerCase();
-    //     displayedPrCards = displayedPrCards.filter(pr =>
-    //         (pr.pr_no && pr.pr_no.toLowerCase().includes(lower)) ||
-    //         (pr.requester_name && pr.requester_name.toLowerCase().includes(lower)) ||
-    //         (pr.pu_responsible && pr.pu_responsible.toLowerCase().includes(lower))
-    //     );
-    // }
+    
     // NEWEST or OLDEST sort
     if (sortBy === 'newest') {
         displayedPoCards = [...displayedPoCards].sort((a, b) => {
@@ -182,10 +152,6 @@ export default function PurchaseOrderPage() {
     const actualStartIndex = currentPage === 1 ? 0 : startIndex; // -1 because first page has create card
     const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
     const paginatedPoCards = displayedPoCards.slice(actualStartIndex, actualEndIndex);
-    // Reset to page 1 when filters change
-    // React.useEffect(() => {
-    //     setCurrentPage(1);
-    // }, [departmentFilter, statusFilter, search, sortBy]);
 
     // Format ISO date to DD/MM/YYYY
     function formatISOToDisplay(iso: string) {
@@ -844,34 +810,34 @@ export default function PurchaseOrderPage() {
                                         </button>
                                         <button
                                             className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
-                                            // onClick={async e => {
-                                            //     e.stopPropagation();
-                                            //     // Download PDF from API
-                                            //     try {
-                                            //         // 1. สร้าง PDF ก่อน
-                                            //         const res = await fetch('/api/exportPDF/PO', {
-                                            //             method: 'POST',
-                                            //             headers: { 'Content-Type': 'application/json' },
-                                            //             body: JSON.stringify({ po_no: po.po_no, download: true, token })
-                                            //         });
-                                            //         const result = await res.json();
-                                            //         if (!res.ok || !result.success || !result.filePath) throw new Error(result.error || 'ดาวน์โหลด PDF ไม่สำเร็จ');
-                                            //         // 2. ดาวน์โหลด PDF จริงจาก server
-                                            //         const downloadRes = await fetch(`/api/exportPDF/PO?po_no=${po.po_no}`);
-                                            //         if (!downloadRes.ok) throw new Error('ดาวน์โหลด PDF ไม่สำเร็จ');
-                                            //         const blob = await downloadRes.blob();
-                                            //         const url = window.URL.createObjectURL(blob);
-                                            //         const a = document.createElement('a');
-                                            //         a.href = url;
-                                            //         a.download = `PO_${po.po_no}.pdf`;
-                                            //         document.body.appendChild(a);
-                                            //         a.click();
-                                            //         a.remove();
-                                            //         window.URL.revokeObjectURL(url);
-                                            //     } catch (err) {
-                                            //         alert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF');
-                                            //     }
-                                            // }}
+                                        // onClick={async e => {
+                                        //     e.stopPropagation();
+                                        //     // Download PDF from API
+                                        //     try {
+                                        //         // 1. สร้าง PDF ก่อน
+                                        //         const res = await fetch('/api/exportPDF/PO', {
+                                        //             method: 'POST',
+                                        //             headers: { 'Content-Type': 'application/json' },
+                                        //             body: JSON.stringify({ po_no: po.po_no, download: true, token })
+                                        //         });
+                                        //         const result = await res.json();
+                                        //         if (!res.ok || !result.success || !result.filePath) throw new Error(result.error || 'ดาวน์โหลด PDF ไม่สำเร็จ');
+                                        //         // 2. ดาวน์โหลด PDF จริงจาก server
+                                        //         const downloadRes = await fetch(`/api/exportPDF/PO?po_no=${po.po_no}`);
+                                        //         if (!downloadRes.ok) throw new Error('ดาวน์โหลด PDF ไม่สำเร็จ');
+                                        //         const blob = await downloadRes.blob();
+                                        //         const url = window.URL.createObjectURL(blob);
+                                        //         const a = document.createElement('a');
+                                        //         a.href = url;
+                                        //         a.download = `PO_${po.po_no}.pdf`;
+                                        //         document.body.appendChild(a);
+                                        //         a.click();
+                                        //         a.remove();
+                                        //         window.URL.revokeObjectURL(url);
+                                        //     } catch (err) {
+                                        //         alert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF');
+                                        //     }
+                                        // }}
                                         >
                                             <GoDownload className="w-7 h-7" />
                                         </button>
