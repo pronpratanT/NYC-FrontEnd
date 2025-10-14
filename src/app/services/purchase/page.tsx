@@ -837,7 +837,7 @@ export default function PurchasePage() {
                                             </svg>
                                             รอแผนกจัดซื้ออนุมัติ
                                         </span>
-                                    ) : pr.waiting === pr.count_list ? (
+                                    ) : pr.waiting === 0 ? (
                                         // Green - Complete (เสร็จสมบูรณ์)
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
                                             <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -887,7 +887,7 @@ export default function PurchasePage() {
                                         {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
                                             <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list} รายการ</span></>
                                         ) : (
-                                            <>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></>
+                                            <>ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>{pr.count_list - pr.waiting}</span> | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></>
                                         )}
                                     </span>
                                 </div>

@@ -1,12 +1,16 @@
+'use client';
 import React, { JSX } from "react";
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from 'next/navigation';
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
+import { IoTrashBinOutline } from "react-icons/io5";
 import { CiEdit } from "react-icons/ci";
 import { useToken } from "../../context/TokenContext";
 import { TiPlus } from "react-icons/ti";
 import { useTheme } from "../ThemeProvider";
 import CreateVendor from "./CreateVendor";
 import EditVendor from "./EditVendor";
+import RejectCompare from "./Reject_Compare";
 
 
 // Custom scrollbar styles
@@ -89,7 +93,8 @@ type InventoryItem = {
 type RecentPurchase = {
   vendor_id: number;
   vendor_name: string;
-  price: number;
+  price: number | null;
+  price_for_approve: number | null;
   discount: number | null;
   date: string;
 }
@@ -110,15 +115,27 @@ type CompareData = {
   due_date: string;
 };
 
+type SelectedToPOGen = {
+  pr_list_id: number;
+  part_no: string;
+  pcl_id: number;
+  plant: string;
+  vendor: string;
+  due_date: string;
+}
+
 export type PRModalProps = {
   partNo: string;
   prNumber?: string;
+  pr_id?: number;
   department?: string;
   prDate?: string;
   qty?: number;
   unit?: string;
   pr_list_id?: number;
+  pu_operator_approve?: boolean;
   onClose: () => void;
+  onSuccess?: () => Promise<void> | void;
 };
 
 type VendorSelected = {
@@ -133,11 +150,25 @@ type VendorSelected = {
   email: string;
 }
 
-const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, onClose }) => {
+const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, pu_operator_approve, onClose, onSuccess }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // เพิ่ม pr_id เข้า destructure
+  const router = useRouter();
+  // State สำหรับรายการที่เลือกใน Approved Dropdown
+  const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string }[]>([]);
+
   // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
+  const [isSaving, setIsSaving] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState("purchase");
+
+  // State สำหรับ tab รายละเอียดการขอซื้อหลายรายการ
+  const [multipleOrderDetails, setMultipleOrderDetails] = useState<Array<{
+    pr_list_id: number;
+    part_no: string;
+    purchaseType: 'D' | 'I' | undefined;
+  }>>([]);
   const [purchaseType, setPurchaseType] = useState<'D' | 'I' | undefined>(undefined);
   const [compareData, setCompareData] = useState<PartNo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,6 +183,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [latestInventoryItem, setLatestInventoryItem] = useState<InventoryItem | null>(null);
 
   //search vendor
+  // เช็คสถานะ PR เพื่อ disabled ช่อง search และปุ่มเพิ่ม Vendor
+  const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
+  const isVendorInputDisabled = prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'ORDERED';
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState<string>("");
@@ -160,7 +194,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [vendors, setVendors] = useState<string[]>([]);
 
   // State for selected vendor details
-  // const [selectedVendorDetail, setSelectedVendorDetail] = useState<VendorSelected | null>(null); // Removed unused variable
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [selectedVendorDetail, setSelectedVendorDetail] = useState<VendorSelected | null>(null);
   // State for extra vendors in compare table
   const [extraCompareVendors, setExtraCompareVendors] = useState<CompareData[]>([]);
 
@@ -171,8 +206,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [showEditVendor, setShowEditVendor] = useState(false);
   const [editVendorData, setEditVendorData] = useState<VendorSelected | null>(null);
 
-  // ตรวจสอบว่า PR ล่าสุดไม่มี po_no และเลข PR ตรงกัน
-  const latestNoPO = !!(latestInventoryItem && !latestInventoryItem.po_no && latestInventoryItem.pr_no === prNumber);
+  // selectedPartNo to open PO - Changed to array to support multiple items
+  const [selectedToPO, setSelectedToPO] = useState<SelectedToPOGen[]>([]);
+  // Add state for dropdown toggle
+  const [showSelectedToPODropdown, setShowSelectedToPODropdown] = useState(false);
+
+  // ตรวจสอบว่ามี PR ที่ตรงกับ prNumber และยังไม่มี po_no หรือไม่
+  const latestNoPO = React.useMemo(() => {
+    if (!compareData?.part_inventory_and_pr) return false;
+    // หา PR ที่ตรงกับ prNumber และยังไม่มี po_no
+    const matchingPR = compareData.part_inventory_and_pr.find(item => item.pr_no === prNumber && !item.po_no);
+    return !!matchingPR;
+  }, [compareData, prNumber]);
 
   // ถ้า PR ล่าสุดไม่มี po_no ให้เปลี่ยน tab เป็น 'approve'
   // useEffect(() => {
@@ -180,13 +225,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   //     setActiveTab('approve');
   //   }
   // }, [latestNoPO]);
-
-  // Handler to open EditVendor modal with vendor data
-  const handleEditVendor = (vendor: VendorSelected) => {
-    console.log("Editing vendor:", vendor);
-    setEditVendorData(vendor);
-    setShowEditVendor(true);
-  };
 
   // Define type for selected row data
   type SelectedRowData = Omit<InventoryItem, 'qty' | 'unit'> & {
@@ -246,14 +284,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no);
       if (prWithPO && compareData?.compare_vendors) {
         // ...existing code...
-  // let vendorDetail: CompareData | undefined = undefined; // Removed unused variable
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let vendorDetail: CompareData | undefined = undefined;
         const vendorId = prWithPO.recent_purchase?.[0]?.vendor_id;
         if (vendorId) {
           vendorDetail = compareData.compare_vendors.find((v: CompareData) => v.vendor_id === vendorId);
         }
 
         // คำนวณ previousPurchase สำหรับ PR นี้เฉพาะ
-  // let currentPreviousPurchase: RecentPurchase | null = null; // Removed unused variable
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let currentPreviousPurchase: RecentPurchase | null = null;
         if (totalCount > 1) {
           const previousIndex = totalCount - 1;
           const previousItem = sortedItems[previousIndex];
@@ -292,46 +332,28 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }, [compareData]);
 
   // ฟังก์ชันจัดการการคลิกแถวในตารางเปรียบเทียบราคา
-  const fetchCompareData = React.useCallback(async (): Promise<void> => {
+  // ฟังก์ชันดึงข้อมูลเปรียบเทียบราคา รองรับ parameter
+  const fetchCompareData = async (fetchPartNo?: string, fetchPrListId?: number) => {
+    setError("");
+    setLoading(true);
     try {
-      setError("");
-      setLoading(true);
-      console.log("Fetching compare data for partNo:", partNo, "pr_list_id:", pr_list_id);
+      const partNoToUse = fetchPartNo ?? partNo;
+      const prListIdToUse = fetchPrListId ?? pr_list_id;
       if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-
-      // Fetch price comparison data
-      const response = await fetch(`/api/purchase/pc/compare/list?part_no=${partNo}&pr_list_id=${pr_list_id}`, {
+      const response = await fetch(`/api/purchase/pc/compare/list?part_no=${partNoToUse}&pr_list_id=${prListIdToUse}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
       if (!response.ok) throw new Error("โหลดข้อมูลเปรียบเทียบราคาไม่สำเร็จ");
-
       const data = await response.json();
-      // console.log("Data structure:", {
-      //   hasData: !!data,
-      //   dataKeys: Object.keys(data || {}),
-      //   dataData: data?.data,
-      //   directData: data,
-      //   isArray: Array.isArray(data),
-      //   isArrayData: Array.isArray(data?.data)
-      // });
-
-      // Extract data from the response
       const compareData = data?.data || data;
-
       setCompareData(compareData);
-      console.log("Fetched compare data:", compareData);
-
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || "เกิดข้อผิดพลาด");
-      } else {
-        setError("เกิดข้อผิดพลาด");
-      }
+      // console.log("Fetched compare data:", compareData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
     }
-  }, [partNo, pr_list_id, token]);
+  };
 
   useEffect(() => {
     if (!partNo) {
@@ -340,11 +362,30 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
     fetchCompareData();
-  }, [partNo, pr_list_id, token, fetchCompareData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partNo, pr_list_id, token]);
+  const handleApprovedDropdownSelect = (item: SelectedToPOGen) => {
+    if (!item.part_no || !item.pr_list_id) return;
+    fetchCompareData(item.part_no, item.pr_list_id);
+    setShowSelectedToPODropdown(false);
+  };
 
   // ฟังก์ชันจัดการการคลิกแถวในตารางเปรียบเทียบราคา
   const handleCompareRowClick = (vendor: CompareData) => {
-    if (!latestInventoryItem) return; // ตรวจสอบว่ามีข้อมูลล่าสุดหรือไม่
+    if (!latestInventoryItem) {
+      // ถ้าไม่มีข้อมูลล่าสุด แสดงว่าเป็นรายการขอซื้อใหม่
+      setSelectedRowData({
+        selectedVendor: vendor,
+        previousPurchase: null,
+        prNumber: prNumber,
+        department: department,
+        prDate: prDate,
+        qty: qty,
+        unit: unit
+      } as SelectedRowData);
+      setActiveTab('summary');
+      return;
+    }
 
     setSelectedRowData({
       ...latestInventoryItem, // ใช้ข้อมูลการขอซื้อล่าสุด
@@ -433,41 +474,145 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const fetchVendorDetail = async () => {
       const formattedVendorCode = formatPartForFetch(vendorCode);
       try {
-        const res = await fetch(`http://127.0.0.1:6100/api/purchase/vendors?vendorCode=${encodeURIComponent(formattedVendorCode)}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/vendors?vendorCode=${encodeURIComponent(formattedVendorCode)}`);
         if (!res.ok) throw new Error('ไม่พบข้อมูล Vendor');
         const data = await res.json();
         const vendorData = Array.isArray(data) ? data[0] : (data.data ? data.data : data);
         setSelectedVendorDetail(vendorData as VendorSelected);
         if (vendorData && vendorData.vendor_code) {
-          setExtraCompareVendors(prev => {
-            if (prev.some(v => v.vendor_code === vendorData.vendor_code)) return prev;
-            // สร้าง unique compare_id สำหรับ vendor ที่เพิ่มใหม่
-            const uniqueCompareId = vendorData.compare_id ?? Date.now() + Math.random();
-            const newCompare: CompareData = {
-              compare_id: uniqueCompareId,
-              vendor_id: vendorData.vendor_id ?? vendorData.ID ?? '',
-              vendor_name: vendorData.vendor_name ?? '-',
-              vendor_code: vendorData.vendor_code ?? '-',
-              tel: vendorData.tel_no ?? vendorData.tel ?? '-',
-              credit_term: vendorData.credit_term ?? '-',
-              price: typeof vendorData.price === 'number' ? vendorData.price : 0,
-              discount: typeof vendorData.discount === 'number' ? vendorData.discount : 0,
-              due_date: vendorData.due_date ?? '-',
-              email: vendorData.email ?? '-',
-              tax_id: vendorData.tax_id ?? '-',
-              fax_no: vendorData.fax_no ?? '-',
-              contact_name: vendorData.contact_name ?? '-',
-            };
-            return [...prev, newCompare];
-          });
+
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/insert-vendor-for-compare`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ vendor_id: vendorData.ID, pcl_id: compareData?.pcl_id })
+            });
+            // รีโหลดข้อมูล vendor ในตารางทันทีหลัง POST
+            if (typeof fetchCompareData === 'function') {
+              await fetchCompareData();
+            }
+          } catch (e) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            console.error("Error inserting vendor for compare:", e);
+          }
+          // setExtraCompareVendors(prev => {
+          //   if (prev.some(v => v.vendor_code === vendorData.vendor_code)) return prev;
+          //   // สร้าง unique compare_id สำหรับ vendor ที่เพิ่มใหม่
+          //   const uniqueCompareId = vendorData.compare_id ?? Date.now() + Math.random();
+          //   const newCompare: CompareData = {
+          //     compare_id: uniqueCompareId,
+          //     vendor_id: vendorData.vendor_id ?? vendorData.ID ?? '',
+          //     vendor_name: vendorData.vendor_name ?? '-',
+          //     vendor_code: vendorData.vendor_code ?? '-',
+          //     tel: vendorData.tel_no ?? vendorData.tel ?? '-',
+          //     credit_term: vendorData.credit_term ?? '-',
+          //     price: typeof vendorData.price === 'number' ? vendorData.price : 0,
+          //     discount: typeof vendorData.discount === 'number' ? vendorData.discount : 0,
+          //     due_date: vendorData.due_date ?? '-',
+          //     email: vendorData.email ?? '-',
+          //     tax_id: vendorData.tax_id ?? '-',
+          //     fax_no: vendorData.fax_no ?? '-',
+          //     contact_name: vendorData.contact_name ?? '-',
+          //   };
+          //   return [...prev, newCompare];
+          // });
         }
-    } catch {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_) {
+        setSelectedVendorDetail(null);
       }
     };
     fetchVendorDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVendors]);
 
-  //handleSubmit
+  // Fetch approved compare data only if status is Approved
+  useEffect(() => {
+    const prIdValue = typeof pr_id !== 'undefined' ? pr_id : undefined;
+    if (!prIdValue) return;
+    // Only fetch if status is Approved
+    if (prItem?.status === 'Approved') {
+      setLoading(true);
+      fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/approved-list?prId=${prIdValue}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch approved compare data');
+          return res.json();
+        })
+        .then(data => {
+          // console.log("Raw approved compare data:", data);
+          // Handle array response from API
+          if (Array.isArray(data) && data.length > 0) {
+            const approvedDataArray: SelectedToPOGen[] = data.map(item => ({
+              pr_list_id: item.pr_list_id || 0,
+              part_no: item.part_no || '',
+              pcl_id: item.pcl_id || 0,
+              plant: item.plant || '',
+              vendor: item.vendor || '',
+              due_date: item.due_date || ''
+            }));
+            // console.log("Processed approved data array:", approvedDataArray);
+            setSelectedToPO(approvedDataArray);
+          } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+            // Handle single object response (fallback)
+            const approvedData: SelectedToPOGen = {
+              pr_list_id: data.pr_list_id || pr_list_id || 0,
+              part_no: data.part_no || partNo || '',
+              pcl_id: data.pcl_id || 0,
+              plant: data.plant || '',
+              vendor: data.vendor || '',
+              due_date: data.due_date || ''
+            };
+            // console.log("Processed single approved data:", approvedData);
+            setSelectedToPO([approvedData]);
+          } else {
+            // console.warn("Invalid approved compare data structure:", data);
+            setSelectedToPO([]);
+          }
+          setError("");
+        })
+        .catch(err => {
+          // console.error("Error fetching approved compare data:", err);
+          setError(err.message || 'เกิดข้อผิดพลาด');
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [pr_id, prItem?.status, pr_list_id, partNo, token]);
+
+  // Handler to open EditVendor modal with vendor data
+  const handleEditVendor = (vendor: VendorSelected) => {
+    // console.log("Editing vendor:", vendor);
+    setEditVendorData(vendor);
+    setShowEditVendor(true);
+  };
+
+  const handleDeleteVendor = async (vendor: CompareData) => {
+    // console.log("Deleting vendor:", vendor.compare_id);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/remove-vendor-from-clv?clvId=${vendor.compare_id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'ลบผู้ขายไม่สำเร็จ');
+      }
+      // Reload compare data after delete
+      if (typeof fetchCompareData === 'function') {
+        await fetchCompareData();
+      }
+      alert('ลบผู้ขายเรียบร้อยแล้ว');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลบผู้ขาย');
+      console.error(err);
+    }
+  }
+
+  //handleSubmit REASON CHOOSE
   const handleSubmit = async () => {
     if (!pr_list_id) {
       alert('ไม่พบข้อมูล PR List ID');
@@ -486,20 +631,24 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       new_qty: qty,
     };
 
-    // สร้าง array edited_prices[] สำหรับ vendor ที่มีการแก้ไขราคา
-    const edited_prices = editedPrices.map(item => ({
-      clv_id: item.compare_id,
-      price: item.price,
-      discount: item.discount
-    }));
+    // สร้าง array edited_prices[] โดยรวมทุก vendor และใช้ค่าจาก editedPrices หรือค่าเดิม
+    const allVendors = compareData?.compare_vendors || [];
+    const edited_prices = allVendors.map(vendor => {
+      const edited = editedPrices.find(item => item.compare_id === vendor.compare_id);
+      return {
+        clv_id: vendor.compare_id,
+        price: edited?.price !== undefined && edited?.price !== null ? parseFloat(edited.price as unknown as string) : (vendor.price !== undefined && vendor.price !== null ? parseFloat(vendor.price as unknown as string) : 0),
+        discount: edited?.discount !== undefined && edited?.discount !== null ? parseFloat(edited.discount as unknown as string) : (vendor.discount !== undefined && vendor.discount !== null ? parseFloat(vendor.discount as unknown as string) : 0)
+      };
+    });
 
-    console.log("Submitting payload:", payload);
-    console.log("Edited prices:", edited_prices);
+    // console.log("Submitting payload:", payload);
+    // console.log("Edited prices:", edited_prices);
 
     try {
       // PUT edited_prices to /edit-price-in-clv if there are any edited prices
       if (edited_prices.length > 0) {
-        const editRes = await fetch('http://127.0.0.1:6100/api/purchase/edit-price-in-clv', {
+        const editRes = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/edit-price-in-clv`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -512,8 +661,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           throw new Error(data.message || 'แก้ไขราคาผู้ขายไม่สำเร็จ');
         }
       }
-      //PUT payload to /send-pcl-to-approve
-      const res = await fetch('http://127.0.0.1:6100/api/purchase/send-pcl-to-approve', {
+      // PUT payload to /send-pcl-to-approve
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/send-pcl-to-approve`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -534,18 +683,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }
 
   const handleApproveSubmit = async () => {
-    const approvedPCL = {
-      id: compareData?.pcl_id,
-    }
-    console.log("Approving PCL with data:", approvedPCL);
+    // console.log("Approving PCL ID:", compareData?.pcl_id);
     try {
-      const res = await fetch('http://127.0.0.1:6100/api/purchase/approve-pcl', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${compareData?.pcl_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(approvedPCL)
+        }
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -570,7 +715,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
     console.log("Creating PO with data:", poCreate);
     try {
-      const res = await fetch('http://127.0.0.1:6100/api/purchase/po/create', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -583,12 +728,123 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
       }
       alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      // รีโหลด comparePrice page
+      if (onSuccess) await onSuccess();
+      router.refresh();
       if (onClose) onClose();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
       console.error(err);
     }
   }
+
+  const handleSubmitPOCreateMultiplePart = async () => {
+    // ดึง pcl_id และ material_type จาก multipleOrderDetails ที่ถูกเลือก
+    let selectedMaterialType: 'D' | 'I' | undefined = purchaseType;
+    let selectedPclIds: { pcl_id: number | undefined }[] = [];
+    if (multipleOrderDetails.length > 0) {
+      selectedMaterialType = multipleOrderDetails[0]?.purchaseType;
+      selectedPclIds = multipleOrderDetails.map(item => {
+        const found = selectedToPO.find(sel => sel.pr_list_id === item.pr_list_id);
+        return { pcl_id: found?.pcl_id };
+      });
+    } else if (selectedToPO.length > 0) {
+      // fallback: single item selected
+      selectedPclIds = selectedToPO.map(sel => ({ pcl_id: sel.pcl_id }));
+    }
+    const poCreate = {
+      material_type: selectedMaterialType,
+      po_list: selectedPclIds
+    };
+    console.log("Creating PO with data:", poCreate);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(poCreate)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      }
+      alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      // รีโหลด comparePrice page
+      if (onSuccess) await onSuccess();
+      router.refresh();
+      if (onClose) onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+      console.error(err);
+    }
+  }
+
+  // Modal state for reject reason
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const handleRejectCompare = () => {
+    setShowRejectModal(true);
+  };
+
+  const handleConfirmRejectCompare = async () => {
+    const reasonToSend = rejectReason || "";
+    console.log("Rejecting PCL ID:", compareData?.pcl_id, "with reason:", reasonToSend);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/reject-pcl?pclId=${compareData?.pcl_id}&reason=${encodeURIComponent(reasonToSend)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      }
+      alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      setShowRejectModal(false);
+      setRejectReason("");
+      if (onClose) onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+      console.error(err);
+    }
+  }
+
+
+  // ฟังก์ชันสำหรับจัดการการเลือก checkbox ใน Approved Dropdown
+  const handleApprovedCheckboxChange = (item: { pr_list_id: number; part_no: string }, checked: boolean) => {
+    setSelectedApprovedItems(prev => {
+      if (checked) {
+        // เพิ่มถ้ายังไม่มี
+        if (!prev.some(sel => sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no)) {
+          return [...prev, item];
+        }
+        return prev;
+      } else {
+        // ลบออก
+        return prev.filter(sel => !(sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no));
+      }
+    });
+  };
+  // ฟังก์ชันสำหรับการกดปุ่ม "ใช้รายการที่เลือก" ใน Approved Dropdown
+  const handleApprovedDropdownSelectMultiple = () => {
+    if (!selectedApprovedItems || selectedApprovedItems.length === 0) return;
+
+    // เตรียมข้อมูลสำหรับ tab หลายรายการ
+    const multipleItems = selectedApprovedItems.map(item => ({
+      pr_list_id: item.pr_list_id,
+      part_no: item.part_no,
+      purchaseType: undefined as 'D' | 'I' | undefined
+    }));
+
+    setMultipleOrderDetails(multipleItems);
+    setActiveTab('multiple-order');
+    setShowSelectedToPODropdown(false);
+  };
 
   // ฟังก์ชันสำหรับดึงข้อมูลแถวผู้ขายทั้งหมด (รวม extra vendors)
   const getCompareRows = () => {
@@ -643,6 +899,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, compareData]);
 
+  useEffect(() => {
+    // console.log('prNumber:', prNumber);
+    // console.log('part_inventory_and_pr:', compareData?.part_inventory_and_pr);
+  }, [prNumber, compareData]);
+
   return (
     <>
       <style>{scrollbarStyles}</style>
@@ -671,6 +932,166 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       เปรียบเทียบราคาสินค้า
                     </h2>
                     {/* Info Cards */}
+                    <div className="flex-1 flex justify-end items-start space-x-3">
+                      {/* Approved Compare Dropdown */}
+                      {selectedToPO && selectedToPO.length > 0 && (
+                        <div className="relative">
+                          {(() => {
+                            // กรองเฉพาะรายการที่ part_no, plant, vendor, due_date ตรงกับปัจจุบัน
+                            // หา reference จากรายการแรกที่ part_no ตรงกับ partNo
+                            const refItem = selectedToPO.find(item => item.part_no === partNo);
+                            const filteredToPO = refItem
+                              ? selectedToPO.filter(item =>
+                                item.plant === refItem.plant &&
+                                item.vendor === refItem.vendor &&
+                                item.due_date === refItem.due_date
+                              )
+                              : [];
+                            if (filteredToPO.length <= 1) return null;
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm border transition-all duration-200 ${isDarkMode
+                                    ? 'bg-gradient-to-r from-green-900/80 to-emerald-900/80 text-green-200 border-green-700/60 hover:from-green-800/90 hover:to-emerald-800/90 hover:shadow-lg'
+                                    : 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md'
+                                    }`}
+                                  onClick={() => setShowSelectedToPODropdown(prev => !prev)}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span>Approved Data ({filteredToPO.length})</span>
+                                  <svg className={`w-4 h-4 transition-transform duration-200 ${showSelectedToPODropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+
+                                {showSelectedToPODropdown && (
+                                  <div className={`absolute right-0 z-50 mt-2 w-80 rounded-xl shadow-xl border backdrop-blur-sm max-h-96 overflow-y-auto custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 ${isDarkMode
+                                    ? 'bg-slate-900/95 border-slate-700/60 text-slate-100'
+                                    : 'bg-white/95 border-slate-200/60 text-slate-800'
+                                    }`}>
+                                    <div className="p-4">
+                                      <div className="flex items-center space-x-2 mb-3">
+                                        <div className="flex items-center justify-between w-full">
+                                          <div className="flex items-center space-x-2">
+                                            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-green-900/50' : 'bg-green-100'}`}>
+                                              <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                              </svg>
+                                            </div>
+                                            <h4 className={`font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>รายการออก PO</h4>
+                                          </div>
+                                          <span className={`text-xs px-2 py-1 rounded-full ${isDarkMode ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-600'}`}>
+                                            {filteredToPO.length} รายการ
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
+                                        <button
+                                          type="button"
+                                          className={`w-full mb-2 py-2 rounded-lg font-semibold text-sm border transition-all duration-200 flex items-center justify-center space-x-2 ${isDarkMode
+                                            ? 'bg-gradient-to-r from-emerald-900/80 to-green-900/80 text-green-200 border-green-700/60 hover:from-emerald-800/90 hover:to-green-800/90 hover:shadow-lg'
+                                            : 'bg-gradient-to-r from-emerald-50 to-green-50 text-green-700 border-green-200 hover:from-emerald-100 hover:to-green-100 hover:shadow-md'
+                                            }`}
+                                          onClick={() => {
+                                            filteredToPO.forEach(item => {
+                                              if (!selectedApprovedItems?.some(sel => sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no)) {
+                                                handleApprovedCheckboxChange(item, true);
+                                              }
+                                            });
+                                          }}
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                          </svg>
+                                          <span>เลือกทั้งหมด ({filteredToPO.length})</span>
+                                        </button>
+                                        {filteredToPO.map((item, index) => (
+                                          <div
+                                            key={`${item.pr_list_id}-${index}`}
+                                            className={`flex items-center w-full p-3 rounded-lg border transition hover:bg-green-100 dark:hover:bg-green-900/30 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              className="form-checkbox h-5 w-5 text-emerald-600 rounded focus:ring-emerald-500 mr-3"
+                                              checked={selectedApprovedItems?.some(sel => sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no)}
+                                              onChange={e => handleApprovedCheckboxChange(item, e.target.checked)}
+                                              disabled={!item.part_no || !item.pr_list_id}
+                                            />
+                                            <div
+                                              className="flex-1 cursor-pointer"
+                                              onClick={() => handleApprovedDropdownSelect(item)}
+                                              role="button"
+                                              tabIndex={0}
+                                              onKeyPress={e => { if (e.key === 'Enter') handleApprovedDropdownSelect(item); }}
+                                            >
+                                              <div className="text-sm">
+                                                <span className={`font-medium block mb-1 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Part Number</span>
+                                                <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.part_no || '-'}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      {selectedApprovedItems && selectedApprovedItems.length > 0 && (
+                                        <div className="mt-4 flex justify-end">
+                                          <button
+                                            type="button"
+                                            className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold shadow-lg transition-all duration-200 border text-sm focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-500 hover:from-emerald-700 hover:to-teal-700 hover:shadow-xl focus:ring-emerald-600' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-emerald-400 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl focus:ring-emerald-400'}`}
+                                            onClick={handleApprovedDropdownSelectMultiple}
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            <span>ออก PO {selectedApprovedItems.length} รายการ</span>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Pagination Control */}
+                      {/* <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
+                        <div className={`px-3 py-2 text-sm border-r ${isDarkMode ? 'text-slate-300 bg-slate-700 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
+                          {(() => {
+                            const startRow = totalPurchaseRows === 0 ? 0 : ((purchasePage - 1) * rowsPerPage + 1);
+                            const endRow = Math.min(purchasePage * rowsPerPage, totalPurchaseRows);
+                            return (
+                              <>
+                                <span className="font-bold">{startRow}-{endRow}</span> of {totalPurchaseRows}
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            className={`p-2 transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'} disabled:opacity-30 disabled:cursor-not-allowed`}
+                            disabled={purchasePage === 1}
+                            onClick={() => setPurchasePage(p => Math.max(1, p - 1))}
+                          >
+                            <IoIosArrowBack className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className={`p-2 transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'} disabled:opacity-30 disabled:cursor-not-allowed`}
+                            disabled={compareData?.part_inventory_and_pr && ((purchasePage * rowsPerPage) >= totalPurchaseRows)}
+                            onClick={() => setPurchasePage(p => p + 1)}
+                          >
+                            <IoIosArrowForward className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div> */}
+                    </div>
                   </div>
 
                   {/* Clean Product Info Cards */}
@@ -691,67 +1112,22 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       </div>
                     )}
 
-                    <div className={`rounded-lg px-4 py-2 border shadow-sm ${isDarkMode ? 'bg-slate-800/60 border-blue-700' : 'bg-white border-blue-200'}`}>
-                      <div className="flex items-center space-x-2">
-                        <div className={`p-1 rounded ${isDarkMode ? 'bg-blue-900/40' : 'bg-blue-50'}`}>
-                          <svg className={`w-3 h-3 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                          </svg>
-                        </div>
-                        <div>
-                          <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Part No</span>
-                          <div className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{partNo}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* {department && (
-                      <div className={`rounded-lg px-4 py-2 border shadow-sm ${isDarkMode ? 'bg-slate-800/60 border-green-700/50' : 'bg-white border-green-200'}`}>
-                        <div className="flex items-center space-x-2">
-                          <div className="p-1 bg-green-50 rounded">
-                            <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 text-xs font-medium">แผนก</span>
-                            <div className="text-slate-800 font-semibold text-sm">{department}</div>
+                    {compareData?.part_inventory_and_pr?.[0]?.prod_code &&
+                      compareData.part_inventory_and_pr.every(item => item.prod_code === compareData.part_inventory_and_pr[0].prod_code) && (
+                        <div className={`rounded-lg px-4 py-2 border shadow-sm ${isDarkMode ? 'bg-slate-800/60 border-blue-700' : 'bg-white border-blue-200'}`}>
+                          <div className="flex items-center space-x-2">
+                            <div className={`p-1 rounded ${isDarkMode ? 'bg-blue-900/40' : 'bg-blue-50'}`}>
+                              <svg className={`w-3 h-3 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                              </svg>
+                            </div>
+                            <div>
+                              <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Part No</span>
+                              <div className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{compareData.part_no}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )} */}
-
-                    {/* {prDate && (
-                      <div className={`rounded-lg px-4 py-2 border shadow-sm ${isDarkMode ? 'bg-slate-800/60 border-indigo-700/50' : 'bg-white border-indigo-200'}`}>
-                        <div className="flex items-center space-x-2">
-                          <div className="p-1 bg-indigo-50 rounded">
-                            <svg className="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 text-xs font-medium">วันที่ทำ PR</span>
-                            <div className="text-slate-800 font-semibold text-sm">{new Date(prDate).toLocaleDateString('th-TH')}</div>
-                          </div>
-                        </div>
-                      </div>
-                    )} */}
-
-                    {/* {qty && unit && (
-                      <div className={`rounded-lg px-4 py-2 border shadow-sm ${isDarkMode ? 'bg-slate-800/60 border-orange-700/50' : 'bg-white border-orange-200'}`}>
-                        <div className="flex items-center space-x-2">
-                          <div className="p-1 bg-orange-50 rounded">
-                            <svg className="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 text-xs font-medium">จำนวน</span>
-                            <div className="text-slate-800 font-semibold text-sm">{qty} {unit}</div>
-                          </div>
-                        </div>
-                      </div>
-                    )} */}
+                      )}
 
                     {compareData?.part_inventory_and_pr?.[0]?.prod_code &&
                       compareData.part_inventory_and_pr.every(item => item.prod_code === compareData.part_inventory_and_pr[0].prod_code) && (
@@ -797,7 +1173,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             <nav className="flex space-x-1">
               <button type="button" onClick={() => setActiveTab('purchase')}
                 className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'purchase'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200/50 transform scale-105'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200/50 transform scale-105'
                   : isDarkMode
                     ? 'text-slate-300 hover:text-emerald-400 hover:bg-emerald-900/30 hover:shadow-md'
                     : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/80 hover:shadow-md'
@@ -811,7 +1187,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
               <button type="button" onClick={() => setActiveTab('compare')}
                 className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
-                  ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-200/50 transform scale-105'
+                  ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md shadow-purple-200/50 transform scale-105'
                   : isDarkMode
                     ? 'text-slate-300 hover:text-purple-400 hover:bg-purple-900/30 hover:shadow-md'
                     : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/80 hover:shadow-md'
@@ -823,56 +1199,130 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 </div>
               </button>
 
-              {/* Show only 'ผลสรุป' tab when latestNoPO is false and no PO exists for prNumber */}
-              {!latestNoPO && !compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no) && (
-                <button type="button" onClick={() => setActiveTab('summary')}
-                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50 transform scale-105'
+              {/* Tab รายละเอียดการขอซื้อหลายรายการ */}
+              {multipleOrderDetails.length > 0 && (
+                <button type="button" onClick={() => setActiveTab('multiple-order')}
+                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'multiple-order'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-md shadow-orange-200/50 transform scale-105'
                     : isDarkMode
-                      ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
-                      : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
+                      ? 'text-slate-300 hover:text-orange-400 hover:bg-orange-900/30 hover:shadow-md'
+                      : 'text-slate-600 hover:text-orange-700 hover:bg-orange-50/80 hover:shadow-md'
                     }`}
                 >
                   <div className="flex items-center space-x-2">
                     <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>ผลสรุป</span>
+                    <span>รายละเอียดการขอซื้อหลายรายการ ({multipleOrderDetails.length})</span>
                   </div>
                 </button>
               )}
 
-              {/* Show 'ผลสรุป' tab when there's PO data for prNumber */}
-              {compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no) && (
-                <button type="button" onClick={() => setActiveTab('completed-summary')}
-                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200/50 transform scale-105'
-                    : isDarkMode
-                      ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
-                      : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
-                    }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>ผลสรุปรายละเอียด</span>
-                  </div>
-                </button>
-              )}
-
-              {/* Show only 'อนุมัติ' tab when latestNoPO is true */}
-              {latestNoPO && (
-                <button type="button" onClick={() => setActiveTab('approve')}
-                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
-                    ? 'bg-gradient-to-r from-green-500 to-lime-600 text-white shadow-lg shadow-green-200/50 transform scale-105'
-                    : isDarkMode
-                      ? 'text-slate-300 hover:text-green-400 hover:bg-green-900/30 hover:shadow-md'
-                      : 'text-slate-600 hover:text-green-700 hover:bg-green-50/80 hover:shadow-md'
-                    }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>อนุมัติ</span>
-                  </div>
-                </button>
-              )}
+              {/* TODO - implement tab logic by status */}
+              {/* Tab logic by status: pending = compare, Pending Approval = approve, Approved = completed-summary, no PR = summary */}
+              {(() => {
+                const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
+                // console.log("Current PR Item for tab logic:", prItem?.status);
+                if (!prItem) {
+                  // ถ้าไม่พบ PR ให้แสดง summary
+                  return (
+                    <button type="button" onClick={() => setActiveTab('summary')}
+                      className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200/50 transform scale-105'
+                        : isDarkMode
+                          ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
+                          : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
+                        }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                        <span>ผลสรุป</span>
+                      </div>
+                    </button>
+                  );
+                }
+                switch (prItem.status) {
+                  // case 'pending':
+                  //   return (
+                  //     <button type="button" onClick={() => setActiveTab('compare')}
+                  //       className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
+                  //         ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-200/50 transform scale-105'
+                  //         : isDarkMode
+                  //           ? 'text-slate-300 hover:text-purple-400 hover:bg-purple-900/30 hover:shadow-md'
+                  //           : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/80 hover:shadow-md'
+                  //         }`}
+                  //     >
+                  //       <div className="flex items-center space-x-2">
+                  //         <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                  //         <span>เปรียบเทียบราคา</span>
+                  //       </div>
+                  //     </button>
+                  //   );
+                  case 'Pending Approval':
+                    return (
+                      <button type="button" onClick={() => setActiveTab('approve')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
+                          ? 'bg-gradient-to-r from-green-500 to-lime-600 text-white shadow-md shadow-green-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-green-400 hover:bg-green-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-green-700 hover:bg-green-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>อนุมัติ</span>
+                        </div>
+                      </button>
+                    );
+                  case 'Approved':
+                    return (
+                      <button type="button" onClick={() => setActiveTab('completed-summary')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>รายละเอียดการขอซื้อ</span>
+                        </div>
+                      </button>
+                    );
+                  case 'ORDERED':
+                    return (
+                      <button type="button" onClick={() => setActiveTab('completed-summary')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>ผลสรุปรายละเอียด</span>
+                        </div>
+                      </button>
+                    );
+                  default:
+                    // สำหรับ status อื่นๆ ที่ไม่อยู่ใน case ให้แสดง summary
+                    return (
+                      <button type="button" onClick={() => setActiveTab('summary')}
+                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200/50 transform scale-105'
+                          : isDarkMode
+                            ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                          <span>ผลสรุป</span>
+                        </div>
+                      </button>
+                    );
+                }
+              })()}
             </nav>
           </div>
           {/* Modal body */}
@@ -923,7 +1373,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
+                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800"
+                          style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth' }}>
                           {/* Form Layout - 2 Column Grid */}
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ */}
@@ -1016,6 +1467,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 <div className="flex justify-center gap-4">
                                   <button
                                     type="button"
+                                    onClick={handleRejectCompare}
                                     className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-red-700 text-white border-red-600 hover:bg-red-800 focus:ring-red-600' : 'bg-red-500 text-white border-red-400 hover:bg-red-600 focus:ring-red-400'}`}
                                   >
                                     Reject
@@ -1035,7 +1487,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             <div className="space-y-4">
                               {/* ข้อมูลผู้ขาย */}
                               {vendorDetail && (
-                                <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}
+                                  style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth' }}>
                                   <div className="flex items-center space-x-2 mb-4">
                                     <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
                                       <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1078,12 +1531,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ราคา</label>
                                         <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
                                           {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
-                                            ? ((prWithPO.recent_purchase[0] as { price?: number })?.price !== undefined
-                                              ? `${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()} ฿`
+                                            ? (prWithPO.recent_purchase[0]?.price_for_approve !== undefined && prWithPO.recent_purchase[0]?.price_for_approve !== null
+                                              ? `${prWithPO.recent_purchase[0].price_for_approve.toLocaleString()} ฿`
                                               : '-')
-                                            : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { price?: number })?.price !== undefined)
-                                              ? `${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()} ฿`
-                                              : '-'}
+                                            : (!Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase && (prWithPO.recent_purchase as { price_for_approve?: number }).price_for_approve !== undefined && (prWithPO.recent_purchase as { price_for_approve?: number }).price_for_approve !== null
+                                              ? `${((prWithPO.recent_purchase as { price_for_approve: number }).price_for_approve).toLocaleString()} ฿`
+                                              : '-')}
                                         </div>
                                       </div>
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
@@ -1096,7 +1549,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               )}
 
                               {/* สถานะและข้อมูลเพิ่มเติม */}
-                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}
+                                style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth' }}>
                                 <div className="flex items-center space-x-2 mb-4">
                                   <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-900/50' : 'bg-orange-100'}`}>
                                     <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1161,7 +1615,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               {!loading && !error && compareData && activeTab === 'completed-summary' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   {(() => {
-                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no);
+                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
                     if (!prWithPO) return <div className="p-6">ไม่พบข้อมูล</div>;
 
                     // หา vendor_id จาก recent_purchase เหมือนกับใน left column
@@ -1183,7 +1637,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
+                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800"
+                          style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth', transform: 'translateZ(0)' }}>
                           {/* Form Layout - 2 Column Grid */}
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ + ประเภทการซื้อ */}
@@ -1266,7 +1721,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       };
 
                                       const reasonChoose = prWithPO?.reason_choose;
-                                      console.log('reasonChoose from prWithPO:', reasonChoose);
+                                      // console.log('reasonChoose from prWithPO:', reasonChoose);
                                       if (reasonChoose && reasonMap[reasonChoose]) {
                                         return reasonMap[reasonChoose];
                                       }
@@ -1276,94 +1731,108 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </div>
                               </div>
 
-                              {/* ประเภทการซื้อ */}
-                              <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
-                                <div className="flex items-center space-x-2 mb-4">
-                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}>
-                                    <svg className={`w-4 h-4 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                    </svg>
-                                  </div>
-                                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>ประเภทการซื้อ</h4>
-                                </div>
+                              {/* ประเภทการซื้อ - ซ่อนเมื่อสถานะเป็น ORDERED */}
+                              {prWithPO.status !== 'ORDERED' && (
+                                <>
+                                  <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                                    <div className="flex items-center space-x-2 mb-4">
+                                      <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}>
+                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                        </svg>
+                                      </div>
+                                      <h4 className={`text-lg font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>ประเภทการซื้อ</h4>
+                                    </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div
-                                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'D'
-                                      ? isDarkMode
-                                        ? 'bg-blue-900/60 border-blue-500'
-                                        : 'bg-blue-100 border-blue-500'
-                                      : isDarkMode
-                                        ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
-                                        : 'bg-slate-50 border-slate-200 hover:border-blue-400'
-                                      }`}
-                                    onClick={() => setPurchaseType('D')}
-                                  >
-                                    <div className="flex items-center space-x-2">
-                                      <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'D'
-                                        ? isDarkMode
-                                          ? 'border-blue-300 bg-blue-500'
-                                          : 'border-blue-500 bg-blue-500'
-                                        : isDarkMode
-                                          ? 'border-slate-500'
-                                          : 'border-slate-400'
-                                        }`}></div>
-                                      <div>
-                                        <div className={`font-bold text-sm ${purchaseType === 'D'
-                                          ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                          : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                          }`}>DIRECT</div>
-                                        <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อโดยตรง</div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div
+                                        className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'D'
+                                          ? isDarkMode
+                                            ? 'bg-blue-900/60 border-blue-500'
+                                            : 'bg-blue-100 border-blue-500'
+                                          : isDarkMode
+                                            ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                            : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                          }`}
+                                        onClick={() => setPurchaseType('D')}
+                                      >
+                                        <div className="flex items-center space-x-2">
+                                          <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'D'
+                                            ? isDarkMode
+                                              ? 'border-blue-300 bg-blue-500'
+                                              : 'border-blue-500 bg-blue-500'
+                                            : isDarkMode
+                                              ? 'border-slate-500'
+                                              : 'border-slate-400'
+                                            }`}></div>
+                                          <div>
+                                            <div className={`font-bold text-sm ${purchaseType === 'D'
+                                              ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                              : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                              }`}>DIRECT</div>
+                                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่เกี่ยวข้องกับการผลิต</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div
+                                        className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'I'
+                                          ? isDarkMode
+                                            ? 'bg-blue-900/60 border-blue-500'
+                                            : 'bg-blue-100 border-blue-500'
+                                          : isDarkMode
+                                            ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                            : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                          }`}
+                                        onClick={() => setPurchaseType('I')}
+                                      >
+                                        <div className="flex items-center space-x-2">
+                                          <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'I'
+                                            ? isDarkMode
+                                              ? 'border-blue-300 bg-blue-500'
+                                              : 'border-blue-500 bg-blue-500'
+                                            : isDarkMode
+                                              ? 'border-slate-500'
+                                              : 'border-slate-400'
+                                            }`}></div>
+                                          <div>
+                                            <div className={`font-bold text-sm ${purchaseType === 'I'
+                                              ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                              : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                              }`}>INDIRECT</div>
+                                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต</div>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
-                                  <div
-                                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'I'
-                                      ? isDarkMode
-                                        ? 'bg-blue-900/60 border-blue-500'
-                                        : 'bg-blue-100 border-blue-500'
-                                      : isDarkMode
-                                        ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
-                                        : 'bg-slate-50 border-slate-200 hover:border-blue-400'
-                                      }`}
-                                    onClick={() => setPurchaseType('I')}
-                                  >
-                                    <div className="flex items-center space-x-2">
-                                      <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'I'
-                                        ? isDarkMode
-                                          ? 'border-blue-300 bg-blue-500'
-                                          : 'border-blue-500 bg-blue-500'
-                                        : isDarkMode
-                                          ? 'border-slate-500'
-                                          : 'border-slate-400'
-                                        }`}></div>
-                                      <div>
-                                        <div className={`font-bold text-sm ${purchaseType === 'I'
-                                          ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                          : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                          }`}>INDIRECT</div>
-                                        <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ซื้อผ่านตัวกลาง</div>
-                                      </div>
+                                  <div className={`p-4`}>
+                                    {/* <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}> */}
+                                    <div className="flex justify-center gap-4">
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          if (!purchaseType || isSaving) return;
+                                          setIsSaving(true);
+                                          try {
+                                            await handleSubmitPOCreate();
+                                          } finally {
+                                            setIsSaving(false);
+                                          }
+                                        }}
+                                        className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'} ${!purchaseType || isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        style={!purchaseType || isSaving ? { cursor: 'not-allowed' } : undefined}
+                                        disabled={!purchaseType || isSaving}
+                                      >
+                                        {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                                      </button>
                                     </div>
                                   </div>
-                                </div>
-                              </div>
-                              <div className={`p-4`}>
-                                {/* <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}> */}
-                                <div className="flex justify-center gap-4">
-                                  <button
-                                    type="button"
-                                    onClick={handleSubmitPOCreate}
-                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'}`}
-                                  >
-                                    บันทึก
-                                  </button>
-                                </div>
-                              </div>
+                                </>
+                              )}
                             </div>
 
                             {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}
-                            <div className="space-y-4">
+                            <div className="space-y-4" style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}>
                               {/* ข้อมูลผู้ขาย */}
                               {vendorDetail && (
                                 <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
@@ -1706,6 +2175,258 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 </div>
               )}
 
+              {/* ANCHOR Multiple Order Tab */}
+              {!loading && !error && activeTab === 'multiple-order' && multipleOrderDetails.length > 0 && (
+                <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
+                  <div className="flex flex-col h-full">
+                    {/* Header */}
+                    <div className={`px-6 py-4 border-b-2 ${isDarkMode ? 'border-orange-600/50 bg-gradient-to-r from-orange-900/80 to-red-900/80' : 'border-orange-300/50 bg-gradient-to-r from-orange-50 to-red-50'}`}>
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-900/50' : 'bg-orange-200'}`}>
+                          <svg className={`w-6 h-6 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className={`text-lg font-bold ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>
+                            รายละเอียดการขอซื้อหลายรายการ
+                          </h3>
+                          <p className={`text-sm ${isDarkMode ? 'text-red-200' : 'text-red-600'}`}>
+                            จัดการข้อมูลการสั่งซื้อสำหรับ {multipleOrderDetails.length} รายการ
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 p-4 overflow-y-auto">
+                      <div className="space-y-4">
+                        {/* รายการที่ขอซื้อ */}
+                        <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-700' : 'bg-orange-100'}`}>
+                              <svg className={`w-5 h-5 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                              </svg>
+                            </div>
+                            <h4 className={`text-base font-bold ${isDarkMode ? 'text-orange-100' : 'text-orange-800'}`}>
+                              รายการ Part Numbers
+                            </h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${isDarkMode ? 'bg-orange-900/80 text-orange-200' : 'bg-orange-100 text-orange-700'}`}>
+                              {multipleOrderDetails.length} รายการ
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {multipleOrderDetails.map((item, index) => (
+                              <div key={`${item.pr_list_id}-${index}`}
+                                className={`flex items-center p-3 rounded-lg border text-sm transition-all duration-200 ${isDarkMode
+                                  ? 'bg-slate-800/80 border-slate-600 hover:border-orange-500/50'
+                                  : 'bg-white border-slate-200 hover:border-orange-300'
+                                  }`}>
+                                <span className={`w-6 h-6 text-xs rounded-full flex items-center justify-center mr-3 font-bold ${isDarkMode
+                                  ? 'bg-orange-600 text-white'
+                                  : 'bg-orange-500 text-white'}`}>
+                                  {index + 1}
+                                </span>
+                                <span className={`font-semibold font-mono ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{item.part_no}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* ประเภทการซื้อ */}
+                        <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-red-700' : 'bg-red-100'}`}>
+                              <svg className={`w-5 h-5 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                              </svg>
+                            </div>
+                            <h4 className={`text-base font-bold ${isDarkMode ? 'text-red-100' : 'text-red-800'}`}>
+                              ประเภทการซื้อ
+                            </h4>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* DIRECT Option */}
+                              <div
+                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                  ? isDarkMode
+                                    ? 'bg-green-900/30 border-green-500'
+                                    : 'bg-green-50 border-green-400'
+                                  : isDarkMode
+                                    ? 'bg-slate-800/50 border-slate-600 hover:border-green-500/50'
+                                    : 'bg-white border-slate-200 hover:border-green-300'
+                                  }`}
+                                onClick={() => {
+                                  setMultipleOrderDetails(prev =>
+                                    prev.map(item => ({ ...item, purchaseType: 'D' }))
+                                  );
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                    ? isDarkMode
+                                      ? 'border-green-400 bg-green-500'
+                                      : 'border-green-500 bg-green-500'
+                                    : isDarkMode
+                                      ? 'border-slate-500'
+                                      : 'border-slate-300'
+                                    }`}>
+                                    {multipleOrderDetails[0]?.purchaseType === 'D' && (
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                      ? isDarkMode ? 'text-green-300' : 'text-green-700'
+                                      : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                      }`}>
+                                      DIRECT
+                                    </div>
+                                    <div className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
+                                      : isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                                      }`}>
+                                      วัตถุดิบที่เกี่ยวข้องกับการผลิต (D)
+                                    </div>
+                                  </div>
+                                  <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                    ? isDarkMode ? 'bg-green-900/50' : 'bg-green-100'
+                                    : isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100'
+                                    }`}>
+                                    <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                      ? isDarkMode ? 'text-green-300' : 'text-green-600'
+                                      : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* INTERNATIONAL Option */}
+                              <div
+                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                  ? isDarkMode
+                                    ? 'bg-blue-900/30 border-blue-500'
+                                    : 'bg-blue-50 border-blue-400'
+                                  : isDarkMode
+                                    ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500/50'
+                                    : 'bg-white border-slate-200 hover:border-blue-300'
+                                  }`}
+                                onClick={() => {
+                                  setMultipleOrderDetails(prev =>
+                                    prev.map(item => ({ ...item, purchaseType: 'I' }))
+                                  );
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                    ? isDarkMode
+                                      ? 'border-blue-400 bg-blue-500'
+                                      : 'border-blue-500 bg-blue-500'
+                                    : isDarkMode
+                                      ? 'border-slate-500'
+                                      : 'border-slate-300'
+                                    }`}>
+                                    {multipleOrderDetails[0]?.purchaseType === 'I' && (
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                      ? isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                                      : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                      }`}>
+                                      INDIRECT
+                                    </div>
+                                    <div className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                      ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                      : isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                                      }`}>
+                                      วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (I)
+                                    </div>
+                                  </div>
+                                  <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                    ? isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'
+                                    : isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100'
+                                    }`}>
+                                    <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                      ? isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                                      : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {multipleOrderDetails[0]?.purchaseType && (
+                              <div className={`p-3 rounded-lg border ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                ? isDarkMode ? 'bg-green-900/20 border-green-600/40' : 'bg-green-50 border-green-200'
+                                : isDarkMode ? 'bg-blue-900/20 border-blue-600/40' : 'bg-blue-50 border-blue-200'
+                                }`}>
+                                <div className="flex items-center space-x-2">
+                                  <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                    ? isDarkMode ? 'text-green-400' : 'text-green-600'
+                                    : isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <div className="flex-1">
+                                    <span className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                      ? isDarkMode ? 'text-green-300' : 'text-green-700'
+                                      : isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                                      }`}>
+                                      {multipleOrderDetails[0]?.purchaseType === 'D' ? 'วัตถุดิบที่เกี่ยวข้องกับการผลิต (DIRECT)' : 'วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (INDIRECT)'}
+                                    </span>
+                                    <p className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
+                                      : isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                      }`}>
+                                      ใช้สำหรับ {multipleOrderDetails.length} รายการ
+                                    </p>
+                                  </div>
+                                  <div className={`px-2 py-1 rounded text-xs font-bold ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                    ? isDarkMode ? 'bg-green-800 text-green-200' : 'bg-green-600 text-white'
+                                    : isDarkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-600 text-white'
+                                    }`}>
+                                    {multipleOrderDetails[0]?.purchaseType}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ปุ่มบันทึก */}
+                      <div className="flex justify-end pt-4">
+                        <button
+                          type="button"
+                          onClick={handleSubmitPOCreateMultiplePart}
+                          disabled={!multipleOrderDetails[0]?.purchaseType}
+                          className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all duration-200 border text-sm focus:outline-none focus:ring-2 cursor-pointer ${!multipleOrderDetails[0]?.purchaseType
+                            ? 'bg-gray-300 text-gray-500 border-gray-200 cursor-not-allowed'
+                            : isDarkMode
+                              ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white border-orange-500 hover:from-orange-700 hover:to-red-700 hover:shadow-lg focus:ring-orange-500'
+                              : 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-orange-400 hover:from-orange-600 hover:to-red-600 hover:shadow-lg focus:ring-orange-400'
+                            }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>บันทึกข้อมูล</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ANCHOR Compare Tab */}
               {!loading && !error && compareData && activeTab === 'compare' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 flex flex-col ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`} style={{ minHeight: 0 }}>
@@ -1760,7 +2481,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           return pagedRows.length > 0 ? pagedRows.map((vendor, index) => {
                             // Find matching purchase row for this vendor
                             const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no);
-                            const isDisabled = !!matchingPurchase;
+                            // Disable if status is 'Pending Approval', 'Approved', or 'ORDERED'
+                            const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
+                            const isDisabled = !!matchingPurchase || (prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'ORDERED');
                             // Visual indicator for editability: underline color
                             const editableBorder = isDisabled
                               ? (isDarkMode ? 'border-b' : 'border-b border-gray-200')
@@ -1774,6 +2497,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   if ((e.target as HTMLElement).closest('input')) return;
                                   handleCompareRowClick(vendor);
                                 }}
+                                style={isDisabled ? { pointerEvents: 'none' } : {}}
                               >
                                 <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{startIdx + index + 1}</td>
                                 <td className={`px-4 py-3 text-sm text-center font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{vendor.vendor_code}</td>
@@ -1790,7 +2514,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       value={(() => {
                                         const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
                                         if (typeof found?.price === 'number') return found.price;
-                                        return typeof vendor.price === 'number' && vendor.price !== null ? vendor.price : '';
+                                        if (typeof vendor.price === 'number' && vendor.price !== null) return vendor.price;
+                                        return 0;
                                       })()}
                                       onClick={e => e.stopPropagation()}
                                       onFocus={e => {
@@ -1798,8 +2523,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       }}
                                       onBlur={handlePriceBlur}
                                       onChange={e => {
-                                        const newValue = e.target.value === '' ? 0 : Number(e.target.value);
-                                        // เก็บราคาที่แก้ไขเฉพาะใน editedPrices เท่านั้น ไม่ sync กับ state อื่น
+                                        let newValue = Number(e.target.value);
+                                        if (isNaN(newValue) || e.target.value === '' || newValue === undefined || newValue === null) newValue = 0;
                                         setEditedPrices(prev => {
                                           const exists = prev.find(p => p.compare_id === vendor.compare_id);
                                           if (exists) {
@@ -1823,17 +2548,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       value={(() => {
                                         const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
                                         if (typeof found?.discount === 'number') return found.discount;
-                                        // fallback: use discount from compare_vendors if available
                                         const compareVendor = compareData?.compare_vendors?.find(v => v.compare_id === vendor.compare_id);
                                         if (typeof compareVendor?.discount === 'number') return compareVendor.discount;
-                                        return typeof vendor.discount === 'number' && vendor.discount !== null ? vendor.discount : '0';
+                                        if (typeof vendor.discount === 'number' && vendor.discount !== null) return vendor.discount;
+                                        return 0;
                                       })()}
                                       onClick={e => e.stopPropagation()}
                                       onFocus={e => {
                                         e.target.select();
                                       }}
                                       onChange={e => {
-                                        const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                        let newValue = Number(e.target.value);
+                                        if (isNaN(newValue) || e.target.value === '' || newValue === undefined || newValue === null) newValue = 0;
                                         setEditedPrices(prev => {
                                           const exists = prev.find(p => p.compare_id === vendor.compare_id);
                                           if (exists) {
@@ -1855,26 +2581,40 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   }) : '-'}
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <button
-                                    type="button"
-                                    className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'}`}
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      handleEditVendor({
-                                        ID: vendor.vendor_id,
-                                        vendor_code: vendor.vendor_code,
-                                        vendor_name: vendor.vendor_name,
-                                        tax_id: vendor.tax_id ?? null,
-                                        credit_term: vendor.credit_term,
-                                        tel_no: vendor.tel,
-                                        fax_no: vendor.fax_no ?? '',
-                                        contact_person: vendor.contact_name ?? '',
-                                        email: vendor.email ?? '',
-                                      });
-                                    }}
-                                  >
-                                    <CiEdit size={24} className="inline align-middle" />
-                                  </button>
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      type="button"
+                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'}`}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        handleEditVendor({
+                                          ID: vendor.vendor_id,
+                                          vendor_code: vendor.vendor_code,
+                                          vendor_name: vendor.vendor_name,
+                                          tax_id: vendor.tax_id ?? null,
+                                          credit_term: vendor.credit_term,
+                                          tel_no: vendor.tel,
+                                          fax_no: vendor.fax_no ?? '',
+                                          contact_person: vendor.contact_name ?? '',
+                                          email: vendor.email ?? '',
+                                        });
+                                      }}
+                                    >
+                                      <CiEdit size={24} className="inline align-middle" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-300 hover:text-white hover:bg-red-700/30' : 'text-red-600 hover:text-white hover:bg-red-500/80'}`}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        if (window.confirm(`ต้องการลบ ${vendor.vendor_name} ออกจากรายการเปรียบเทียบ?`)) {
+                                          handleDeleteVendor(vendor);
+                                        }
+                                      }}
+                                    >
+                                      <IoTrashBinOutline size={20} className="inline align-middle" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1928,14 +2668,26 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           placeholder="ค้นหา/เพิ่ม Vendor..."
                           className={`px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 text-sm w-full shadow-sm transition-all duration-200 pr-10 ${isDarkMode ? 'border-slate-600 focus:ring-purple-500/30 bg-slate-800/50 text-slate-200 placeholder-slate-500' : 'border-purple-300 focus:ring-purple-200 bg-white'}`}
                           value={search}
-                          onChange={e => setSearch(e.target.value)}
-                          onFocus={() => search && vendors.length > 0 ? setShowDropdown(true) : undefined}
+                          onChange={e => {
+                            if (isVendorInputDisabled) return;
+                            setSearch(e.target.value);
+                          }}
+                          onFocus={() => {
+                            if (isVendorInputDisabled) return;
+                            if (search && vendors.length > 0) setShowDropdown(true);
+                          }}
+                          disabled={isVendorInputDisabled}
+                          readOnly={isVendorInputDisabled}
                         />
                         <button
                           type="button"
-                          className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-white font-bold shadow transition-all duration-150 cursor-pointer ${isDarkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'}`}
+                          className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-white font-bold shadow transition-all duration-150 ${isVendorInputDisabled ? 'bg-gray-400 cursor-not-allowed opacity-60' : (isDarkMode ? 'bg-purple-600 hover:bg-purple-700 cursor-pointer' : 'bg-purple-500 hover:bg-purple-600 cursor-pointer')}`}
                           style={{ zIndex: 2 }}
-                          onClick={() => setShowCreateVendor(true)}
+                          onClick={() => {
+                            if (isVendorInputDisabled) return;
+                            setShowCreateVendor(true);
+                          }}
+                          disabled={isVendorInputDisabled}
                         >
                           <TiPlus size={16} />
                           <span className="sr-only">เพิ่ม Vendor.</span>
@@ -2003,12 +2755,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               )}
 
               {/* ANCHOR Summary Tab */}
-              {/* Show empty state for compare tab */}
-              {!loading && !error && !compareData && activeTab === 'compare' && (
-                <div className={`mb-6 text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  ไม่พบข้อมูลเปรียบเทียบผู้ขายสำหรับ Part No: {partNo}
-                </div>
-              )}
               {!loading && !error && activeTab === 'summary' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 p-6 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ผลสรุปข้อมูลที่เลือก</h3>
@@ -2205,6 +2951,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           }}
         />
       )}
+      {showRejectModal && (
+        <RejectCompare
+          open={showRejectModal}
+          onClose={() => setShowRejectModal(false)}
+          onConfirm={handleConfirmRejectCompare}
+          reason={rejectReason}
+          setReason={setRejectReason}
+          partNo={partNo}
+        />
+      )}
+
     </>
   );
 };

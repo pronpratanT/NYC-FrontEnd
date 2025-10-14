@@ -2,15 +2,19 @@
 import React, { JSX } from "react";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from 'next/navigation';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { IoTrashBinOutline } from "react-icons/io5";
 import { CiEdit } from "react-icons/ci";
+import { FaRegCalendarAlt } from "react-icons/fa";
 import { useToken } from "../../context/TokenContext";
 import { TiPlus } from "react-icons/ti";
 import { useTheme } from "../ThemeProvider";
 import CreateVendor from "./CreateVendor";
 import EditVendor from "./EditVendor";
 import RejectCompare from "./Reject_Compare";
+import { Tooltip } from "@heroui/react";
 
 
 // Custom scrollbar styles
@@ -95,7 +99,7 @@ type RecentPurchase = {
   vendor_name: string;
   price: number | null;
   price_for_approve: number | null;
-  discount: number | null;
+  discount: number[];
   date: string;
 }
 
@@ -111,7 +115,7 @@ type CompareData = {
   tel: string;
   credit_term: string;
   price: number;
-  discount: number | null;
+  discount: number[];
   due_date: string;
 };
 
@@ -151,13 +155,12 @@ type VendorSelected = {
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, pu_operator_approve, onClose, onSuccess }) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // เพิ่ม pr_id เข้า destructure
+  // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
+
   const router = useRouter();
   // State สำหรับรายการที่เลือกใน Approved Dropdown
   const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string }[]>([]);
 
-  // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
   const [isSaving, setIsSaving] = useState(false);
 
   // Tab state
@@ -170,6 +173,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     purchaseType: 'D' | 'I' | undefined;
   }>>([]);
   const [purchaseType, setPurchaseType] = useState<'D' | 'I' | undefined>(undefined);
+  const [remark, setRemark] = useState<string>("");
   const [compareData, setCompareData] = useState<PartNo | null>(null);
   const [loading, setLoading] = useState(true);
   // loading สำหรับ vendor dropdown เท่านั้น
@@ -211,6 +215,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Add state for dropdown toggle
   const [showSelectedToPODropdown, setShowSelectedToPODropdown] = useState(false);
 
+  // State for delivery date
+  const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
+
   // ตรวจสอบว่ามี PR ที่ตรงกับ prNumber และยังไม่มี po_no หรือไม่
   const latestNoPO = React.useMemo(() => {
     if (!compareData?.part_inventory_and_pr) return false;
@@ -219,14 +226,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     return !!matchingPR;
   }, [compareData, prNumber]);
 
-  // ถ้า PR ล่าสุดไม่มี po_no ให้เปลี่ยน tab เป็น 'approve'
-  // useEffect(() => {
-  //   if (latestNoPO) {
-  //     setActiveTab('approve');
-  //   }
-  // }, [latestNoPO]);
-
-  // Define type for selected row data
   type SelectedRowData = Omit<InventoryItem, 'qty' | 'unit'> & {
     selectedVendor: CompareData;
     previousPurchase: RecentPurchase | null;
@@ -243,13 +242,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [previousPurchaseHistory, setPreviousPurchaseHistory] = useState<RecentPurchase | null>(null);
   // เก็บเหตุผลการเลือก
   const [selectedReason, setSelectedReason] = useState<string>("");
+  const [customReason, setCustomReason] = useState<string>("");
 
   // State to track which vendor is being edited (by vendor_code)
   // Removed: editingVendorCode (unused)
 
-  // State to track edited prices
-  // Support both price and discount in editedPrices
-  const [editedPrices, setEditedPrices] = useState<{ compare_id: number; price?: number; discount?: number }[]>([]);
+  // State to track edited prices (support price and discounts array)
+  const [editedPrices, setEditedPrices] = useState<{ compare_id: number; price?: number; discounts?: number[], date_ship?: string | null }[]>([]);
 
   // เมื่อโหลด compareData แล้ว ให้ดึงข้อมูลล่าสุดมาเก็บ
   useEffect(() => {
@@ -284,16 +283,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no);
       if (prWithPO && compareData?.compare_vendors) {
         // ...existing code...
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let vendorDetail: CompareData | undefined = undefined;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        let vendorDetail: CompareData | undefined = undefined;
         const vendorId = prWithPO.recent_purchase?.[0]?.vendor_id;
         if (vendorId) {
           vendorDetail = compareData.compare_vendors.find((v: CompareData) => v.vendor_id === vendorId);
         }
 
         // คำนวณ previousPurchase สำหรับ PR นี้เฉพาะ
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let currentPreviousPurchase: RecentPurchase | null = null;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        let currentPreviousPurchase: RecentPurchase | null = null;
         if (totalCount > 1) {
           const previousIndex = totalCount - 1;
           const previousItem = sortedItems[previousIndex];
@@ -362,7 +361,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
     fetchCompareData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partNo, pr_list_id, token]);
   const handleApprovedDropdownSelect = (item: SelectedToPOGen) => {
     if (!item.part_no || !item.pr_list_id) return;
@@ -496,30 +495,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             console.error("Error inserting vendor for compare:", e);
           }
-          // setExtraCompareVendors(prev => {
-          //   if (prev.some(v => v.vendor_code === vendorData.vendor_code)) return prev;
-          //   // สร้าง unique compare_id สำหรับ vendor ที่เพิ่มใหม่
-          //   const uniqueCompareId = vendorData.compare_id ?? Date.now() + Math.random();
-          //   const newCompare: CompareData = {
-          //     compare_id: uniqueCompareId,
-          //     vendor_id: vendorData.vendor_id ?? vendorData.ID ?? '',
-          //     vendor_name: vendorData.vendor_name ?? '-',
-          //     vendor_code: vendorData.vendor_code ?? '-',
-          //     tel: vendorData.tel_no ?? vendorData.tel ?? '-',
-          //     credit_term: vendorData.credit_term ?? '-',
-          //     price: typeof vendorData.price === 'number' ? vendorData.price : 0,
-          //     discount: typeof vendorData.discount === 'number' ? vendorData.discount : 0,
-          //     due_date: vendorData.due_date ?? '-',
-          //     email: vendorData.email ?? '-',
-          //     tax_id: vendorData.tax_id ?? '-',
-          //     fax_no: vendorData.fax_no ?? '-',
-          //     contact_name: vendorData.contact_name ?? '-',
-          //   };
-          //   return [...prev, newCompare];
-          // });
         }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
         setSelectedVendorDetail(null);
       }
     };
@@ -631,19 +609,35 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       new_qty: qty,
     };
 
-    // สร้าง array edited_prices[] โดยรวมทุก vendor และใช้ค่าจาก editedPrices หรือค่าเดิม
+    // สร้าง array edited_prices[] โดยรวมทุก vendor แต่ date_ship จะอยู่เฉพาะ vendor ที่เลือก
     const allVendors = compareData?.compare_vendors || [];
+    const selectedVendorId = selectedRowData?.selectedVendor?.compare_id;
     const edited_prices = allVendors.map(vendor => {
       const edited = editedPrices.find(item => item.compare_id === vendor.compare_id);
+      const isSelectedVendor = vendor.compare_id === selectedVendorId;
+      let date_ship: string | null | undefined = null;
+      // Always include existing date_ship if present
+      if (edited?.date_ship !== undefined && edited?.date_ship !== null) {
+        date_ship = edited.date_ship;
+      } else if (vendor.due_date !== undefined && vendor.due_date !== null) {
+        date_ship = vendor.due_date;
+      } else {
+        date_ship = null;
+      }
+      // If selected vendor and deliveryDate is chosen, override date_ship
+      if (isSelectedVendor && deliveryDate) {
+        date_ship = typeof deliveryDate === 'string' ? deliveryDate : deliveryDate?.toISOString();
+      }
       return {
         clv_id: vendor.compare_id,
-        price: edited?.price !== undefined && edited?.price !== null ? parseFloat(edited.price as unknown as string) : (vendor.price !== undefined && vendor.price !== null ? parseFloat(vendor.price as unknown as string) : 0),
-        discount: edited?.discount !== undefined && edited?.discount !== null ? parseFloat(edited.discount as unknown as string) : (vendor.discount !== undefined && vendor.discount !== null ? parseFloat(vendor.discount as unknown as string) : 0)
+        price: edited?.price !== undefined && edited?.price !== null ? Number(edited.price) : (vendor.price !== undefined && vendor.price !== null ? Number(vendor.price) : 0),
+        discount: edited?.discounts !== undefined && edited?.discounts !== null ? edited.discounts : (vendor.discount !== undefined && vendor.discount !== null ? vendor.discount : [0]),
+        ...(date_ship ? { date_ship } : {})
       };
     });
 
-    // console.log("Submitting payload:", payload);
-    // console.log("Edited prices:", edited_prices);
+    console.log("Submitting payload:", payload);
+    console.log("Edited prices:", edited_prices);
 
     try {
       // PUT edited_prices to /edit-price-in-clv if there are any edited prices
@@ -675,6 +669,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
       }
       alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      if (onSuccess) await onSuccess();
+      router.refresh();
       if (onClose) onClose();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
@@ -697,6 +693,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
       }
       alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+      if (onSuccess) await onSuccess();
+      router.refresh();
       if (onClose) onClose();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
@@ -707,6 +705,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const handleSubmitPOCreate = async () => {
     const poCreate = {
       material_type: purchaseType,
+      remark: remark,
       po_list: [
         {
           pcl_id: compareData?.pcl_id,
@@ -754,6 +753,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
     const poCreate = {
       material_type: selectedMaterialType,
+      remark: '',
       po_list: selectedPclIds
     };
     console.log("Creating PO with data:", poCreate);
@@ -807,6 +807,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       alert('บันทึกข้อมูลเรียบร้อยแล้ว');
       setShowRejectModal(false);
       setRejectReason("");
+      if (onSuccess) await onSuccess();
+      router.refresh();
       if (onClose) onClose();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
@@ -879,6 +881,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
   };
 
+  // Handle delivery date change
+  const handleDeliveryDateChange = (date: Date | null) => {
+    setDeliveryDate(date);
+  };
+
   // Sort compare_vendors ascending by price ทุกครั้งที่ compareData เปลี่ยนหรือเปิด tab compare (แต่ต้องป้องกัน loop)
   useEffect(() => {
     if (activeTab === 'compare' && compareData && compareData.compare_vendors) {
@@ -933,7 +940,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     </h2>
                     {/* Info Cards */}
                     <div className="flex-1 flex justify-end items-start space-x-3">
-                      {/* Approved Compare Dropdown */}
+                      {/* ANCHOR Create multiple PO */}
                       {selectedToPO && selectedToPO.length > 0 && (
                         <div className="relative">
                           {(() => {
@@ -1058,39 +1065,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           })()}
                         </div>
                       )}
-
-                      {/* Pagination Control */}
-                      {/* <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
-                        <div className={`px-3 py-2 text-sm border-r ${isDarkMode ? 'text-slate-300 bg-slate-700 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
-                          {(() => {
-                            const startRow = totalPurchaseRows === 0 ? 0 : ((purchasePage - 1) * rowsPerPage + 1);
-                            const endRow = Math.min(purchasePage * rowsPerPage, totalPurchaseRows);
-                            return (
-                              <>
-                                <span className="font-bold">{startRow}-{endRow}</span> of {totalPurchaseRows}
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="flex items-center">
-                          <button
-                            type="button"
-                            className={`p-2 transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'} disabled:opacity-30 disabled:cursor-not-allowed`}
-                            disabled={purchasePage === 1}
-                            onClick={() => setPurchasePage(p => Math.max(1, p - 1))}
-                          >
-                            <IoIosArrowBack className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className={`p-2 transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'} disabled:opacity-30 disabled:cursor-not-allowed`}
-                            disabled={compareData?.part_inventory_and_pr && ((purchasePage * rowsPerPage) >= totalPurchaseRows)}
-                            onClick={() => setPurchasePage(p => p + 1)}
-                          >
-                            <IoIosArrowForward className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div> */}
                     </div>
                   </div>
 
@@ -1217,12 +1191,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               )}
 
               {/* TODO - implement tab logic by status */}
-              {/* Tab logic by status: pending = compare, Pending Approval = approve, Approved = completed-summary, no PR = summary */}
               {(() => {
                 const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
                 // console.log("Current PR Item for tab logic:", prItem?.status);
                 if (!prItem) {
-                  // ถ้าไม่พบ PR ให้แสดง summary
+                  // ถ้าไม่พบ PR ให้แสดง summary เฉพาะเมื่อข้อมูลโหลดเสร็จ
+                  if (loading || error || !compareData) return null;
                   return (
                     <button type="button" onClick={() => setActiveTab('summary')}
                       className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
@@ -1240,22 +1214,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   );
                 }
                 switch (prItem.status) {
-                  // case 'pending':
-                  //   return (
-                  //     <button type="button" onClick={() => setActiveTab('compare')}
-                  //       className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
-                  //         ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-200/50 transform scale-105'
-                  //         : isDarkMode
-                  //           ? 'text-slate-300 hover:text-purple-400 hover:bg-purple-900/30 hover:shadow-md'
-                  //           : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/80 hover:shadow-md'
-                  //         }`}
-                  //     >
-                  //       <div className="flex items-center space-x-2">
-                  //         <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                  //         <span>เปรียบเทียบราคา</span>
-                  //       </div>
-                  //     </button>
-                  //   );
                   case 'Pending Approval':
                     return (
                       <button type="button" onClick={() => setActiveTab('approve')}
@@ -1288,7 +1246,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
                       </button>
                     );
-                  case 'ORDERED':
+                  case 'Po Created':
                     return (
                       <button type="button" onClick={() => setActiveTab('completed-summary')}
                         className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
@@ -1541,7 +1499,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       </div>
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                         <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
-                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount ? `${prWithPO.recent_purchase[0].discount}%` : '0%'}</div>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount?.length ? prWithPO.recent_purchase[0].discount.join(' + ') + '%' : '0%'}</div>
                                       </div>
                                     </div>
                                   </div>
@@ -1561,30 +1519,53 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </div>
 
                                 <div className="space-y-3">
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div className={`p-3 rounded-lg border col-span-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <div className="flex flex-row gap-4">
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>สถานะ</label>
-                                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${isDarkMode ? 'bg-yellow-900/80 text-yellow-300 border border-yellow-700/60' : 'bg-yellow-100 text-yellow-800'}`}>
+                                      <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-bold w-20 ${isDarkMode ? 'bg-yellow-900/80 text-yellow-300 border border-yellow-700/60' : 'bg-yellow-100 text-yellow-800'}`}>
                                         รออนุมัติ
                                       </span>
                                     </div>
-                                    <div className={`p-3 rounded-lg border col-span-2 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
-                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
-                                        {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
-                                          ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
-                                            ? new Date((prWithPO.recent_purchase[0] as { date: string }).date).toLocaleDateString('th-TH')
-                                            : '-')
-                                          : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { date?: string })?.date)
-                                            ? new Date((prWithPO.recent_purchase as { date: string }).date).toLocaleDateString('th-TH')
-                                            : '-'}
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                        {(() => {
+                                          let vendorId: number | undefined;
+                                          if (prWithPO.recent_purchase) {
+                                            if (Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0) {
+                                              vendorId = prWithPO.recent_purchase[0].vendor_id;
+                                            } else if (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { vendor_id?: number }).vendor_id) {
+                                              vendorId = (prWithPO.recent_purchase as { vendor_id: number }).vendor_id;
+                                            }
+                                          }
+                                          let dueDate = null;
+                                          if (vendorId !== undefined) {
+                                            const vendor = compareData?.compare_vendors?.find(v => v.vendor_id === vendorId);
+                                            if (vendor && vendor.due_date) {
+                                              dueDate = vendor.due_date;
+                                            }
+                                          }
+                                          return dueDate ? new Date(dueDate).toLocaleDateString('th-TH') : '-';
+                                        })()}
                                       </div>
                                     </div>
                                   </div>
 
-                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
-                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.date_compare ? new Date(prWithPO.date_compare).toLocaleDateString('th-TH') : '-'}</div>
+                                  <div className="flex flex-row gap-4">
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ต้องการใช้สินค้า</label>
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
+                                        ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
+                                          ? new Date((prWithPO.recent_purchase[0] as { date: string }).date).toLocaleDateString('th-TH')
+                                          : '-')
+                                        : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { date?: string })?.date)
+                                          ? new Date((prWithPO.recent_purchase as { date: string }).date).toLocaleDateString('th-TH')
+                                          : '-'}</div>
+                                    </div>
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.date_compare ? new Date(prWithPO.date_compare).toLocaleDateString('th-TH') : '-'}</div>
+                                    </div>
                                   </div>
 
                                   {compareData.requester_name && (
@@ -1731,8 +1712,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </div>
                               </div>
 
-                              {/* ประเภทการซื้อ - ซ่อนเมื่อสถานะเป็น ORDERED */}
-                              {prWithPO.status !== 'ORDERED' && (
+                              {/* ประเภทการซื้อ - ซ่อนเมื่อสถานะเป็น Po Created */}
+                              {prWithPO.status !== 'Po Created' && (
                                 <>
                                   <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
                                     <div className="flex items-center space-x-2 mb-4">
@@ -1804,6 +1785,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         </div>
                                       </div>
                                     </div>
+                                    {/* Remark input field */}
+                                    <div className="mt-6">
+                                      <label htmlFor="remark" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Remark</label>
+                                      <input
+                                        id="remark"
+                                        type="text"
+                                        className={`w-full p-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-200 focus:ring-amber-400' : 'bg-white border-gray-300 text-gray-800 focus:ring-amber-500'}`}
+                                        placeholder="ระบุหมายเหตุเพิ่มเติม (Remark)"
+                                        value={remark || ''}
+                                        onChange={e => setRemark(e.target.value)}
+                                      />
+                                    </div>
                                   </div>
                                   <div className={`p-4`}>
                                     {/* <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}> */}
@@ -1829,6 +1822,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   </div>
                                 </>
                               )}
+
                             </div>
 
                             {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}
@@ -1888,7 +1882,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       </div>
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                         <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
-                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount ? `${prWithPO.recent_purchase[0].discount}%` : '0%'}</div>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount?.length ? prWithPO.recent_purchase[0].discount.join(' + ') + '%' : '0%'}</div>
                                       </div>
                                     </div>
                                   </div>
@@ -1907,8 +1901,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </div>
 
                                 <div className="space-y-3">
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div className={`p-3 rounded-lg border col-span-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <div className="flex flex-row gap-4">
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>สถานะ</label>
                                       <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${prWithPO.status === 'ORDERED'
                                         ? (isDarkMode ? 'bg-green-900/80 text-green-300 border border-green-700/60' : 'bg-blue-100 text-green-800')
@@ -1917,24 +1911,46 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         {prWithPO.status === 'ORDERED' ? 'ผู้จัดการจัดซื้ออนุมัติ' : prWithPO.status}
                                       </span>
                                     </div>
-                                    <div className={`p-3 rounded-lg border col-span-2 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
-                                      <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
-                                        {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
-                                          ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
-                                            ? new Date((prWithPO.recent_purchase[0] as { date: string }).date).toLocaleDateString('th-TH')
-                                            : '-')
-                                          : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { date?: string })?.date)
-                                            ? new Date((prWithPO.recent_purchase as { date: string }).date).toLocaleDateString('th-TH')
-                                            : '-'}
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                        {(() => {
+                                          let vendorId: number | undefined;
+                                          if (prWithPO.recent_purchase) {
+                                            if (Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0) {
+                                              vendorId = prWithPO.recent_purchase[0].vendor_id;
+                                            } else if (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { vendor_id?: number }).vendor_id) {
+                                              vendorId = (prWithPO.recent_purchase as { vendor_id: number }).vendor_id;
+                                            }
+                                          }
+                                          let dueDate = null;
+                                          if (vendorId !== undefined) {
+                                            const vendor = compareData?.compare_vendors?.find(v => v.vendor_id === vendorId);
+                                            if (vendor && vendor.due_date) {
+                                              dueDate = vendor.due_date;
+                                            }
+                                          }
+                                          return dueDate ? new Date(dueDate).toLocaleDateString('th-TH') : '-';
+                                        })()}
                                       </div>
                                     </div>
                                   </div>
 
-                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
-                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.date_compare ? new Date(prWithPO.date_compare).toLocaleDateString('th-TH') : '-'}</div>
+                                  <div className="flex flex-row gap-4">
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ต้องการใช้สินค้า</label>
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
+                                        ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
+                                          ? new Date((prWithPO.recent_purchase[0] as { date: string }).date).toLocaleDateString('th-TH')
+                                          : '-')
+                                        : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { date?: string })?.date)
+                                          ? new Date((prWithPO.recent_purchase as { date: string }).date).toLocaleDateString('th-TH')
+                                          : '-'}</div>
+                                    </div>
+                                    <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                      <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{prWithPO.date_compare ? new Date(prWithPO.date_compare).toLocaleDateString('th-TH') : '-'}</div>
+                                    </div>
                                   </div>
 
                                   {compareData.requester_name && (
@@ -2081,7 +2097,30 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   </td>
                                   <td className={`px-4 py-4 text-sm text-left font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.vendor_name || '-'}</td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.price ? `${purchase.price.toLocaleString()}` : '-'} ฿</td>
-                                  <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.discount ?? '-'}%</td>
+                                  <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    {purchase.discount?.length ? (
+                                      <div
+                                        className={`inline-block px-1 py-2 rounded-lg border shadow-sm ${isDarkMode ? 'bg-emerald-950/60 border-emerald-900' : 'bg-emerald-50 border-emerald-200'}`}
+                                        style={{ maxWidth: '100%', overflow: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                                      >
+                                        <div className="flex flex-col gap-0.5 justify-center items-center w-full">
+                                          {Array.from({ length: Math.ceil((purchase.discount?.length ?? 0) / 3) }, (_, rowIdx) => (
+                                            <div key={rowIdx} className="flex flex-row gap-1 justify-center items-center w-full">
+                                              {(purchase.discount?.slice(rowIdx * 3, rowIdx * 3 + 3) ?? []).map((d, i) => (
+                                                <span
+                                                  key={i}
+                                                  className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shadow-sm flex-shrink-0 ${isDarkMode ? 'bg-emerald-900/80 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}
+                                                  style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
+                                                >
+                                                  {d}%
+                                                </span>
+                                              ))}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : '-'}
+                                  </td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.date ? new Date(purchase.date).toLocaleDateString('th-TH', {
                                     year: 'numeric',
                                     month: '2-digit',
@@ -2440,7 +2479,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '120px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '50px' }} />
                       </colgroup>
@@ -2448,8 +2487,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <tr>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">#</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ID</th>
-                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Vendor</th>
-                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Tel.</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-left">Vendor</th>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-left">Tel.</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">เครดิต</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ราคา</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ส่วนลด%</th>
@@ -2469,7 +2508,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '120px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '50px' }} />
                       </colgroup>
@@ -2539,40 +2578,138 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   </span>
                                 </td>
                                 {/* DISCOUNT EDIT */}
-                                <td className={`px-4 py-3 text-sm font-bold text-center ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                                  <span className="flex items-center justify-center gap-1">
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      className={`w-16 px-2 py-1 rounded border text-right font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-orange-400' : 'bg-white border-slate-200 text-orange-600'} focus:outline-none focus:ring-2 focus:ring-purple-400`}
-                                      value={(() => {
-                                        const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
-                                        if (typeof found?.discount === 'number') return found.discount;
-                                        const compareVendor = compareData?.compare_vendors?.find(v => v.compare_id === vendor.compare_id);
-                                        if (typeof compareVendor?.discount === 'number') return compareVendor.discount;
-                                        if (typeof vendor.discount === 'number' && vendor.discount !== null) return vendor.discount;
-                                        return 0;
-                                      })()}
-                                      onClick={e => e.stopPropagation()}
-                                      onFocus={e => {
-                                        e.target.select();
-                                      }}
-                                      onChange={e => {
-                                        let newValue = Number(e.target.value);
-                                        if (isNaN(newValue) || e.target.value === '' || newValue === undefined || newValue === null) newValue = 0;
-                                        setEditedPrices(prev => {
-                                          const exists = prev.find(p => p.compare_id === vendor.compare_id);
-                                          if (exists) {
-                                            return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, discount: newValue } : p);
-                                          } else {
-                                            return [...prev, { compare_id: vendor.compare_id, discount: newValue }];
-                                          }
-                                        });
-                                      }}
-                                    />
-                                    <span>%</span>
-                                  </span>
+                                <td className={`px-2 py-2 text-sm font-bold text-center ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                  <div className="flex flex-col items-center w-[140px] mx-auto space-y-1" style={{ height: 'auto' }}>
+                                    {(() => {
+                                      const currentDiscounts = editedPrices.find(p => p.compare_id === vendor.compare_id)?.discounts || vendor.discount || [0];
+
+                                      // จัดกลุ่มส่วนลดเป็นบรรทัดละ 2 รายการ
+                                      const discountRows = [];
+                                      for (let i = 0; i < currentDiscounts.length; i += 2) {
+                                        discountRows.push(currentDiscounts.slice(i, i + 2));
+                                      }
+
+                                      return (
+                                        <div className="w-full space-y-1">
+                                          {/* แสดงส่วนลดแต่ละบรรทัด */}
+                                          {discountRows.map((row, rowIdx) => (
+                                            <div key={rowIdx} className="flex items-center justify-center gap-1">
+                                              {row.map((discount, colIdx) => {
+                                                const originalIdx = rowIdx * 2 + colIdx;
+                                                return (
+                                                  <Tooltip
+                                                    key={originalIdx}
+                                                    content={`ส่วนลดลำดับที่ ${originalIdx + 1}: ${discount}%`}
+                                                    showArrow={true}
+                                                    placement="top"
+                                                    classNames={{
+                                                      content: isDarkMode
+                                                        ? "text-xs bg-slate-900 text-orange-300 border border-slate-700 shadow-lg rounded"
+                                                        : "text-xs bg-white text-orange-700 border border-orange-200 shadow-lg rounded",
+                                                      arrow: isDarkMode
+                                                        ? "fill-slate-900 border-slate-700"
+                                                        : "fill-white border-orange-200",
+                                                    }}
+                                                  >
+                                                    <div className={`flex items-center gap-0.5 rounded-md px-1.5 py-1 transition-all duration-200 ${isDarkMode
+                                                      ? 'bg-slate-800/60 border border-slate-600/40 hover:bg-slate-700/70 hover:border-slate-500/60'
+                                                      : 'bg-orange-50/80 border border-orange-200/60 hover:bg-orange-100/90 hover:border-orange-300/80'
+                                                      }`}>
+                                                      <input
+                                                        type="number"
+                                                        min={0}
+                                                        max={100}
+                                                        step={0.1}
+                                                        className={`w-14 px-1 py-0.5 rounded text-center font-medium text-xs border-0 ${isDarkMode
+                                                          ? 'bg-slate-900/80 text-orange-300 focus:bg-slate-800'
+                                                          : 'bg-white/90 text-orange-700 focus:bg-white'
+                                                          } focus:outline-none focus:ring-1 focus:ring-orange-400/30`}
+                                                        value={discount}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onFocus={e => e.target.select()}
+                                                        onChange={e => {
+                                                          let newValue = Number(e.target.value);
+                                                          if (isNaN(newValue) || e.target.value === '') newValue = 0;
+                                                          if (newValue > 100) newValue = 100;
+                                                          setEditedPrices(prev => {
+                                                            const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                                            if (exists) {
+                                                              const newDiscounts = [...(exists.discounts || [])];
+                                                              newDiscounts[originalIdx] = newValue;
+                                                              return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, discounts: newDiscounts } : p);
+                                                            } else {
+                                                              const discounts = [...currentDiscounts];
+                                                              discounts[originalIdx] = newValue;
+                                                              return [...prev, { compare_id: vendor.compare_id, discounts }];
+                                                            }
+                                                          });
+                                                        }}
+                                                      />
+                                                      {/* <span className="text-xs opacity-60">%</span> */}
+                                                      {currentDiscounts.length > 1 && (
+                                                        <button
+                                                          type="button"
+                                                          className={`w-3 h-3 rounded-full flex items-center justify-center text-xs leading-none opacity-40 hover:opacity-100 transition-opacity ${isDarkMode
+                                                            ? 'bg-red-600/60 text-red-200 hover:bg-red-500'
+                                                            : 'bg-red-300 text-red-700 hover:bg-red-400'
+                                                            }`}
+                                                          onClick={e => {
+                                                            e.stopPropagation();
+                                                            setEditedPrices(prev => {
+                                                              return prev.map(p => {
+                                                                if (p.compare_id === vendor.compare_id) {
+                                                                  const newDiscounts = [...(p.discounts || [])];
+                                                                  newDiscounts.splice(originalIdx, 1);
+                                                                  return { ...p, discounts: newDiscounts };
+                                                                }
+                                                                return p;
+                                                              });
+                                                            });
+                                                          }}
+                                                          title="ลบส่วนลด"
+                                                        >×</button>
+                                                      )}
+                                                    </div>
+                                                  </Tooltip>
+                                                );
+                                              })}
+                                            </div>
+                                          ))}
+
+                                          {/* ปุ่มเพิ่มส่วนลด */}
+                                          {currentDiscounts.length < 6 && (
+                                            <div className="flex justify-center">
+                                              <button
+                                                type="button"
+                                                className={`w-5 h-5 rounded-full text-xs leading-none opacity-50 hover:opacity-100 transition-all ${isDarkMode
+                                                  ? 'bg-emerald-600/50 text-emerald-300 hover:bg-emerald-500'
+                                                  : 'bg-emerald-300 text-emerald-700 hover:bg-emerald-400'
+                                                  }`}
+                                                onClick={e => {
+                                                  e.stopPropagation();
+                                                  e.preventDefault();
+                                                  setEditedPrices(prev => {
+                                                    const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                                    if (exists) {
+                                                      return prev.map(p => p.compare_id === vendor.compare_id
+                                                        ? { ...p, discounts: [...(p.discounts || []), 0] }
+                                                        : p
+                                                      );
+                                                    } else {
+                                                      return [...prev, { compare_id: vendor.compare_id, discounts: [...currentDiscounts, 0] }];
+                                                    }
+                                                  });
+                                                }}
+                                                title="เพิ่มส่วนลด"
+                                              >+</button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
                                 </td>
+                                {/* DELIVERY DATE */}
                                 <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                                   {vendor.due_date ? new Date(vendor.due_date).toLocaleDateString('th-TH', {
                                     year: 'numeric',
@@ -2756,155 +2893,281 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
               {/* ANCHOR Summary Tab */}
               {!loading && !error && activeTab === 'summary' && (
-                <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 p-6 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
-                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ผลสรุปข้อมูลที่เลือก</h3>
-
+                <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
+                  <div className={`bg-gradient-to-r px-8 py-4 border-b ${isDarkMode ? 'from-blue-900/60 to-indigo-900/60 border-blue-700/60' : 'from-blue-50 to-indigo-50 border-blue-200/60'}`}>
+                    <h3 className={`text-xl font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>ผลสรุปข้อมูลที่เลือก</h3>
+                  </div>
                   {selectedRowData ? (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* ข้อมูลการขอซื้อล่าสุด */}
-                        <div className={`bg-gradient-to-r p-4 rounded-lg border ${isDarkMode ? 'from-emerald-900/50 to-teal-900/50 border-emerald-700/60' : 'from-emerald-50 to-teal-50 border-emerald-200/60'}`}>
-                          <h4 className={`font-semibold mb-3 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>ข้อมูลการขอซื้อ</h4>
-                          <div className={`space-y-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                            <div><span className="font-medium">วันที่ทำ PR:</span> {prDate ? new Date(prDate).toLocaleDateString('th-TH') : (prDate ? new Date(prDate).toLocaleDateString('th-TH') : '-')}</div>
-                            <div><span className="font-medium">แผนกผู้ขอ:</span> {department || '-'}</div>
-                            <div><span className="font-medium">เลขที่ PR:</span> {prNumber || '-'}</div>
-                            <div><span className="font-medium">จำนวนที่ขอซื้อ:</span> {qty || '-'} {unit || ''}</div>
+                    <div className="flex flex-col h-full">
+                      <div className="custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 overflow-y-auto max-h-[calc(100vh-400px)] grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+                        {/* Column 1 (Left) - ข้อมูลการขอซื้อ */}
+                        <div className="space-y-4">
+                          <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                            <div className="flex items-center space-x-2 mb-4">
+                              <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
+                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <h4 className={`text-lg font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>ข้อมูลการขอซื้อ</h4>
+                            </div>
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PR เลขที่</label>
+                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{prNumber || '-'}</div>
+                                </div>
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PO เลขที่</label>
+                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>รอดำเนินการ</div>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>จำนวน</label>
+                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{qty || '-'}</div>
+                                </div>
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>หน่วย</label>
+                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{unit || '-'}</div>
+                                </div>
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>แผนก</label>
+                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{department || '-'}</div>
+                                </div>
+                              </div>
+                              <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสสินค้า</label>
+                                <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{selectedRowData.prod_code || '-'}</div>
+                              </div>
+                              <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รายละเอียด</label>
+                                <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} line-clamp-2`}>{selectedRowData.prod_detail || '-'}</div>
+                              </div>
+                            </div>
+                          </div>
+                          {/* เหตุผลการขอซื้อ */}
+                          <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                            <div className="flex items-center space-x-3 mb-4">
+                              <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}>
+                                <svg className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                              <h4 className={`text-lg font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>เหตุผลในการเลือกผู้ขาย</h4>
+                            </div>
+
+                            {/* Dropdown สำหรับเลือกเหตุผล */}
+                            <div className="mb-4">
+                              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>
+                                เลือกเหตุผลหลัก
+                              </label>
+                              <select
+                                value={selectedReason}
+                                onChange={(e) => setSelectedReason(e.target.value)}
+                                className={`w-full p-4 border-2 rounded-xl focus:outline-none focus:ring-4 text-sm font-medium transition-all duration-200 appearance-none cursor-pointer ${isDarkMode ? 'border-indigo-600 bg-slate-800 text-slate-200 focus:border-indigo-400 focus:ring-indigo-900/30' : 'border-indigo-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-indigo-100'}`}
+                                style={{
+                                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                                  backgroundPosition: 'right 1rem center',
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundSize: '1.5em 1.5em'
+                                }}
+                              >
+                                <option value="">-- กรุณาเลือกเหตุผลในการเลือกผู้ขาย --</option>
+                                <option value="1">1. ราคาถูก มีสินค้าส่งมอบได้เลย</option>
+                                <option value="2">2. ราคาแพงกว่า แต่มีสินค้าส่งมอบและรอไม่ได้</option>
+                                <option value="3">3. มีผู้ขาย / ผู้ผลิตรายเดียว</option>
+                                <option value="4">4. ราคาแพงกว่า คุณภาพดีกว่า</option>
+                                <option value="5">5. ราคาเท่ากัน มีเครดิตยาวกว่า</option>
+                                <option value="6">6. ราคาแพงกว่า แต่ส่งให้ ไม่ต้องไปรับ</option>
+                                <option value="7">7. ราคาเท่ากัน ส่งเร็วกว่า (ส่งถึงที่)</option>
+                                <option value="8">8. ราคาแพงกว่า แต่เป็นชุดเดียวกัน แยกสั่งไม่ได้</option>
+                                <option value="9">9. ราคาเท่ากัน แบ่งสั่ง</option>
+                                <option value="10">10. ต้องการด่วน รอเทียบราคาไม่ได้</option>
+                              </select>
+                            </div>
+                            {/* Action buttons */}
+                            <div className={`flex justify-end space-x-3 mt-6 pt-4 border-t ${isDarkMode ? 'border-indigo-700/50' : 'border-indigo-200'}`}>
+                              <button
+                                type="button"
+                                className={`px-6 py-2.5 border-2 rounded-xl transition-all duration-200 text-sm font-semibold ${isDarkMode ? 'bg-slate-800 text-indigo-400 border-indigo-600 hover:bg-slate-700 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'}`}
+                                onClick={() => setSelectedReason("")}
+                              >
+                                ล้างการเลือก
+                              </button>
+                              <button
+                                type="button"
+                                className={`px-6 py-2.5 bg-gradient-to-r text-white rounded-xl transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900' : 'from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'}`}
+                                disabled={!selectedReason}
+                                onClick={() => handleSubmit()}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  <span>บันทึกเหตุผล</span>
+                                </div>
+                              </button>
+                            </div>
                           </div>
                         </div>
-
-                        {/* ข้อมูลผู้ขายที่เลือก */}
-                        {selectedRowData.selectedVendor && (
-                          <div className={`bg-gradient-to-r p-4 rounded-lg border ${isDarkMode ? 'from-purple-900/50 to-violet-900/50 border-purple-700/60' : 'from-purple-50 to-violet-50 border-purple-200/60'}`}>
-                            <h4 className={`font-semibold mb-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>ข้อมูลผู้ขายที่เลือก</h4>
-                            <div className={`space-y-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                              <div><span className="font-medium">ชื่อผู้ขาย:</span> {selectedRowData.selectedVendor.vendor_name || '-'}</div>
-                              <div><span className="font-medium">เบอร์โทร:</span> {selectedRowData.selectedVendor.tel || '-'}</div>
-                              <div><span className="font-medium">เครดิต:</span> {selectedRowData.selectedVendor.credit_term || '-'}</div>
-                              <div><span className="font-medium">ราคา:</span> {
-                                (() => {
-                                  const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
-                                  const price = typeof found?.price === 'number' ? found.price : selectedRowData.selectedVendor.price;
-                                  return price ? `${price.toLocaleString()} ฿` : '-';
-                                })()
-                              }</div>
-                              <div><span className="font-medium">ส่วนลด:</span> {
-                                (() => {
-                                  const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
-                                  const discount = typeof found?.discount === 'number' ? found.discount : selectedRowData.selectedVendor.discount;
-                                  return discount ? `${discount}%` : '0%';
-                                })()
-                              }</div>
-                              {/* <div><span className="font-medium">วันที่ส่งมอบ:</span> {selectedRowData.selectedVendor.due_date ? new Date(selectedRowData.selectedVendor.due_date).toLocaleDateString('th-TH') : '-'}</div> */}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ข้อมูลสรุป */}
-                        <div className={`bg-gradient-to-r p-4 rounded-lg border ${isDarkMode ? 'from-orange-900/50 to-amber-900/50 border-orange-700/60' : 'from-orange-50 to-amber-50 border-orange-200/60'}`}>
-                          <h4 className={`font-semibold mb-3 ${isDarkMode ? 'text-orange-400' : 'text-orange-700'}`}>ผลสรุป</h4>
-                          {compareData ? (
-                            <div className={`spacey-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                              <div>
-                                <span className="font-medium">ผู้ร้องขอ:</span>
-                                <span className={`ml-2 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{compareData.requester_name || 'ไม่ระบุ'}</span>
+                        {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}
+                        <div className="space-y-4">
+                          {selectedRowData.selectedVendor && (
+                            <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                              <div className="flex items-center space-x-2 mb-4">
+                                <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
+                                  <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  </svg>
+                                </div>
+                                <h4 className={`text-lg font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>ข้อมูลผู้ขาย</h4>
                               </div>
-
-                              <div>
-                                <span className="font-medium">ผู้จัดทำ:</span>
-                                <span className={`ml-2 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{compareData.pu_responsible || 'ไม่ระบุ'}</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className={`text-sm p-3 rounded border ${isDarkMode ? 'text-orange-400 bg-orange-900/30 border-orange-700/50' : 'text-orange-600 bg-orange-100/50 border-orange-200'}`}>
-                              <div className="flex items-center space-x-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m-1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span>ไม่มีข้อมูลรายชื่อผู้เกี่ยวข้อง</span>
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>รหัสผู้ขาย</label>
+                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{selectedRowData.selectedVendor.vendor_code || '-'}</div>
+                                  </div>
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เครดิต</label>
+                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{selectedRowData.selectedVendor.credit_term || '-'}</div>
+                                  </div>
+                                </div>
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ชื่อผู้ขาย</label>
+                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{selectedRowData.selectedVendor.vendor_name || '-'}</div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>เบอร์โทร</label>
+                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{selectedRowData.selectedVendor.tel || '-'}</div>
+                                  </div>
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>อีเมล</label>
+                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'} truncate`}>{selectedRowData.selectedVendor.email || '-'}</div>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ราคา</label>
+                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{
+                                      (() => {
+                                        const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
+                                        const price = typeof found?.price === 'number' ? found.price : selectedRowData.selectedVendor.price;
+                                        return price ? `${price.toLocaleString()} ฿` : '-';
+                                      })()
+                                    }</div>
+                                  </div>
+                                  <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
+                                    <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{
+                                      (() => {
+                                        const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
+                                        const discounts = Array.isArray(found?.discounts) ? found.discounts : (Array.isArray(selectedRowData.selectedVendor.discount) ? selectedRowData.selectedVendor.discount : [0]);
+                                        return discounts && discounts.length > 0 ? discounts.map(d => `${d}%`).join(', ') : '0%';
+                                      })()
+                                    }</div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           )}
-                        </div>
-                      </div>
-
-                      {/* ช่องเหตุผลการเลือก */}
-                      <div className={`bg-gradient-to-br p-6 rounded-2xl border shadow-lg ${isDarkMode ? 'from-indigo-900/40 via-slate-800 to-purple-900/40 border-indigo-700/50' : 'from-indigo-50 via-white to-purple-50 border-indigo-200/50'}`}>
-                        <div className="flex items-center space-x-3 mb-4">
-                          <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}>
-                            <svg className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <h4 className={`text-lg font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>เหตุผลในการเลือกผู้ขาย</h4>
-                        </div>
-
-                        {/* Dropdown สำหรับเลือกเหตุผล */}
-                        <div className="mb-4">
-                          <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>
-                            เลือกเหตุผลหลัก
-                          </label>
-                          <select
-                            value={selectedReason}
-                            onChange={(e) => setSelectedReason(e.target.value)}
-                            className={`w-full p-4 border-2 rounded-xl focus:outline-none focus:ring-4 text-sm font-medium transition-all duration-200 appearance-none cursor-pointer ${isDarkMode ? 'border-indigo-600 bg-slate-800 text-slate-200 focus:border-indigo-400 focus:ring-indigo-900/30' : 'border-indigo-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-indigo-100'}`}
-                            style={{
-                              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
-                              backgroundPosition: 'right 1rem center',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundSize: '1.5em 1.5em'
-                            }}
-                          >
-                            <option value="">-- กรุณาเลือกเหตุผลในการเลือกผู้ขาย --</option>
-                            <option value="1">1. ราคาถูก มีสินค้าส่งมอบได้เลย</option>
-                            <option value="2">2. ราคาแพงกว่า แต่มีสินค้าส่งมอบและรอไม่ได้</option>
-                            <option value="3">3. มีผู้ขาย / ผู้ผลิตรายเดียว</option>
-                            <option value="4">4. ราคาแพงกว่า คุณภาพดีกว่า</option>
-                            <option value="5">5. ราคาเท่ากัน มีเครดิตยาวกว่า</option>
-                            <option value="6">6. ราคาแพงกว่า แต่ส่งให้ ไม่ต้องไปรับ</option>
-                            <option value="7">7. ราคาเท่ากัน ส่งเร็วกว่า (ส่งถึงที่)</option>
-                            <option value="8">8. ราคาแพงกว่า แต่เป็นชุดเดียวกัน แยกสั่งไม่ได้</option>
-                            <option value="9">9. ราคาเท่ากัน แบ่งสั่ง</option>
-                            <option value="10">10. ต้องการด่วน รอเทียบราคาไม่ได้</option>
-                          </select>
-                        </div>
-
-                        {/* Textarea สำหรับ "อื่นๆ" */}
-                        {selectedReason === "อื่นๆ" && (
-                          <div className={`p-4 bg-gradient-to-r rounded-xl border ${isDarkMode ? 'from-indigo-900/40 to-purple-900/40 border-indigo-700/50' : 'from-indigo-50 to-purple-50 border-indigo-200'}`}>
-                            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>
-                              กรุณาระบุเหตุผลเพิ่มเติม
-                            </label>
-                            <textarea
-                              className={`w-full min-h-[100px] p-4 border-2 rounded-xl resize-none focus:outline-none focus:ring-4 text-sm transition-all duration-200 ${isDarkMode ? 'border-indigo-600 bg-slate-800 text-slate-200 focus:border-indigo-400 focus:ring-indigo-900/30' : 'border-indigo-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-indigo-100'}`}
-                              placeholder="โปรดระบุเหตุผลในการเลือกผู้ขายรายนี้อย่างละเอียด..."
-                              rows={4}
-                            />
-                          </div>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className={`flex justify-end space-x-3 mt-6 pt-4 border-t ${isDarkMode ? 'border-indigo-700/50' : 'border-indigo-200'}`}>
-                          <button
-                            type="button"
-                            className={`px-6 py-2.5 border-2 rounded-xl transition-all duration-200 text-sm font-semibold ${isDarkMode ? 'bg-slate-800 text-indigo-400 border-indigo-600 hover:bg-slate-700 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'}`}
-                            onClick={() => setSelectedReason("")}
-                          >
-                            ล้างการเลือก
-                          </button>
-                          <button
-                            type="button"
-                            className={`px-6 py-2.5 bg-gradient-to-r text-white rounded-xl transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900' : 'from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'}`}
-                            disabled={!selectedReason}
-                            onClick={() => handleSubmit()}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>บันทึกเหตุผล</span>
+                          <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
+                            <div className="flex items-center space-x-2 mb-4">
+                              <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-900/50' : 'bg-orange-100'}`}>
+                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                              <h4 className={`text-lg font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-700'}`}>สถานะและข้อมูลเพิ่มเติม</h4>
                             </div>
-                          </button>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
+                                  <div className="relative w-full">
+                                    <DatePicker
+                                      selected={deliveryDate ? new Date(deliveryDate) : (
+                                        Array.isArray(selectedRowData.recent_purchase) && selectedRowData.recent_purchase.length > 0 && (selectedRowData.recent_purchase[0] as { date?: string })?.date
+                                          ? new Date((selectedRowData.recent_purchase[0] as { date: string }).date)
+                                          : (!Array.isArray(selectedRowData.recent_purchase) && (selectedRowData.recent_purchase as { date?: string })?.date)
+                                            ? new Date((selectedRowData.recent_purchase as { date: string }).date)
+                                            : null
+                                      )}
+                                      onChange={handleDeliveryDateChange}
+                                      dateFormat="dd/MM/yyyy"
+                                      placeholderText="เลือกวันที่"
+                                      className={`px-3 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-slate-300 bg-white text-slate-800 focus:ring-orange-500 focus:border-orange-500'}`}
+                                      calendarClassName="!bg-white !border-2 !border-orange-200 !shadow-2xl !rounded-2xl"
+                                      popperClassName="z-[9999]"
+                                      popperPlacement="bottom-start"
+                                    />
+                                    <span className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
+                                      <FaRegCalendarAlt className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-500'}`} />
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    วันที่ต้องการใช้สินค้า
+                                    {(() => {
+                                      let purchaseDate = null;
+                                      if (selectedRowData.recent_purchase) {
+                                        if (Array.isArray(selectedRowData.recent_purchase) && selectedRowData.recent_purchase.length > 0) {
+                                          purchaseDate = selectedRowData.recent_purchase[0].date;
+                                        } else if (!Array.isArray(selectedRowData.recent_purchase) && (selectedRowData.recent_purchase as any).date) {
+                                          purchaseDate = (selectedRowData.recent_purchase as any).date;
+                                        }
+                                      }
+                                      return purchaseDate ? (
+                                        <span className={`ml-2 text-[11px] font-normal ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
+                                          {/* (ล่าสุด: {new Date(purchaseDate).toLocaleDateString('th-TH')}) */}
+                                        </span>
+                                      ) : null;
+                                    })()}
+                                  </label>
+                                  <div className={`px-3 py-2 border rounded-lg text-sm text-center ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200' : 'border-slate-300 bg-white text-slate-800'}`}>
+                                    {(() => {
+                                      let purchaseDate = null;
+                                      if (selectedRowData.recent_purchase) {
+                                        if (Array.isArray(selectedRowData.recent_purchase) && selectedRowData.recent_purchase.length > 0) {
+                                          purchaseDate = selectedRowData.recent_purchase[0].date;
+                                        } else if (!Array.isArray(selectedRowData.recent_purchase) && (selectedRowData.recent_purchase as any).date) {
+                                          purchaseDate = (selectedRowData.recent_purchase as any).date;
+                                        }
+                                      }
+                                      return purchaseDate ? new Date(purchaseDate).toLocaleDateString('th-TH') : '-';
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                <label className={`block text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
+                                <div className={`px-3 py-2 border rounded-lg text-sm text-center ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200' : 'border-slate-300 bg-white text-slate-800'}`}>
+                                  {selectedRowData.date_compare ? (() => {
+                                    // ดึงเฉพาะวันที่จาก string เช่น "2025-10-13T04:01:38Z" => "2025-10-13"
+                                    const dateStr = selectedRowData.date_compare.split('T')[0];
+                                    const [year, month, day] = dateStr.split('-');
+                                    // แปลงเป็นวันที่ไทยเอง (dd/mm/yyyy) เพื่อเลี่ยง timezone shift
+                                    return `${Number(day)}/${Number(month)}/${Number(year) + 543}`;
+                                  })() : '-'}
+                                </div>
+                              </div>
+                              {compareData?.requester_name && (
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ผู้ร้องขอ</label>
+                                  <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{compareData.requester_name}</div>
+                                </div>
+                              )}
+                              {compareData?.pu_responsible && (
+                                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                                  <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ผู้จัดทำ</label>
+                                  <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{compareData.pu_responsible}</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

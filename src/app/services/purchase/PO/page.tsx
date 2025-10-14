@@ -103,7 +103,7 @@ export default function PurchaseOrderPage() {
     // รวม POCard ทั้งหมดจากทุก PoDocs
     const allPoCards: POCard[] = poCards.map(doc => doc.po);
     let displayedPoCards = allPoCards;
-    
+
     // NEWEST or OLDEST sort
     if (sortBy === 'newest') {
         displayedPoCards = [...displayedPoCards].sort((a, b) => {
@@ -140,6 +140,19 @@ export default function PurchaseOrderPage() {
             return extract(a.po_no) - extract(b.po_no);
         });
     }
+    // Status filter
+    if (statusFilter) {
+        displayedPoCards = displayedPoCards.filter(po => {
+            if (statusFilter === 'rejected') {
+                return po.rejected_by;
+            } else if (statusFilter === 'processing') {
+                return po.issued_by;
+            } else if (statusFilter === 'complete') {
+                return po.approved_by;
+            }
+            return true;
+        });
+    }
 
     // NOTE: Pagination states
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -152,6 +165,10 @@ export default function PurchaseOrderPage() {
     const actualStartIndex = currentPage === 1 ? 0 : startIndex; // -1 because first page has create card
     const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
     const paginatedPoCards = displayedPoCards.slice(actualStartIndex, actualEndIndex);
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [departmentFilter, statusFilter, search, sortBy]);
 
     // Format ISO date to DD/MM/YYYY
     function formatISOToDisplay(iso: string) {
@@ -204,6 +221,16 @@ export default function PurchaseOrderPage() {
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
                 });
 
+                if (responsePO.status === 401) {
+                    setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+                    document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    router.push("/login");
+                    return;
+                }
+                if (!responsePO.ok) {
+                    throw new Error(`HTTP ${responsePO.status}: ${responsePO.statusText}`);
+                }
+
                 // ถ้ามี search ให้ใช้ API search-pr
                 // if (search && search.trim() !== "") {
                 //     url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
@@ -219,25 +246,13 @@ export default function PurchaseOrderPage() {
                 // }
 
                 // const response = await fetch(url, fetchOptions);
-                if (responsePO.status === 401) {
-                    setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
-                    document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    router.push("/login");
-                    return;
-                }
-                if (!responsePO.ok) {
-                    throw new Error(`HTTP ${responsePO.status}: ${responsePO.statusText}`);
-                }
-
                 const data = await responsePO.json();
                 console.log("Fetched PO data:", data);
                 let posArray = Array.isArray(data.poDocs) ? data.poDocs : [];
-                setPoCards(posArray);
 
-                //Filter by date range
+                //Filter by date range BEFORE setPoCards
                 if (dateRange && dateRange.start && dateRange.end) {
                     posArray = posArray.filter((doc: PoDocs) => {
-                        // ตรวจสอบ PO ใน doc.po object
                         if (!doc.po.po_date) return false;
                         const poDate = new Date(doc.po.po_date);
                         const startDate = new Date(dateRange.start);
@@ -247,6 +262,7 @@ export default function PurchaseOrderPage() {
                         return poDate >= startDate && poDate <= endDate;
                     });
                 }
+                setPoCards(posArray);
                 console.log("Filtered PO cards:", posArray.length, "items");
             } catch (error: unknown) {
                 console.error("Failed to fetch PO cards:", error);
@@ -621,24 +637,6 @@ export default function PurchaseOrderPage() {
                                             ทุกสถานะ
                                         </li>
                                         <li
-                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'supervisor' ? (isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800') : (isDarkMode ? 'text-slate-300 hover:bg-blue-900/20 hover:text-blue-200' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800')}`}
-                                            onClick={() => { setStatusFilter('supervisor'); }}
-                                        >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอหัวหน้าแผนกอนุมัติ</span>
-                                        </li>
-                                        <li
-                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
-                                            onClick={() => { setStatusFilter('manager'); }}
-                                        >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอผู้จัดการแผนกอนุมัติ</span>
-                                        </li>
-                                        <li
-                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
-                                            onClick={() => { setStatusFilter('pu'); }}
-                                        >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอแผนกจัดซื้ออนุมัติ</span>
-                                        </li>
-                                        <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'processing' ? (isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800') : (isDarkMode ? 'text-slate-300 hover:bg-yellow-900/20 hover:text-yellow-200' : 'text-gray-700 hover:bg-yellow-50 hover:text-yellow-800')}`}
                                             onClick={() => { setStatusFilter('processing'); }}
                                         >
@@ -648,7 +646,7 @@ export default function PurchaseOrderPage() {
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'complete' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
                                             onClick={() => { setStatusFilter('complete'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>เสร็จสมบูรณ์</span>
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>อนุมัติเสร็จสิ้น</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'rejected' ? (isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-50 text-red-800') : (isDarkMode ? 'text-slate-300 hover:bg-red-900/20 hover:text-red-200' : 'text-gray-700 hover:bg-red-50 hover:text-red-800')}`}

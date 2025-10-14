@@ -20,8 +20,10 @@ import { IoIosCheckmark } from "react-icons/io";
 import { FaRegClock } from "react-icons/fa6";
 
 type Part = {
+    pcl_id: number;
     pr_list_id: number;
     part_no: string;
+    prod_code: string;
     part_name: string;
     qty: number;
     unit: string;
@@ -30,7 +32,7 @@ type Part = {
     plant: string;
     vendor: string;
     price_per_unit: number;
-    ordered: boolean;
+    ordered: string;
 };
 
 // เปลี่ยน type PRs เป็น object
@@ -77,6 +79,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [selectedPart, setSelectedPart] = useState<Part | null>(null);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectPrNo, setRejectPrNo] = useState<string | null>(null);
+    const [selectedParts, setSelectedParts] = useState<number[]>([]);
+    const [multiApprovalModalOpen, setMultiApprovalModalOpen] = useState(false);
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -94,6 +98,28 @@ function ComparePriceContent({ token }: { token: string | null }) {
         console.log("PR Data:", prData);
     };
 
+    // Check if any parts have "Compared" status
+    const hasComparedParts = prData?.pr_lists?.some(part => part.ordered === 'Compared') || false;
+
+    // Handle checkbox selection
+    const handlePartSelection = (pclId: number, checked: boolean) => {
+        if (checked) {
+            setSelectedParts(prev => [...prev, pclId]);
+        } else {
+            setSelectedParts(prev => prev.filter(id => id !== pclId));
+        }
+    };
+
+    // Handle select all checkbox
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            const comparedParts = prData?.pr_lists?.filter(part => part.ordered === 'Compared').map(part => part.pcl_id) || [];
+            setSelectedParts(comparedParts);
+        } else {
+            setSelectedParts([]);
+        }
+    };
+
     // Function to refresh data after PO creation
     const handleRefreshData = async () => {
         if (!prId || !token) return;
@@ -106,6 +132,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
             if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
             const data = await response.json();
             setPrData(data.data);
+            // Reset selections when data refreshes
+            setSelectedParts([]);
             console.log("Refreshed PR Data:", data.data);
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -221,6 +249,51 @@ function ComparePriceContent({ token }: { token: string | null }) {
             setRejectPrNo(null);
         }
     };
+
+    const handleMultiApprove = async () => {
+        if (!selectedParts || selectedParts.length === 0) {
+            alert('กรุณาเลือกรายการที่ต้องการอนุมัติ');
+            return;
+        }
+        // Log selected part_no and pcl_id
+        // if (prData?.pr_lists) {
+        //     const selectedInfo = prData.pr_lists
+        //         .filter(part => selectedParts.includes(part.pcl_id))
+        //         .map(part => `part_no: ${part.part_no}, pcl_id: ${part.pcl_id}`);
+        //     console.log('Selected for multi-approve:', selectedInfo);
+        // }
+        let successCount = 0;
+        let errorCount = 0;
+        let errorDetails: string[] = [];
+        for (const pcl_id of selectedParts) {
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${pcl_id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                if (res.ok) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                    const errorText = await res.text();
+                    errorDetails.push(`ID ${pcl_id}: ${errorText || 'Unknown error'}`);
+                }
+            } catch (err) {
+                errorCount++;
+                errorDetails.push(`ID ${pcl_id}: ${err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล'}`);
+            }
+        }
+        let message = `อนุมัติสำเร็จ ${successCount} รายการ`;
+        if (errorCount > 0) {
+            message += `, ล้มเหลว ${errorCount} รายการ\nรายละเอียด:\n${errorDetails.join('\n')}`;
+        }
+        alert(message);
+        setMultiApprovalModalOpen(false);
+        await handleRefreshData();
+    }
 
     if (loading) return <div>กำลังโหลดข้อมูล...</div>;
     if (error) return <div style={{ color: "red" }}>{error}</div>;
@@ -390,13 +463,25 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 }
                                             </span>
                                         </div>
-                                        <button
-                                            type="button"
-                                            className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
-                                            onClick={() => router.push("/services/purchase")}
-                                        >
-                                            เลือก PR ใหม่
-                                        </button>
+                                        <div className="flex items-center gap-3">
+                                            {/* Multi Approval Button - Show only when parts are selected */}
+                                            {selectedParts.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-sky-400 bg-sky-900/30 border-sky-600/30 hover:bg-sky-800/50' : 'text-sky-700 bg-sky-50 border-sky-300 hover:bg-sky-100'}`}
+                                                    onClick={() => setMultiApprovalModalOpen(true)}
+                                                >
+                                                    อนุมัติหลายรายการ ({selectedParts.length})
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
+                                                onClick={() => router.push("/services/purchase")}
+                                            >
+                                                เลือก PR ใหม่
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {/* แสดงเหตุผลการปฏิเสธในส่วนหัวตาราง */}
@@ -419,18 +504,36 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <table className="min-w-full text-sm overflow-visible">
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
+                                            {hasComparedParts && (
+                                                <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        className={`w-4 h-4 rounded border-2 transition-all duration-200 cursor-pointer ${
+                                                            isDarkMode 
+                                                                ? 'border-slate-500 bg-slate-700 text-sky-400 focus:ring-2 focus:ring-sky-400/50 checked:bg-sky-500 checked:border-sky-500' 
+                                                                : 'border-gray-300 bg-white text-sky-600 focus:ring-2 focus:ring-sky-500/50 checked:bg-sky-600 checked:border-sky-600'
+                                                        }`}
+                                                        checked={
+                                                            prData?.pr_lists?.filter(part => part.ordered === 'Compared').length > 0 &&
+                                                            prData?.pr_lists?.filter(part => part.ordered === 'Compared').every(part => selectedParts.includes(part.pcl_id))
+                                                        }
+                                                        onChange={(e) => handleSelectAll(e.target.checked)}
+                                                    />
+                                                </th>
+                                            )}
                                             {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
                                                 <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
                                             )}
                                             <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
-                                            <th className={`px-2 py-3 text-right font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
+                                            <th className={`px-2 py-3 text-right font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
                                         </tr>
                                     </thead>
@@ -444,39 +547,106 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     }
                                                 }}
                                             >
+                                                {hasComparedParts && (
+                                                    <td className={`px-2 py-3 text-center w-12`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            className={`w-4 h-4 rounded border-2 transition-all duration-200 ${
+                                                                part.ordered !== 'Compared'
+                                                                    ? 'cursor-not-allowed opacity-40 border-gray-300 bg-gray-100'
+                                                                    : isDarkMode 
+                                                                        ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked:border-blue-500 hover:border-blue-400' 
+                                                                        : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked:border-blue-600 hover:border-blue-400'
+                                                            }`}
+                                                            disabled={part.ordered !== 'Compared'}
+                                                            checked={selectedParts.includes(part.pcl_id)}
+                                                            onChange={(e) => {
+                                                                e.stopPropagation();
+                                                                handlePartSelection(part.pcl_id, e.target.checked);
+                                                            }}
+                                                        />
+                                                    </td>
+                                                )}
                                                 {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
                                                     <td className={`px-2 py-3 text-center w-16`}>
                                                         <div className="flex items-center justify-center">
-                                                            {part.ordered ? (
-                                                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center ${isDarkMode ? 'bg-green-900/30 border-green-700/50' : 'bg-green-100 border-green-300'}`}>
-                                                                    <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
-                                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
-                                                                </div>
-                                                            ) : (
-                                                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-300'}`}>
-                                                                    <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
-                                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
-                                                                </div>
-                                                            )}
+                                                            {(() => {
+                                                                switch (part.ordered) {
+                                                                    case 'pending':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-yellow-900/60 via-yellow-800/50 to-yellow-900/60 border-yellow-700/60' : 'from-yellow-50 via-yellow-100 to-yellow-50 border-yellow-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Compared':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-blue-900/60 via-blue-800/50 to-blue-900/60 border-blue-700/60' : 'from-blue-50 via-blue-100 to-blue-50 border-blue-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>compared</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Approved':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-green-900/60 via-green-800/50 to-green-900/60 border-green-700/60' : 'from-green-50 via-green-100 to-green-50 border-green-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Rejected':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>rejected</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'PO Created':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-teal-900/60 via-teal-800/50 to-teal-900/60 border-teal-700/60' : 'from-teal-50 via-teal-100 to-teal-50 border-teal-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-teal-400' : 'bg-teal-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>po created</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Po Approved':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-purple-900/60 via-purple-800/50 to-purple-900/60 border-purple-700/60' : 'from-purple-50 via-purple-100 to-purple-50 border-purple-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>po approved</span>
+                                                                            </div>
+                                                                        );
+                                                                    default:
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-gray-900/50 via-gray-800/40 to-gray-900/50 border-gray-700/50' : 'from-gray-50 via-gray-100 to-gray-50 border-gray-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-gray-400' : 'bg-gray-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{part.ordered || '-'}</span>
+                                                                            </div>
+                                                                        );
+                                                                }
+                                                            })()}
                                                         </div>
                                                     </td>
                                                 )}
                                                 <td className={`px-2 py-3 text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
                                                 <td className={`px-2 py-3 font-medium w-32 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.part_no}</td>
+                                                <td className={`px-2 py-3 font-medium w-32 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.prod_code}</td>
                                                 <td className={`px-2 py-3 w-64 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.part_name}</td>
                                                 <td className={`px-2 py-3 w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.objective}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.qty}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.unit}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.vendor}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.stock}</td>
-                                                <td className={`px-2 py-3 w-20 text-right ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
+                                                <td className={`px-2 py-3 w-16 text-right ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.plant}</td>
                                             </tr>
                                         ))}
                                         {/* Pagination row */}
                                         {totalRows > rowsPerPage && (
                                             <tr>
-                                                <td colSpan={prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve ? 9 : 8} className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
+                                                <td colSpan={
+                                                    (hasComparedParts ? 1 : 0) +
+                                                    (prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve ? 1 : 0) +
+                                                    11
+                                                } className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
                                                     <div className="inline-flex items-center gap-2">
                                                         <button
                                                             type="button"
@@ -525,6 +695,100 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             onConfirm={handleConfirmReject}
                             prNo={rejectPrNo}
                         />
+
+                        {/* Multi Approval Modal */}
+                        {multiApprovalModalOpen && prData && (
+                            <div
+                                className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                                onClick={() => setMultiApprovalModalOpen(false)}
+                            >
+                                <div
+                                    className={`rounded-2xl shadow-2xl border p-0 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    {/* Header */}
+                                    <div className={`px-6 py-4 border-b ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
+                                        <div className="flex items-center justify-between">
+                                            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>
+                                                อนุมัติหลายรายการ
+                                            </h2>
+                                            <button
+                                                type="button"
+                                                className={`p-2 rounded-lg hover:bg-gray-100 ${isDarkMode ? 'hover:bg-slate-700 text-slate-400' : 'text-gray-500'}`}
+                                                onClick={() => setMultiApprovalModalOpen(false)}
+                                            >
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="p-6 max-h-[60vh] overflow-y-auto">
+                                        <div className={`text-sm mb-4 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                                            รายการที่เลือกสำหรับการอนุมัติ ({selectedParts.length} รายการ)
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {prData.pr_lists
+                                                ?.filter(part => selectedParts.includes(part.pcl_id))
+                                                .map((part, idx) => (
+                                                    <div key={part.pcl_id} className={`p-4 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-4">
+                                                                    <span className={`text-sm font-mono px-2 py-1 rounded ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                                                                        {idx + 1}
+                                                                    </span>
+                                                                    <div>
+                                                                        <div className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>
+                                                                            {part.part_no}
+                                                                        </div>
+                                                                        <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                                                                            {part.part_name}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                                                    จำนวน: {part.qty} {part.unit}
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 mt-1">
+                                                                    <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
+                                                                    <span className={`text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>Compared</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            }
+                                        </div>
+                                    </div>
+
+                                    {/* Footer */}
+                                    <div className={`px-6 py-4 border-t ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
+                                        <div className="flex items-center justify-end gap-3">
+                                            <button
+                                                type="button"
+                                                className={`px-4 py-2 rounded-lg border font-medium ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                                onClick={() => setMultiApprovalModalOpen(false)}
+                                            >
+                                                ยกเลิก
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`px-6 py-2 rounded-lg font-medium text-white ${isDarkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'}`}
+                                                onClick={handleMultiApprove}
+                                            >
+                                                อนุมัติ ({selectedParts.length} รายการ)
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className={`p-8 text-center ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>กรุณาเลือก PR จากหน้าแรก</div>

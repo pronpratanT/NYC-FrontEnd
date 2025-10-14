@@ -375,14 +375,7 @@ export default function ReviewedPOPage() {
                                     <div className={`text-center p-6 rounded-xl ${isDarkMode ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20' : 'bg-gradient-to-br from-green-100 to-emerald-100 border border-green-200'}`}>
                                         <p className={`text-xs font-medium mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>ยอดรวมสุทธิ</p>
                                         <p className={`text-4xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
-                                            {(() => {
-                                                const sumAmount = poData.po_lists?.reduce((acc, item) => acc + (item.amount || 0), 0) || 0;
-                                                const discount = poData.ext_discount || 0;
-                                                const afterDiscount = sumAmount - discount;
-                                                const vat = afterDiscount * 0.07;
-                                                const totalAmount = afterDiscount + vat;
-                                                return `฿${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                            })()}
+                                            ฿{(poData.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </p>
                                     </div>
 
@@ -403,7 +396,7 @@ export default function ReviewedPOPage() {
                                         <div className="flex justify-between items-center">
                                             <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ราคาหลังหักส่วนลด</span>
                                             <span className={`text-sm font-bold ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
-                                                ฿{(poData.total_minus_discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                ฿{(poData.sub_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
