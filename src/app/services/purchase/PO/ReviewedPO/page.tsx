@@ -8,6 +8,8 @@ import Sidebar from "@/app/components/sidebar";
 import Header from "@/app/components/header";
 import { useTheme } from "@/app/components/ThemeProvider";
 import ApprovePOModal from "@/app/components/Modal/Approve_PO";
+import POModal from "@/app/components/Modal/POModal";
+import EditVendor from '@/app/components/Modal/EditVendor';
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -30,6 +32,7 @@ type ReviewedPO = {
     vat: number;
     total_minus_discount: number;
     total: number;
+    vendor_id: number;
     vendor_code: string;
     vendor_name: string;
     tax_id: string;
@@ -52,9 +55,24 @@ type POList = {
     qty: number;
     unit: string;
     unit_price: number;
-    discount: number;
+    discount: [];
     amount: number;
 }
+
+type VendorSelected = {
+  ID: number;
+  vendor_code: string;
+  vendor_name: string;
+  tax_id: string | null;
+  credit_term: string;
+  tel_no: string;
+  fax_no: string;
+  contact_person: string;
+  email: string;
+}
+
+// Type สำหรับ vendor ที่เลือก
+// type VendorSelected = { ... } // เพิ่ม type ตามที่ใช้งานจริง
 
 export default function ReviewedPOPage() {
     // components
@@ -82,6 +100,14 @@ export default function ReviewedPOPage() {
     // Modal
     const [showApproveModal, setShowApproveModal] = useState(false);
     // const [approveReason, setApproveReason] = useState(""); // Removed unused variables
+
+    // Modal สำหรับแสดงรายละเอียดสินค้า
+    const [showPOModal, setShowPOModal] = useState(false);
+    const [selectedPart, setSelectedPart] = useState<any>(null);
+
+    // State สำหรับ modal EditVendor
+    const [showEditVendor, setShowEditVendor] = useState(false);
+    const [editVendorData, setEditVendorData] = useState<any>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -168,6 +194,11 @@ export default function ReviewedPOPage() {
         }
     };
 
+    const handleEditVendor = (vendor: VendorSelected) => {
+        setEditVendorData(vendor);
+        setShowEditVendor(true);
+    };
+
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
     if (error) return <div className="flex items-center justify-center min-h-screen"><div className="text-lg text-red-500">{error}</div></div>;
 
@@ -242,12 +273,37 @@ export default function ReviewedPOPage() {
                             <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Vendor Information Card */}
                                 <div className={`rounded-xl border shadow-sm hover:shadow-md transition-shadow ${isDarkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
-                                    <div className={`px-5 py-4 border-b ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                                    <div className={`px-5 py-4 border-b flex justify-between ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
                                                 <LuBriefcaseBusiness className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                                             </div>
                                             <h3 className={`font-semibold text-lg ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>ข้อมูลผู้ขาย</h3>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 border font-semibold ${isDarkMode ? 'bg-blue-500/10 border-blue-700 text-blue-400 hover:bg-blue-700/30 hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white'}`}
+                                                title="แก้ไขข้อมูลผู้ขาย"
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    setEditVendorData({
+                                                        ID: poData.vendor_id,
+                                                        vendor_code: poData.vendor_code,
+                                                        vendor_name: poData.vendor_name,
+                                                        tax_id: poData.tax_id ?? null,
+                                                        credit_term: poData.credit_term,
+                                                        tel_no: poData.tel_no,
+                                                        fax_no: poData.fax_no ?? '',
+                                                        contact_person: poData.contact_name ?? '',
+                                                        email: poData.email ?? '',
+                                                    });
+                                                    setShowEditVendor(true);
+                                                }}
+                                            >
+                                                <FaRegEdit className="h-5 w-5" />
+                                                <span className="sr-only">Edit Vendor Information</span>
+                                            </button>
                                         </div>
                                     </div>
                                     <div className="p-5 space-y-3">
@@ -457,12 +513,13 @@ export default function ReviewedPOPage() {
                                     <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-gray-200'}`}>
                                         {pagedParts.map((part, idx) => (
                                             <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
-                                                className={`transition-colors duration-150 ${isDarkMode ? 'hover:bg-slate-700/30' : 'hover:bg-green-50/50'}`}
+                                                className={`transition-colors duration-150 cursor-pointer ${isDarkMode ? 'hover:bg-slate-700/30' : 'hover:bg-green-50/50'}`}
+                                                onClick={() => { setSelectedPart(part); setShowPOModal(true); }}
                                             >
                                                 <td className={`px-4 py-4 text-center text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                     {(page - 1) * rowsPerPage + idx + 1}
                                                 </td>
-                                                <td className={`px-4 py-4 text-sm font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                                                <td className={`px-4 py-4 text-sm font-semibold ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>
                                                     {part.part_no}
                                                 </td>
                                                 <td className={`px-4 py-4 text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
@@ -471,20 +528,47 @@ export default function ReviewedPOPage() {
                                                 <td className={`px-4 py-4 text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
                                                     {part.part_name}
                                                 </td>
-                                                <td className={`px-4 py-4 text-center text-sm font-semibold ${isDarkMode ? 'text-rose-300' : 'text-rose-700'}`}>
+                                                <td className={`px-4 py-4 text-center text-sm font-semibold ${isDarkMode ? 'text-sky-300' : 'text-sky-700'}`}>
                                                     {part.pr_no}
                                                 </td>
-                                                <td className={`px-4 py-4 text-center text-sm font-semibold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                                                <td className={`px-4 py-4 text-center text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
                                                     {part.qty}
                                                 </td>
                                                 <td className={`px-4 py-4 text-center text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                                                     {part.unit}
                                                 </td>
-                                                <td className={`px-4 py-4 text-right text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                                <td className={`px-4 py-4 text-right text-sm font-semibold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
                                                     ฿{part.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                 </td>
                                                 <td className={`px-4 py-4 text-center text-sm ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
-                                                    {part.discount}%
+                                                    {Array.isArray(part.discount) && part.discount.length ? (
+                                                        <div
+                                                            className={`inline-block px-1 py-2 rounded-lg border shadow-sm group relative ${isDarkMode ? 'bg-yellow-950/60 border-yellow-900' : 'bg-yellow-50 border-yellow-200'}`}
+                                                            style={{ maxWidth: '100%', overflow: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word', cursor: 'pointer' }}
+                                                        >
+                                                            <div className="flex flex-col gap-1 justify-center items-center w-full">
+                                                                {Array.from({ length: Math.ceil(part.discount.length / 3) }, (_, rowIdx) => (
+                                                                    <div key={rowIdx} className="flex flex-row gap-1 justify-center items-center w-full">
+                                                                        {part.discount.slice(rowIdx * 3, rowIdx * 3 + 3).map((d, i) => (
+                                                                            <span
+                                                                                key={i}
+                                                                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shadow-sm flex-shrink-0 ${isDarkMode ? 'bg-yellow-900/80 text-yellow-300' : 'bg-yellow-100 text-yellow-700'}`}
+                                                                                style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
+                                                                            >
+                                                                                {d}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            {/* Tooltip ส่วนลดทั้งหมด */}
+                                                            <div
+                                                                className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10 opacity-0 group-hover:opacity-100 pointer-events-none bg-black/90 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg transition-opacity duration-200"
+                                                            >
+                                                                {part.discount.map(d => `${d}%`).join(', ')}
+                                                            </div>
+                                                        </div>
+                                                    ) : (part.discount ? `${part.discount}` : '-')}
                                                 </td>
                                                 <td className={`px-4 py-4 text-right text-sm font-bold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
                                                     ฿{part.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -543,6 +627,36 @@ export default function ReviewedPOPage() {
                     </div>
                 )}
             </main>
+
+            {/* Modal สำหรับรายละเอียดสินค้าและเพิ่ม remark/ของแถม */}
+            <POModal
+                open={showPOModal}
+                onClose={() => setShowPOModal(false)}
+                part={selectedPart}
+                onSubmit={({ remark, freebieQty }) => {
+                    // TODO: handle save remark/freebieQty (เชื่อมต่อ backend หรืออัพเดต state ตามต้องการ)
+                    setShowPOModal(false);
+                }}
+            />
+            {showEditVendor && (
+                <EditVendor
+                    vendorData={editVendorData ? {
+                        ...editVendorData,
+                        tax_id: editVendorData.tax_id ?? undefined,
+                        fax_no: editVendorData.fax_no ?? undefined,
+                        email: editVendorData.email ?? undefined,
+                        tel: editVendorData.tel_no ?? undefined,
+                        contact_name: editVendorData.contact_person ?? undefined,
+                    } : undefined}
+                    source="ReviewedPO"
+                    onCancel={() => setShowEditVendor(false)}
+                    onConfirm={() => {
+                        setShowEditVendor(false);
+                        if (typeof fetchData === 'function') fetchData();
+                        // setActiveTab('compare'); // ถ้ามี tab ให้ใช้งาน
+                    }}
+                />
+            )}
         </div>
     );
 }

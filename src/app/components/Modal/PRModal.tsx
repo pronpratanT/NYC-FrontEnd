@@ -226,6 +226,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     return !!matchingPR;
   }, [compareData, prNumber]);
 
+
   type SelectedRowData = Omit<InventoryItem, 'qty' | 'unit'> & {
     selectedVendor: CompareData;
     previousPurchase: RecentPurchase | null;
@@ -1995,7 +1996,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '100px' }} />
                         <col style={{ width: '180px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
                       </colgroup>
                       <thead>
@@ -2024,7 +2025,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '100px' }} />
                         <col style={{ width: '180px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
                       </colgroup>
                       <thead>
@@ -2038,7 +2039,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide border-r ${isDarkMode ? 'text-slate-200 border-gray-600' : 'text-slate-800 border-gray-200'}`}>PO.NO.</th>
                           <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ผู้ขาย</th>
                           <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ราคา</th>
-                          <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ส่วนลด</th>
+                          <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>ส่วนลด%</th>
                           <th className={`px-3 py-3 text-center font-bold text-xs uppercase tracking-wide ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>วันส่งมอบ</th>
                         </tr>
                       </thead>
@@ -2058,7 +2059,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '100px' }} />
                         <col style={{ width: '180px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
                       </colgroup>
                       <tbody className={`backdrop-blur-sm ${isDarkMode ? 'bg-slate-800/95' : 'bg-white/95'}`}>
@@ -2096,30 +2097,32 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     )}
                                   </td>
                                   <td className={`px-4 py-4 text-sm text-left font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.vendor_name || '-'}</td>
-                                  <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.price ? `${purchase.price.toLocaleString()}` : '-'} ฿</td>
+                                  <td className={`px-4 py-4 text-sm text-right font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.price ? `${purchase.price.toLocaleString()}` : '-'} ฿</td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                    {purchase.discount?.length ? (
-                                      <div
-                                        className={`inline-block px-1 py-2 rounded-lg border shadow-sm ${isDarkMode ? 'bg-emerald-950/60 border-emerald-900' : 'bg-emerald-50 border-emerald-200'}`}
-                                        style={{ maxWidth: '100%', overflow: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                                      >
-                                        <div className="flex flex-col gap-0.5 justify-center items-center w-full">
-                                          {Array.from({ length: Math.ceil((purchase.discount?.length ?? 0) / 3) }, (_, rowIdx) => (
-                                            <div key={rowIdx} className="flex flex-row gap-1 justify-center items-center w-full">
-                                              {(purchase.discount?.slice(rowIdx * 3, rowIdx * 3 + 3) ?? []).map((d, i) => (
-                                                <span
-                                                  key={i}
-                                                  className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shadow-sm flex-shrink-0 ${isDarkMode ? 'bg-emerald-900/80 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}
-                                                  style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
-                                                >
-                                                  {d}%
-                                                </span>
-                                              ))}
-                                            </div>
-                                          ))}
+                                    <div className="flex justify-center items-center w-full">
+                                      {purchase.discount?.length ? (
+                                        <div
+                                          className={`inline-block px-1 py-2 rounded-lg border shadow-sm ${isDarkMode ? 'bg-amber-950/60 border-amber-900' : 'bg-amber-50 border-amber-200'}`}
+                                          style={{ maxWidth: '100%', overflow: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                                        >
+                                          <div className="flex flex-col gap-0.5 justify-center items-center w-full">
+                                            {Array.from({ length: Math.ceil((purchase.discount?.length ?? 0) / 3) }, (_, rowIdx) => (
+                                              <div key={rowIdx} className="flex flex-row gap-1 justify-center items-center w-full">
+                                                {(purchase.discount?.slice(rowIdx * 3, rowIdx * 3 + 3) ?? []).map((d, i) => (
+                                                  <span
+                                                    key={i}
+                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shadow-sm flex-shrink-0 ${isDarkMode ? 'bg-amber-900/80 text-amber-300' : 'bg-amber-100 text-amber-700'}`}
+                                                    style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
+                                                  >
+                                                    {d}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            ))}
+                                          </div>
                                         </div>
-                                      </div>
-                                    ) : '-'}
+                                      ) : '-'}
+                                    </div>
                                   </td>
                                   <td className={`px-4 py-4 text-sm text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{purchase.date ? new Date(purchase.date).toLocaleDateString('th-TH', {
                                     year: 'numeric',
@@ -3206,6 +3209,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             tel: editVendorData.tel_no ?? undefined,
             contact_name: editVendorData.contact_person ?? undefined,
           } : undefined}
+          source="PRModal"
           onCancel={() => setShowEditVendor(false)}
           onConfirm={() => {
             setShowEditVendor(false);

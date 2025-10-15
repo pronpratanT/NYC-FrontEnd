@@ -1,10 +1,64 @@
 import React, { useState } from "react";
 import { useToken } from "../../context/TokenContext";
+import { useTheme } from "../ThemeProvider";
 
+// icon
+import { IoInformationCircleOutline } from "react-icons/io5";
+import { TbMail } from "react-icons/tb";
+
+// Custom scrollbar styles
+const scrollbarStyles = `
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #64748b #e2e8f0;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+    border-radius: 8px;
+    border: 2px solid #f8fafc;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background: #f8fafc;
+  }
+  
+  /* Hide scrollbar arrows/buttons */
+  .custom-scrollbar::-webkit-scrollbar-button {
+    display: none;
+  }
+  
+  /* Force scrollbar to always show */
+  .scrollbar-always {
+    overflow-y: scroll !important;
+    overflow-x: auto !important;
+  }
+`;
 
 interface EditVendorProps {
     vendorData?: Partial<{
-        vendor_id: number;
+        ID: number;
         vendor_code: string;
         vendor_name: string;
         contact_name: string;
@@ -16,49 +70,144 @@ interface EditVendorProps {
     }>;
     onConfirm?: (data: { vendorId: number; vendorCode: string; vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; tel: string; faxNo: string }) => void;
     onCancel?: () => void;
+    source?: 'ReviewedPO' | 'PRModal'; // เพิ่ม prop สำหรับระบุแหล่งที่มา
 }
 
 
-const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel }) => {
-    console.log('EditVendor received vendorData:', vendorData); // <--- log ข้อมูลที่รับเข้ามา
+const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel, source = 'ReviewedPO' }) => {
+    // console.log('EditVendor received vendorData:', vendorData); // <--- log ข้อมูลที่รับเข้ามา
     // state สำหรับแต่ละช่อง (เติมค่าเริ่มต้นจาก vendorData ถ้ามี)
-    const [vendorCode, setVendorCode] = useState(vendorData?.vendor_code || "");
+    const [vendorId, setVendorId] = useState(vendorData?.ID || 0);
     const [vendorName, setVendorName] = useState(vendorData?.vendor_name || "");
     const [contactName, setContactName] = useState(vendorData?.contact_name || "");
     const [taxId, setTaxId] = useState(vendorData?.tax_id || "");
     const [creditTerm, setCreditTerm] = useState(vendorData?.credit_term || "");
-    const [email, setEmail] = useState(vendorData?.email || "");
-    const [emailError, setEmailError] = useState<string>("");
-    const [telNo, setTelNo] = useState(vendorData?.tel || "");
-    const [faxNo, setFaxNo] = useState(vendorData?.fax_no || "");
+    // เปลี่ยนเป็น array สำหรับ multiple emails, tel numbers และ fax numbers
+    const [emails, setEmails] = useState<string[]>([vendorData?.email || ""]);
+    const [emailErrors, setEmailErrors] = useState<string[]>([""]);
+    const [telNos, setTelNos] = useState<string[]>([vendorData?.tel || ""]);
+    const [faxNos, setFaxNos] = useState<string[]>([vendorData?.fax_no || ""]);
     const token = useToken();
+    const { isDarkMode } = useTheme();
+
+    // กำหนดสีธีมตาม source
+    const themeColors = {
+        ReviewedPO: {
+            // ธีมสีฟ้า (blue theme)
+            header: isDarkMode
+                ? 'bg-gradient-to-r from-blue-800 via-indigo-800 to-blue-900'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600',
+            accent: isDarkMode ? 'bg-blue-400' : 'bg-blue-500',
+            focus: isDarkMode ? 'focus:ring-blue-500' : 'focus:ring-blue-500',
+            focusBorder: isDarkMode ? 'focus:border-blue-500' : 'focus:border-blue-500',
+            button: isDarkMode
+                ? 'bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 hover:from-blue-600 hover:via-indigo-600 hover:to-blue-700 focus:ring-blue-500'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:ring-blue-500'
+        },
+        PRModal: {
+            // ธีมสีม่วง (purple theme)
+            header: isDarkMode
+                ? 'bg-gradient-to-r from-indigo-800 via-purple-800 to-violet-900'
+                : 'bg-gradient-to-r from-purple-600 to-violet-600',
+            accent: isDarkMode ? 'bg-indigo-400' : 'bg-purple-500',
+            focus: isDarkMode ? 'focus:ring-indigo-500' : 'focus:ring-purple-500',
+            focusBorder: isDarkMode ? 'focus:border-indigo-500' : 'focus:border-purple-500',
+            button: isDarkMode
+                ? 'bg-gradient-to-r from-indigo-700 via-purple-700 to-violet-800 hover:from-indigo-600 hover:via-purple-600 hover:to-violet-700 focus:ring-indigo-500'
+                : 'bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 focus:ring-purple-500'
+        }
+    };
+
+    const currentTheme = themeColors[source];
 
     // sync state with vendorData when modal opens or vendorData changes
     React.useEffect(() => {
-        setVendorCode(vendorData?.vendor_code || "");
+        setVendorId(vendorData?.ID || 0);
         setVendorName(vendorData?.vendor_name || "");
         setContactName(vendorData?.contact_name || "");
         setTaxId(vendorData?.tax_id || "");
         setCreditTerm(vendorData?.credit_term || "");
-        setEmail(vendorData?.email || "");
-        setTelNo(vendorData?.tel || "");
-        setFaxNo(vendorData?.fax_no || "");
+        setEmails([vendorData?.email || ""]);
+        setEmailErrors([""]);
+        setTelNos([vendorData?.tel || ""]);
+        setFaxNos([vendorData?.fax_no || ""]);
     }, [vendorData]);
 
+    // ฟังก์ชันสำหรับจัดการ multiple emails
+    const addEmail = () => {
+        setEmails([...emails, ""]);
+        setEmailErrors([...emailErrors, ""]);
+    };
+
+    const removeEmail = (index: number) => {
+        if (emails.length > 1) {
+            setEmails(emails.filter((_, i) => i !== index));
+            setEmailErrors(emailErrors.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateEmail = (index: number, value: string) => {
+        const newEmails = [...emails];
+        const newErrors = [...emailErrors];
+
+        if (value.includes(",")) {
+            newErrors[index] = "ห้ามใส่เครื่องหมาย , ในอีเมล";
+        } else {
+            newErrors[index] = "";
+        }
+
+        newEmails[index] = value.replace(/,/g, "");
+        setEmails(newEmails);
+        setEmailErrors(newErrors);
+    };
+
+    // ฟังก์ชันสำหรับจัดการ multiple tel nos
+    const addTelNo = () => {
+        setTelNos([...telNos, ""]);
+    };
+
+    const removeTelNo = (index: number) => {
+        if (telNos.length > 1) {
+            setTelNos(telNos.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateTelNo = (index: number, value: string) => {
+        const newTelNos = [...telNos];
+        newTelNos[index] = value;
+        setTelNos(newTelNos);
+    };
+
+    // ฟังก์ชันสำหรับจัดการ multiple fax nos
+    const addFaxNo = () => {
+        setFaxNos([...faxNos, ""]);
+    };
+
+    const removeFaxNo = (index: number) => {
+        if (faxNos.length > 1) {
+            setFaxNos(faxNos.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateFaxNo = (index: number, value: string) => {
+        const newFaxNos = [...faxNos];
+        newFaxNos[index] = value;
+        setFaxNos(newFaxNos);
+    };
+
     // validation: ทุกช่องต้องไม่ว่าง
-    // const isValid = vendorCode.trim() && vendorName.trim() && contactName.trim() && taxId.trim() && creditTerm.trim() && email.trim() && telNo.trim() && faxNo.trim();
+    // const isValid = vendorName.trim() && contactName.trim() && taxId.trim() && creditTerm.trim() && emails[0].trim() && telNos[0].trim() && faxNos[0].trim();
 
     const handlerConfirm = async () => {
         const body = {
-            vendor_id: vendorData?.vendor_id,
-            vendor_code: vendorCode,
+            vendor_id: vendorData?.ID,
             vendor_name: vendorName,
             contact_name: contactName,
             tax_id: taxId,
             credit_term: creditTerm,
-            email: email,
-            tel_no: telNo,
-            fax_no: faxNo
+            email: emails.filter(e => e.trim()).join(", "), // รวม emails ที่ไม่ว่างด้วย comma
+            tel_no: telNos.filter(t => t.trim()).join(", "), // รวม tel nos ที่ไม่ว่างด้วย comma
+            fax_no: faxNos.filter(f => f.trim()).join(", ") // รวม fax nos ที่ไม่ว่างด้วย comma
         };
         // console.log("Token: ", token);
         // console.log("Submitting data:", body);
@@ -81,20 +230,20 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
             // ตรวจสอบทั้ง response.ok และ result.success หรือ result.status
             if (response.ok || result.success || result.status === 'success') {
                 if (onConfirm) onConfirm({
-                    vendorId: vendorData?.vendor_id ?? 0,
-                    vendorCode,
+                    vendorId: vendorData?.ID ?? 0,
+                    vendorCode: vendorData?.vendor_code || "",
                     vendorName,
                     contactName,
                     taxId,
                     creditTerm,
-                    email,
-                    tel: telNo,
-                    faxNo
+                    email: emails.filter(e => e.trim()).join(", "),
+                    tel: telNos.filter(t => t.trim()).join(", "),
+                    faxNo: faxNos.filter(f => f.trim()).join(", ")
                 });
                 alert('แก้ไข Vendor สำเร็จ');
                 if (onCancel) onCancel();
             } else {
-                throw new Error(result.message || 'Failed to add inventory');
+                throw new Error(result.message);
             }
         } catch (err: unknown) {
             console.error('Error:', err);
@@ -104,124 +253,372 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
     }
 
     return (
-        <div
-            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
-            onClick={e => {
-                // ถ้ากดที่พื้นหลัง (target === currentTarget) ให้ปิด modal
-                if (e.target === e.currentTarget && onCancel) onCancel();
-            }}
-        >
+        <>
+            <style>{scrollbarStyles}</style>
             <div
-                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 w-full max-w-md mx-auto border border-purple-300 dark:border-purple-700 flex flex-col gap-6"
-                onClick={e => e.stopPropagation()} // ป้องกัน modal ถูกปิดเมื่อกดใน modal
+                className={`fixed inset-0 z-[99999] flex items-center justify-center backdrop-blur-md ${isDarkMode
+                    ? 'bg-gradient-to-br from-gray-950/80 via-slate-900/70 to-gray-950/80'
+                    : 'bg-gradient-to-br from-slate-900/70 via-gray-900/60 to-slate-800/70'
+                    }`}
+                onClick={e => {
+                    // ถ้ากดที่พื้นหลัง (target === currentTarget) ให้ปิด modal
+                    if (e.target === e.currentTarget && onCancel) onCancel();
+                }}
             >
-                <div className="flex items-center gap-3 mb-2">
-                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30">
-                        <svg className="w-6 h-6 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2a4 4 0 014-4h2m4 4v2a4 4 0 01-4 4H7a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v2" /></svg>
-                    </span>
-                    <h2 className="text-xl font-bold text-purple-700 dark:text-purple-400">แก้ไขข้อมูล Vendor.</h2>
-                </div>
-                <form className="grid grid-cols-1 gap-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Vendor Code</label>
-                            <input
-                                type="text"
-                                className="w-full border-0 border-b border-purple-300 dark:border-purple-600 bg-transparent px-0 py-1 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 text-base dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500 transition-all"
-                                value={vendorCode}
-                                onChange={e => setVendorCode(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Vendor Name</label>
-                            <input
-                                type="text"
-                                className="w-full border-0 border-b border-purple-300 dark:border-purple-600 bg-transparent px-0 py-1 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 text-base dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500 transition-all"
-                                value={vendorName}
-                                onChange={e => setVendorName(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Contact Name</label>
-                            <input
-                                type="text"
-                                className="w-full border-0 border-b border-purple-300 dark:border-purple-600 bg-transparent px-0 py-1 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 text-base dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500 transition-all"
-                                value={contactName}
-                                onChange={e => setContactName(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Tax ID</label>
-                            <input
-                                type="text"
-                                className="w-full border-0 border-b border-purple-300 dark:border-purple-600 bg-transparent px-0 py-1 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 text-base dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500 transition-all"
-                                value={taxId}
-                                onChange={e => setTaxId(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Credit Term</label>
-                            <input
-                                type="text"
-                                className="w-full border-0 border-b border-purple-300 dark:border-purple-600 bg-transparent px-0 py-1 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 text-base dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500 transition-all"
-                                value={creditTerm}
-                                onChange={e => setCreditTerm(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Email</label>
-                            <input
-                                type="text"
-                                className={`w-full border-0 border-b bg-transparent px-0 py-1 focus:outline-none text-base transition-all 
-                                    border-purple-300 dark:border-purple-600 focus:border-purple-500 dark:focus:border-purple-400 dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500
-                                    ${emailError ? 'border-red-400 focus:border-red-500' : ''}`}
-                                value={email}
-                                onChange={e => {
-                                    const val = e.target.value;
-                                    if (val.includes(",")) {
-                                        setEmailError("ห้ามใส่เครื่องหมาย , ในอีเมล");
-                                    } else {
-                                        setEmailError("");
-                                    }
-                                    setEmail(val.replace(/,/g, ""));
-                                }}
-                            />
-                            {emailError && (
-                                <div className="text-xs text-red-500 mt-1">{emailError}</div>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Tel No.</label>
-                            <input
-                                type="text"
-                                className="w-full border-0 border-b border-purple-300 dark:border-purple-600 bg-transparent px-0 py-1 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 text-base dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500 transition-all"
-                                value={telNo}
-                                onChange={e => setTelNo(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-500 dark:text-slate-400">Fax No.</label>
-                            <input
-                                type="text"
-                                className="w-full border-0 border-b border-purple-300 dark:border-purple-600 bg-transparent px-0 py-1 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 text-base dark:text-slate-200 placeholder:text-gray-300 dark:placeholder:text-slate-500 transition-all"
-                                value={faxNo}
-                                onChange={e => setFaxNo(e.target.value)}
-                            />
+                <div
+                    className={`rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden ring-1 ${isDarkMode
+                        ? 'bg-gradient-to-br from-slate-900 to-slate-800 shadow-slate-900/50 border border-slate-600/50 ring-slate-700/50'
+                        : 'bg-white border border-slate-200 ring-slate-200/10'
+                        }`}
+                    onClick={e => e.stopPropagation()} // ป้องกัน modal ถูกปิดเมื่อกดใน modal
+                >
+                    {/* Header */}
+                    <div className={`px-6 py-4 relative overflow-hidden ${currentTheme.header}`}>
+                        <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-transparent opacity-50 ${isDarkMode ? 'via-white/5' : 'via-white/10'
+                            }`}></div>
+                        <div className="flex items-center justify-between relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-lg backdrop-blur-sm ${isDarkMode
+                                    ? 'bg-white/10 border border-white/20'
+                                    : 'bg-white/20 border border-white/30'
+                                    }`}>
+                                    <svg className="w-6 h-6 text-white drop-shadow-sm" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-semibold text-white drop-shadow-sm">แก้ไขข้อมูลผู้ขาย</h2>
+                                    <p className={`text-sm drop-shadow-sm ${isDarkMode ? 'text-indigo-200' : 'text-blue-100'
+                                        }`}>Edit Vendor Information</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={onCancel}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center text-white transition-all duration-200 hover:scale-105 ${isDarkMode
+                                    ? 'bg-white/10 hover:bg-white/20 border border-white/20'
+                                    : 'bg-white/20 hover:bg-white/30 border border-white/30'
+                                    }`}
+                            >
+                                <svg className="w-5 h-5 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                </form>
-                <div className="flex gap-2 justify-center mt-2">
-                    <button
-                        type="button"
-                        className="px-5 py-1 rounded-lg font-semibold bg-purple-500 hover:bg-purple-600 text-white transition-all duration-150 text-sm shadow-none"
-                        onClick={handlerConfirm}
-                        // disabled={!isValid}
-                    >
-                        บันทึก
-                    </button>
+
+                    {/* Content */}
+                    <div className={`p-6 max-h-[70vh] overflow-y-auto custom-scrollbar ${isDarkMode
+                        ? 'bg-gradient-to-br from-slate-800/50 to-slate-900/50'
+                        : 'bg-gradient-to-br from-slate-50 to-gray-50'
+                        }`}>
+                        <form className="space-y-8">
+                            {/* Basic Information Section */}
+                            <div>
+                                <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${isDarkMode
+                                    ? 'text-slate-200 border-slate-600/50'
+                                    : 'text-gray-800 border-gray-300'
+                                    }`}>
+                                    <span className="flex items-center gap-2">
+                                        <IoInformationCircleOutline className="h-5 w-5" />
+                                        ข้อมูลผู้ขาย
+                                    </span>
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Vendor Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={vendorName}
+                                            onChange={e => setVendorName(e.target.value)}
+                                            placeholder="กรอกชื่อผู้ขาย"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Contact Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={contactName}
+                                            onChange={e => setContactName(e.target.value)}
+                                            placeholder="กรอกชื่อผู้ติดต่อ"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Tax ID
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={taxId}
+                                            onChange={e => setTaxId(e.target.value)}
+                                            placeholder="กรอกเลขผู้เสียภาษี"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Credit Term
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={creditTerm}
+                                            onChange={e => setCreditTerm(e.target.value)}
+                                            placeholder="กรอกเครดิตเทอม"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Contact Information Section */}
+                            <div>
+                                <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${isDarkMode
+                                    ? 'text-slate-200 border-slate-600/50'
+                                    : 'text-gray-800 border-gray-300'
+                                    }`}>
+                                    <span className="flex items-center gap-2">
+                                        <TbMail className="h-5 w-5"/>
+                                        ข้อมูลติดต่อ
+                                    </span>
+                                </h3>
+                                <div className="space-y-6">
+                                    {/* Multiple Email Fields - Compact */}
+                                    <div className="space-y-3">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Email {emails.length > 1 && <span className="text-xs opacity-70">({emails.length})</span>}
+                                        </label>
+                                        <div className="space-y-2">
+                                            {emails.map((email, index) => (
+                                                <div key={index} className="flex gap-2 items-start">
+                                                    <div className="flex-1">
+                                                        <input
+                                                            type="email"
+                                                            className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${emailErrors[index]
+                                                                ? isDarkMode
+                                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                                }`
+                                                                }`}
+                                                            value={email}
+                                                            onChange={e => updateEmail(index, e.target.value)}
+                                                            placeholder={`อีเมล${index > 0 ? ` ${index + 1}` : ''}`}
+                                                        />
+                                                        {emailErrors[index] && (
+                                                            <p className="text-xs text-red-500 mt-1">{emailErrors[index]}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-1 pt-1">
+                                                        {index === emails.length - 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={addEmail}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                        {emails.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeEmail(index)}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
+                                                                    ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                                    : 'bg-red-500 hover:bg-red-600 text-white'
+                                                                    } shadow-sm hover:shadow-md text-xs`}
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Multiple Tel No. Fields - Compact */}
+                                    <div className="space-y-3">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            โทรศัพท์ {telNos.length > 1 && <span className="text-xs opacity-70">({telNos.length})</span>}
+                                        </label>
+                                        <div className="space-y-2">
+                                            {telNos.map((telNo, index) => (
+                                                <div key={index} className="flex gap-2 items-center">
+                                                    <div className="flex-1">
+                                                        <input
+                                                            type="text"
+                                                            className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                                }`}
+                                                            value={telNo}
+                                                            onChange={e => updateTelNo(index, e.target.value)}
+                                                            placeholder={`โทรศัพท์${index > 0 ? ` ${index + 1}` : ''}`}
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        {index === telNos.length - 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={addTelNo}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                        {telNos.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeTelNo(index)}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
+                                                                    ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                                    : 'bg-red-500 hover:bg-red-600 text-white'
+                                                                    } shadow-sm hover:shadow-md text-xs`}
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Multiple Fax No. Fields - Compact */}
+                                    <div className="space-y-3">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            แฟกซ์ {faxNos.length > 1 && <span className="text-xs opacity-70">({faxNos.length})</span>}
+                                        </label>
+                                        <div className="space-y-2">
+                                            {faxNos.map((faxNo, index) => (
+                                                <div key={index} className="flex gap-2 items-center">
+                                                    <div className="flex-1">
+                                                        <input
+                                                            type="text"
+                                                            className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                                }`}
+                                                            value={faxNo}
+                                                            onChange={e => updateFaxNo(index, e.target.value)}
+                                                            placeholder={`แฟกซ์${index > 0 ? ` ${index + 1}` : ''}`}
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        {index === faxNos.length - 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={addFaxNo}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                        {faxNos.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeFaxNo(index)}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
+                                                                    ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                                    : 'bg-red-500 hover:bg-red-600 text-white'
+                                                                    } shadow-sm hover:shadow-md text-xs`}
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Footer */}
+                    <div className={`px-6 py-4 border-t backdrop-blur-sm ${isDarkMode
+                        ? 'bg-gradient-to-r from-slate-800/80 via-slate-900/60 to-slate-800/80 border-slate-700/50'
+                        : 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200'
+                        }`}>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                type="button"
+                                className={`px-6 py-2.5 rounded-lg border font-medium transition-all duration-200 focus:outline-none focus:ring-2 shadow-sm hover:shadow-md backdrop-blur-sm ${isDarkMode
+                                    ? 'border-slate-600/50 text-slate-200 bg-slate-700/50 hover:bg-slate-600/50 focus:ring-slate-500 shadow-slate-900/20 hover:shadow-slate-800/30'
+                                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-gray-500'
+                                    }`}
+                                onClick={onCancel}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    ยกเลิก
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                className={`px-6 py-2.5 rounded-lg text-white font-semibold transition-all duration-200 focus:outline-none focus:ring-2 shadow-lg hover:shadow-xl hover:scale-105 transform ${currentTheme.button}`}
+                                onClick={handlerConfirm}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-4 h-4 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    บันทึกข้อมูล
+                                </div>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 
