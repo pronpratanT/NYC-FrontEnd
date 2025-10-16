@@ -1,5 +1,6 @@
 "use client";
-import React, { createContext, useState, useContext, ReactNode } from "react";
+import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
+import { getThemeCookie, setThemeCookie } from '../utils/cookies';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -11,7 +12,22 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+  // ตรวจสอบ theme จาก cookies เมื่อ mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const theme = getThemeCookie();
+      if (theme === 'dark') setIsDarkMode(true);
+      else if (theme === 'light') setIsDarkMode(false);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode((prev) => {
+      const newMode = !prev;
+      setThemeCookie(newMode ? 'dark' : 'light');
+      return newMode;
+    });
+  };
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>

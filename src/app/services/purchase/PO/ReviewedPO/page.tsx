@@ -10,6 +10,7 @@ import { useTheme } from "@/app/components/ThemeProvider";
 import ApprovePOModal from "@/app/components/Modal/Approve_PO";
 import POModal from "@/app/components/Modal/POModal";
 import EditVendor from '@/app/components/Modal/EditVendor';
+import RejectPOModal from "@/app/components/Modal/Reject_PO";
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -48,6 +49,7 @@ type ReviewedPO = {
 };
 
 type POList = {
+    po_list_id: number;
     part_no: string;
     part_name: string;
     prod_code: string;
@@ -56,19 +58,31 @@ type POList = {
     unit: string;
     unit_price: number;
     discount: [];
+    cal_discount: number;
     amount: number;
+    deli_date: string;
+    free_item: FreeItems[]
+}
+
+type FreeItems = {
+    po_list_id: number;
+    part_no: string;
+    part_name?: string;
+    prod_code?: string;
+    qty: number;
+    remark: string;
 }
 
 type VendorSelected = {
-  ID: number;
-  vendor_code: string;
-  vendor_name: string;
-  tax_id: string | null;
-  credit_term: string;
-  tel_no: string;
-  fax_no: string;
-  contact_person: string;
-  email: string;
+    ID: number;
+    vendor_code: string;
+    vendor_name: string;
+    tax_id: string | null;
+    credit_term: string;
+    tel_no: string;
+    fax_no: string;
+    contact_person: string;
+    email: string;
 }
 
 // Type สำหรับ vendor ที่เลือก
@@ -97,17 +111,19 @@ export default function ReviewedPOPage() {
     const totalPages = Math.ceil(totalRows / rowsPerPage);
     const pagedParts = poData?.po_lists?.slice((page - 1) * rowsPerPage, page * rowsPerPage) || [];
 
-    // Modal
+    // Modal สำหรับอนุมัติ PO
     const [showApproveModal, setShowApproveModal] = useState(false);
     // const [approveReason, setApproveReason] = useState(""); // Removed unused variables
+    // Modal สำหรับปฏิเสธ PO
+    const [showRejectModal, setShowRejectModal] = useState(false);
 
     // Modal สำหรับแสดงรายละเอียดสินค้า
     const [showPOModal, setShowPOModal] = useState(false);
-    const [selectedPart, setSelectedPart] = useState<any>(null);
+    const [selectedPart, setSelectedPart] = useState<POList | null>(null);
 
     // State สำหรับ modal EditVendor
     const [showEditVendor, setShowEditVendor] = useState(false);
-    const [editVendorData, setEditVendorData] = useState<any>(null);
+    const [editVendorData, setEditVendorData] = useState<VendorSelected | null>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -153,7 +169,7 @@ export default function ReviewedPOPage() {
     }, [poNo, token]);
 
 
-    // Handler
+    // NOTE: Handler
     const handleApprove = async (reason: string) => {
         const payload = {
             po_id: poData?.po_id,
@@ -194,9 +210,30 @@ export default function ReviewedPOPage() {
         }
     };
 
-    const handleEditVendor = (vendor: VendorSelected) => {
-        setEditVendorData(vendor);
-        setShowEditVendor(true);
+    const handleReject = async (reason: string) => {
+        const payload = {
+            po_id: poData?.po_id,
+            reason,
+        };
+        console.log("Reject payload:", payload);
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/reject/${poData?.po_id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error("ปฏิเสธ PO ไม่สำเร็จ");
+            await response.json();
+            alert('ปฏิเสธ PO สำเร็จ');
+            //setShowRejectModal(false);
+            // reload PO data
+            await fetchData();
+        } catch {
+            alert('เกิดข้อผิดพลาดในการปฏิเสธ PO');
+        }
     };
 
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
@@ -254,10 +291,23 @@ export default function ReviewedPOPage() {
                                                 >
                                                     ✔ อนุมัติ
                                                 </button>
+                                                <button
+                                                    type="button"
+                                                    className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ml-2 ${isDarkMode ? 'bg-gradient-to-r from-red-700 to-red-500 hover:from-red-600 hover:to-red-400 text-white' : 'bg-gradient-to-r from-red-500 to-red-400 hover:from-red-600 hover:to-red-600 text-white'}`}
+                                                    onClick={() => setShowRejectModal(true)}
+                                                >
+                                                    ✖ ปฏิเสธ
+                                                </button>
                                                 <ApprovePOModal
                                                     open={showApproveModal}
                                                     onClose={() => setShowApproveModal(false)}
                                                     onConfirm={(reason) => handleApprove(reason)}
+                                                    poNo={poNo}
+                                                />
+                                                <RejectPOModal
+                                                    open={showRejectModal}
+                                                    onClose={() => setShowRejectModal(false)}
+                                                    onConfirm={(reason) => handleReject(reason)}
                                                     poNo={poNo}
                                                 />
                                             </>
@@ -512,68 +562,138 @@ export default function ReviewedPOPage() {
                                     </thead>
                                     <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-gray-200'}`}>
                                         {pagedParts.map((part, idx) => (
-                                            <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
-                                                className={`transition-colors duration-150 cursor-pointer ${isDarkMode ? 'hover:bg-slate-700/30' : 'hover:bg-green-50/50'}`}
-                                                onClick={() => { setSelectedPart(part); setShowPOModal(true); }}
-                                            >
-                                                <td className={`px-4 py-4 text-center text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                    {(page - 1) * rowsPerPage + idx + 1}
-                                                </td>
-                                                <td className={`px-4 py-4 text-sm font-semibold ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>
-                                                    {part.part_no}
-                                                </td>
-                                                <td className={`px-4 py-4 text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                                                    {part.prod_code}
-                                                </td>
-                                                <td className={`px-4 py-4 text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                                                    {part.part_name}
-                                                </td>
-                                                <td className={`px-4 py-4 text-center text-sm font-semibold ${isDarkMode ? 'text-sky-300' : 'text-sky-700'}`}>
-                                                    {part.pr_no}
-                                                </td>
-                                                <td className={`px-4 py-4 text-center text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                                                    {part.qty}
-                                                </td>
-                                                <td className={`px-4 py-4 text-center text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                                    {part.unit}
-                                                </td>
-                                                <td className={`px-4 py-4 text-right text-sm font-semibold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                                                    ฿{part.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td className={`px-4 py-4 text-center text-sm ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
-                                                    {Array.isArray(part.discount) && part.discount.length ? (
-                                                        <div
-                                                            className={`inline-block px-1 py-2 rounded-lg border shadow-sm group relative ${isDarkMode ? 'bg-yellow-950/60 border-yellow-900' : 'bg-yellow-50 border-yellow-200'}`}
-                                                            style={{ maxWidth: '100%', overflow: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word', cursor: 'pointer' }}
-                                                        >
-                                                            <div className="flex flex-col gap-1 justify-center items-center w-full">
-                                                                {Array.from({ length: Math.ceil(part.discount.length / 3) }, (_, rowIdx) => (
-                                                                    <div key={rowIdx} className="flex flex-row gap-1 justify-center items-center w-full">
-                                                                        {part.discount.slice(rowIdx * 3, rowIdx * 3 + 3).map((d, i) => (
-                                                                            <span
-                                                                                key={i}
-                                                                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shadow-sm flex-shrink-0 ${isDarkMode ? 'bg-yellow-900/80 text-yellow-300' : 'bg-yellow-100 text-yellow-700'}`}
-                                                                                style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
-                                                                            >
-                                                                                {d}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                            {/* Tooltip ส่วนลดทั้งหมด */}
+                                            <>
+                                                <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
+                                                    className={`transition-all duration-200 cursor-pointer ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400 hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'bg-white border-l-orange-400/70 hover:bg-orange-50/30 hover:shadow-md'}`}
+                                                    onClick={() => { setSelectedPart(part); setShowPOModal(true); }}
+                                                >
+                                                    <td className={`px-4 py-4 text-center text-sm font-bold ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
+                                                        {(page - 1) * rowsPerPage + idx + 1}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-sm font-bold ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>
+                                                        {part.part_no}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                        {part.prod_code}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                        {part.part_name}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-center text-sm font-bold ${isDarkMode ? 'text-sky-300' : 'text-sky-700'}`}>
+                                                        {part.pr_no}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-center text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                        {part.qty}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-center text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                                                        {part.unit}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-right text-sm font-bold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                                                        ฿{part.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-center text-sm ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
+                                                        {Array.isArray(part.discount) && part.discount.length ? (
                                                             <div
-                                                                className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10 opacity-0 group-hover:opacity-100 pointer-events-none bg-black/90 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg transition-opacity duration-200"
+                                                                className={`inline-block px-1 py-2 rounded-lg border shadow-sm group relative ${isDarkMode ? 'bg-yellow-950/60 border-yellow-900' : 'bg-yellow-50 border-yellow-200'}`}
+                                                                style={{ maxWidth: '100%', overflow: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word', cursor: 'pointer' }}
                                                             >
-                                                                {part.discount.map(d => `${d}%`).join(', ')}
+                                                                <div className="flex flex-col gap-1 justify-center items-center w-full">
+                                                                    {Array.from({ length: Math.ceil(part.discount.length / 3) }, (_, rowIdx) => (
+                                                                        <div key={rowIdx} className="flex flex-row gap-1 justify-center items-center w-full">
+                                                                            {part.discount.slice(rowIdx * 3, rowIdx * 3 + 3).map((d, i) => (
+                                                                                <span
+                                                                                    key={i}
+                                                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shadow-sm flex-shrink-0 ${isDarkMode ? 'bg-yellow-900/80 text-yellow-300' : 'bg-yellow-100 text-yellow-700'}`}
+                                                                                    style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
+                                                                                >
+                                                                                    {d}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                {/* Tooltip ส่วนลดทั้งหมด */}
+                                                                <div
+                                                                    className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10 opacity-0 group-hover:opacity-100 pointer-events-none bg-black/90 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg transition-opacity duration-200"
+                                                                >
+                                                                    {part.discount.map(d => `${d}%`).join(', ')}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ) : (part.discount ? `${part.discount}` : '-')}
-                                                </td>
-                                                <td className={`px-4 py-4 text-right text-sm font-bold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
-                                                    ฿{part.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                </td>
-                                            </tr>
+                                                        ) : (part.discount ? `${part.discount}` : '-')}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-right text-sm font-bold ${isDarkMode ? 'text-green-200' : 'text-green-700'}`}>
+                                                        ฿{part.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                </tr>
+                                                {/* Freebie items rows */}
+                                                {Array.isArray(part.free_item) && part.free_item.length > 0 && (
+                                                    part.free_item.map((item, i) => (
+                                                        <tr key={part.part_no + '-freebie-' + i + '-' + idx} className={`${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-50/80'}`}>
+                                                            <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
+                                                                    ของแถม
+                                                                </span>
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                {(() => {
+                                                                    // แยก part_no จาก format: part_no|part_name|prod_code
+                                                                    if (item.part_no && item.part_no.includes('|')) {
+                                                                        return item.part_no.split('|')[0];
+                                                                    }
+                                                                    return item.part_no;
+                                                                })()}
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                {(() => {
+                                                                    // แยก prod_code จาก format: part_no|part_name|prod_code
+                                                                    if (item.part_no && item.part_no.includes('|')) {
+                                                                        const parts = item.part_no.split('|');
+                                                                        return parts[2] || '-';
+                                                                    }
+                                                                    return item.prod_code || '-';
+                                                                })()}
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <div>
+                                                                        {(() => {
+                                                                            // แยก part_name จาก format: part_no|part_name|prod_code
+                                                                            if (item.part_no && item.part_no.includes('|')) {
+                                                                                const parts = item.part_no.split('|');
+                                                                                return parts[1] || '-';
+                                                                            }
+                                                                            return item.part_name || '-';
+                                                                        })()}
+                                                                    </div>
+                                                                    {item.remark && (
+                                                                        <div className={`text-xs italic leading-tight ${isDarkMode ? 'text-slate-400/80' : 'text-gray-500/80'}`}>
+                                                                            หมายเหตุ: {item.remark}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-center text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                {item.qty}
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                {part.unit}
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </>
                                         ))}
                                     </tbody>
                                 </table>
@@ -633,9 +753,11 @@ export default function ReviewedPOPage() {
                 open={showPOModal}
                 onClose={() => setShowPOModal(false)}
                 part={selectedPart}
-                onSubmit={({ remark, freebieQty }) => {
-                    // TODO: handle save remark/freebieQty (เชื่อมต่อ backend หรืออัพเดต state ตามต้องการ)
-                    setShowPOModal(false);
+                // onSubmit={() => {
+                //     setShowPOModal(false);
+                // }}
+                onSuccess={() => {
+                    fetchData();
                 }}
             />
             {showEditVendor && (
@@ -657,6 +779,9 @@ export default function ReviewedPOPage() {
                     }}
                 />
             )}
+
+            {/* เพิ่มพื้นที่ว่างด้านล่าง */}
+            <div className="h-10 md:h-7"></div>
         </div>
     );
 }

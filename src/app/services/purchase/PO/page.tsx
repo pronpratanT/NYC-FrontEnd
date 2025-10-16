@@ -140,15 +140,15 @@ export default function PurchaseOrderPage() {
             return extract(a.po_no) - extract(b.po_no);
         });
     }
-    // Status filter
+    // NOTE: Status filter
     if (statusFilter) {
         displayedPoCards = displayedPoCards.filter(po => {
             if (statusFilter === 'rejected') {
                 return po.rejected_by;
             } else if (statusFilter === 'processing') {
-                return po.issued_by;
+                return po.issued_by && !po.approved_by;
             } else if (statusFilter === 'complete') {
-                return po.approved_by;
+                return po.issued_by && po.approved_by;
             }
             return true;
         });
@@ -217,9 +217,25 @@ export default function PurchaseOrderPage() {
                     return;
                 }
 
-                const responsePO = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all`, {
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-                });
+                // กำหนด URL และ options สำหรับ fetch
+                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all`;
+                let fetchOptions: RequestInit = {
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        Authorization: `Bearer ${token}` 
+                    }
+                };
+
+                // ถ้ามี search ให้ใช้ API search
+                if (search && search.trim() !== "") {
+                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}`;
+                    fetchOptions = {
+                        ...fetchOptions,
+                        cache: "no-store" as RequestCache
+                    };
+                }
+
+                const responsePO = await fetch(url, fetchOptions);
 
                 if (responsePO.status === 401) {
                     setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
@@ -231,21 +247,6 @@ export default function PurchaseOrderPage() {
                     throw new Error(`HTTP ${responsePO.status}: ${responsePO.statusText}`);
                 }
 
-                // ถ้ามี search ให้ใช้ API search-pr
-                // if (search && search.trim() !== "") {
-                //     url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
-                //     fetchOptions = {
-                //         ...fetchOptions,
-                //         cache: "no-store",
-                //         headers: {
-                //             ...(fetchOptions.headers || {}),
-                //             Authorization: `Bearer ${token}`,
-                //             'Content-Type': 'application/json'
-                //         }
-                //     };
-                // }
-
-                // const response = await fetch(url, fetchOptions);
                 const data = await responsePO.json();
                 console.log("Fetched PO data:", data);
                 let posArray = Array.isArray(data.poDocs) ? data.poDocs : [];

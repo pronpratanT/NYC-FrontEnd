@@ -8,11 +8,26 @@ import { TiPlus } from "react-icons/ti";
 import { useToken } from "@/app/context/TokenContext";
 import CreatPartNo from "./CreatPartNo";
 
+type POList = {
+  po_list_id: number;
+  part_no: string;
+  part_name: string;
+  prod_code: string;
+  pr_no: string;
+  qty: number;
+  unit: string;
+  unit_price: number;
+  discount: number[];
+  amount: number;
+  // เพิ่ม field อื่น ๆ ตามต้องการ
+};
+
 interface POModalProps {
     open: boolean;
     onClose: () => void;
-    part: any;
-    onSubmit: (data: { remark: string; freebieQty: number }) => void;
+    part: POList | null;
+    // ลบ onSubmit ถ้าไม่ได้ใช้
+    onSuccess?: () => void;
 }
 
 // Custom scrollbar styles
@@ -65,7 +80,7 @@ const scrollbarStyles = `
   }
 `;
 
-const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSubmit }) => {
+const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => {
     const { isDarkMode } = useTheme();
     const [remark, setRemark] = useState("");
     // freebieQtys: { [partNo: string]: number }
@@ -180,6 +195,10 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSubmit }) => {
         }
         if (successCount > 0) {
             alert('บันทึกข้อมูลของแถมเรียบร้อยแล้ว');
+            // เรียก callback เพื่อให้หน้า ReviewedPO โหลดข้อมูลใหม่
+            if (onSuccess) {
+                onSuccess();
+            }
         }
         onClose();
     };
@@ -313,7 +332,7 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSubmit }) => {
                                         {showCreatPartNo && (
                                             <div className="fixed inset-0 z-[10000] flex items-center justify-center">
                                                 <CreatPartNo
-                                                    onConfirm={data => {
+                                                    onConfirm={() => {
                                                         setShowCreatPartNo(false);
                                                         // สามารถเพิ่ม logic เช่น refresh part list หรือ setSelectedParts ได้ที่นี่
                                                     }}

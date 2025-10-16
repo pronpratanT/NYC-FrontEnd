@@ -264,7 +264,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
         // }
         let successCount = 0;
         let errorCount = 0;
-        let errorDetails: string[] = [];
+        const errorDetails: string[] = [];
         for (const pcl_id of selectedParts) {
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${pcl_id}`, {
@@ -381,7 +381,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     สถานะ : {' '}
                                     {prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at ? (
                                         // Red - ปฏิเสธ (Rejected)
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-300' : 'bg-red-50 border-red-300 text-red-800'}`}>
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/50 text-red-300' : 'bg-red-50 border-red-300 text-red-800'}`}>
                                             <svg className={`w-3 h-3 ${isDarkMode ? 'text-red-300' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                             </svg>
@@ -389,25 +389,25 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         </span>
                                     ) : !prData.supervisor_approve ? (
                                         // Blue - รอหัวหน้าแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-300' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50 text-blue-300' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
                                             <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`} />
                                             รอหัวหน้าแผนกอนุมัติ
                                         </span>
                                     ) : !prData.manager_approve ? (
                                         // Purple - รอผู้จัดการแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-300' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/50 text-purple-300' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
                                             <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-300' : 'text-purple-500'}`} />
                                             รอผู้จัดการแผนกอนุมัติ
                                         </span>
                                     ) : !prData.pu_operator_approve ? (
                                         // Orange - รอแผนกจัดซื้ออนุมัติ
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-300' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/50 text-orange-300' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
                                             <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-orange-300 text-bold' : 'text-orange-500'}`} />
                                             รอแผนกจัดซื้ออนุมัติ
                                         </span>
                                     ) : prData.count_ordered === (prData.pr_lists?.length ?? 0) ? (
                                         // Green - Complete (เสร็จสมบูรณ์)
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-300' : 'bg-green-50 border-green-500 text-green-900'}`}>
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/50 text-green-300' : 'bg-green-50 border-green-500 text-green-900'}`}>
                                             <svg className={`w-3 h-3 ${isDarkMode ? 'text-green-300' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                             </svg>
@@ -415,7 +415,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         </span>
                                     ) : (
                                         // Yellow/Amber - รอดำเนินการ
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-300' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50 text-yellow-300' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
                                             <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`} />
                                             รอดำเนินการ
                                         </span>
@@ -508,11 +508,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                                                     <input
                                                         type="checkbox"
-                                                        className={`w-4 h-4 rounded border-2 transition-all duration-200 cursor-pointer ${
-                                                            isDarkMode 
-                                                                ? 'border-slate-500 bg-slate-700 text-sky-400 focus:ring-2 focus:ring-sky-400/50 checked:bg-sky-500 checked:border-sky-500' 
-                                                                : 'border-gray-300 bg-white text-sky-600 focus:ring-2 focus:ring-sky-500/50 checked:bg-sky-600 checked:border-sky-600'
-                                                        }`}
+                                                        className={`w-4 h-4 rounded border-2 transition-all duration-200 cursor-pointer ${isDarkMode
+                                                            ? 'border-slate-500 bg-slate-700 text-sky-400 focus:ring-2 focus:ring-sky-400/50 checked:bg-sky-500 checked:border-sky-500'
+                                                            : 'border-gray-300 bg-white text-sky-600 focus:ring-2 focus:ring-sky-500/50 checked:bg-sky-600 checked:border-sky-600'
+                                                            }`}
                                                         checked={
                                                             prData?.pr_lists?.filter(part => part.ordered === 'Compared').length > 0 &&
                                                             prData?.pr_lists?.filter(part => part.ordered === 'Compared').every(part => selectedParts.includes(part.pcl_id))
@@ -551,13 +550,12 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     <td className={`px-2 py-3 text-center w-12`}>
                                                         <input
                                                             type="checkbox"
-                                                            className={`w-4 h-4 rounded border-2 transition-all duration-200 ${
-                                                                part.ordered !== 'Compared'
-                                                                    ? 'cursor-not-allowed opacity-40 border-gray-300 bg-gray-100'
-                                                                    : isDarkMode 
-                                                                        ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked:border-blue-500 hover:border-blue-400' 
-                                                                        : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked:border-blue-600 hover:border-blue-400'
-                                                            }`}
+                                                            className={`w-4 h-4 rounded border-2 transition-all duration-200 ${part.ordered !== 'Compared'
+                                                                ? 'cursor-not-allowed opacity-40 border-gray-300 bg-gray-100'
+                                                                : isDarkMode
+                                                                    ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked:border-blue-500 hover:border-blue-400'
+                                                                    : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked:border-blue-600 hover:border-blue-400'
+                                                                }`}
                                                             disabled={part.ordered !== 'Compared'}
                                                             checked={selectedParts.includes(part.pcl_id)}
                                                             onChange={(e) => {
@@ -612,6 +610,13 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-purple-900/60 via-purple-800/50 to-purple-900/60 border-purple-700/60' : 'from-purple-50 via-purple-100 to-purple-50 border-purple-300'}`}>
                                                                                 <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`}></div>
                                                                                 <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>po approved</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Po Rejected':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>po rejected</span>
                                                                             </div>
                                                                         );
                                                                     default:

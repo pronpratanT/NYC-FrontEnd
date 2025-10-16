@@ -322,7 +322,7 @@ export default function DepartmentPage() {
   // แสดงหน้า Token Authentication
   if (!authState.isAuthenticated) {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-md mx-auto">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -447,7 +447,7 @@ export default function DepartmentPage() {
   // แสดงเมื่อไม่พบแผนก
   if (departmentNotFound) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <main className="min-h-screen flex items-center justify-center">
         <div className="text-center bg-white p-6 rounded-lg shadow-md">
           <div className="text-yellow-500 text-6xl mb-4">🔍</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">ไม่พบแผนก</h2>

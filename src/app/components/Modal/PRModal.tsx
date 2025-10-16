@@ -122,10 +122,13 @@ type CompareData = {
 type SelectedToPOGen = {
   pr_list_id: number;
   part_no: string;
+  part_name: string;
+  prod_code: string;
   pcl_id: number;
   plant: string;
   vendor: string;
   due_date: string;
+  date_shipped: string;
 }
 
 export type PRModalProps = {
@@ -159,7 +162,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   const router = useRouter();
   // State สำหรับรายการที่เลือกใน Approved Dropdown
-  const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string }[]>([]);
+  const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string; part_name: string; prod_code: string }[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -170,6 +173,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [multipleOrderDetails, setMultipleOrderDetails] = useState<Array<{
     pr_list_id: number;
     part_no: string;
+    part_name: string;
+    prod_code: string;
     purchaseType: 'D' | 'I' | undefined;
   }>>([]);
   const [purchaseType, setPurchaseType] = useState<'D' | 'I' | undefined>(undefined);
@@ -506,6 +511,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVendors]);
 
+  // ANCHOR fetch approved compare data
   // Fetch approved compare data only if status is Approved
   useEffect(() => {
     const prIdValue = typeof pr_id !== 'undefined' ? pr_id : undefined;
@@ -529,10 +535,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             const approvedDataArray: SelectedToPOGen[] = data.map(item => ({
               pr_list_id: item.pr_list_id || 0,
               part_no: item.part_no || '',
+              part_name: item.part_name || '',
+              prod_code: item.prod_code || '',
               pcl_id: item.pcl_id || 0,
               plant: item.plant || '',
               vendor: item.vendor || '',
-              due_date: item.due_date || ''
+              due_date: item.due_date || '',
+              date_shipped: item.date_shipped || ''
             }));
             // console.log("Processed approved data array:", approvedDataArray);
             setSelectedToPO(approvedDataArray);
@@ -541,10 +550,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             const approvedData: SelectedToPOGen = {
               pr_list_id: data.pr_list_id || pr_list_id || 0,
               part_no: data.part_no || partNo || '',
+              part_name: data.part_name || '',
+              prod_code: data.prod_code || '',
               pcl_id: data.pcl_id || 0,
               plant: data.plant || '',
               vendor: data.vendor || '',
-              due_date: data.due_date || ''
+              due_date: data.due_date || '',
+              date_shipped: data.date_shipped || ''
             };
             // console.log("Processed single approved data:", approvedData);
             setSelectedToPO([approvedData]);
@@ -819,11 +831,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
 
   // ฟังก์ชันสำหรับจัดการการเลือก checkbox ใน Approved Dropdown
-  const handleApprovedCheckboxChange = (item: { pr_list_id: number; part_no: string }, checked: boolean) => {
+  const handleApprovedCheckboxChange = (item: { pr_list_id: number; part_no: string; part_name: string; prod_code: string }, checked: boolean) => {
     setSelectedApprovedItems(prev => {
       if (checked) {
         // เพิ่มถ้ายังไม่มี
-        if (!prev.some(sel => sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no)) {
+        if (!prev.some(sel => sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no && sel.part_name === item.part_name && sel.prod_code === item.prod_code)) {
           return [...prev, item];
         }
         return prev;
@@ -841,6 +853,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const multipleItems = selectedApprovedItems.map(item => ({
       pr_list_id: item.pr_list_id,
       part_no: item.part_no,
+      part_name: item.part_name,
+      prod_code: item.prod_code,
       purchaseType: undefined as 'D' | 'I' | undefined
     }));
 
@@ -947,12 +961,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           {(() => {
                             // กรองเฉพาะรายการที่ part_no, plant, vendor, due_date ตรงกับปัจจุบัน
                             // หา reference จากรายการแรกที่ part_no ตรงกับ partNo
+                            // ANCHOR filtered OPEN multople PO
                             const refItem = selectedToPO.find(item => item.part_no === partNo);
                             const filteredToPO = refItem
                               ? selectedToPO.filter(item =>
                                 item.plant === refItem.plant &&
-                                item.vendor === refItem.vendor &&
-                                item.due_date === refItem.due_date
+                                item.vendor === refItem.vendor
+                                //item.due_date === refItem.due_date
                               )
                               : [];
                             if (filteredToPO.length <= 1) return null;
@@ -976,7 +991,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </button>
 
                                 {showSelectedToPODropdown && (
-                                  <div className={`absolute right-0 z-50 mt-2 w-80 rounded-xl shadow-xl border backdrop-blur-sm max-h-96 overflow-y-auto custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 ${isDarkMode
+                                  <div className={`absolute right-0 z-50 mt-2 w-[23rem] rounded-xl shadow-xl border backdrop-blur-sm max-h-[32rem] overflow-y-auto custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 ${isDarkMode
                                     ? 'bg-slate-900/95 border-slate-700/60 text-slate-100'
                                     : 'bg-white/95 border-slate-200/60 text-slate-800'
                                     }`}>
@@ -1006,7 +1021,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                             }`}
                                           onClick={() => {
                                             filteredToPO.forEach(item => {
-                                              if (!selectedApprovedItems?.some(sel => sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no)) {
+                                              if (!selectedApprovedItems?.some(sel => sel.pr_list_id === item.pr_list_id && sel.part_no === item.part_no && sel.part_name === item.part_name && sel.prod_code === item.prod_code)) {
                                                 handleApprovedCheckboxChange(item, true);
                                               }
                                             });
@@ -1037,8 +1052,19 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                               onKeyPress={e => { if (e.key === 'Enter') handleApprovedDropdownSelect(item); }}
                                             >
                                               <div className="text-sm">
-                                                <span className={`font-medium block mb-1 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Part Number</span>
-                                                <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.part_no || '-'}</span>
+                                                <div className="flex justify-between items-center mb-1">
+                                                  <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.part_no || '-'}</span>
+                                                  <span className={`font-semi ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{item.date_shipped ? new Date(item.date_shipped).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</span>
+                                                </div>
+                                                {/* <div className="mb-1">
+                                                  <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.part_no || '-'}</span>
+                                                </div> */}
+                                                <div className="mb-1">
+                                                  <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.prod_code || '-'}</span>
+                                                </div>
+                                                <div>
+                                                  <span className={`font-semi ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.part_name || '-'}</span>
+                                                </div>
                                               </div>
                                             </div>
                                           </div>
@@ -2258,10 +2284,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               {multipleOrderDetails.length} รายการ
                             </span>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {multipleOrderDetails.map((item, index) => (
                               <div key={`${item.pr_list_id}-${index}`}
-                                className={`flex items-center p-3 rounded-lg border text-sm transition-all duration-200 ${isDarkMode
+                                className={`flex items-start p-3 rounded-lg border text-sm transition-all duration-200 ${isDarkMode
                                   ? 'bg-slate-800/80 border-slate-600 hover:border-orange-500/50'
                                   : 'bg-white border-slate-200 hover:border-orange-300'
                                   }`}>
@@ -2270,7 +2296,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   : 'bg-orange-500 text-white'}`}>
                                   {index + 1}
                                 </span>
-                                <span className={`font-semibold font-mono ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{item.part_no}</span>
+                                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`font-semibold font-mono ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{item.part_no}</span>
+                                    {item.prod_code && (
+                                      <span className={`font-mono text-xs px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-orange-900/50 text-orange-200' : 'bg-orange-100 text-orange-700'}`}>{item.prod_code}</span>
+                                    )}
+                                  </div>
+                                  {item.part_name && (
+                                    <span className={`font-sans text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{item.part_name}</span>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -2525,7 +2561,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no);
                             // Disable if status is 'Pending Approval', 'Approved', or 'ORDERED'
                             const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
-                            const isDisabled = !!matchingPurchase || (prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'ORDERED');
+                            const isDisabled = !!matchingPurchase || (prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'Compared' || prItem?.status === 'Po Created' || prItem?.status === 'PO Approved' || prItem?.status === 'ORDERED');
                             // Visual indicator for editability: underline color
                             const editableBorder = isDisabled
                               ? (isDarkMode ? 'border-b' : 'border-b border-gray-200')

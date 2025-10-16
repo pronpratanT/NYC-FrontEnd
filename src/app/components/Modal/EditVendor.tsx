@@ -77,16 +77,23 @@ interface EditVendorProps {
 const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel, source = 'ReviewedPO' }) => {
     // console.log('EditVendor received vendorData:', vendorData); // <--- log ข้อมูลที่รับเข้ามา
     // state สำหรับแต่ละช่อง (เติมค่าเริ่มต้นจาก vendorData ถ้ามี)
-    const [vendorId, setVendorId] = useState(vendorData?.ID || 0);
     const [vendorName, setVendorName] = useState(vendorData?.vendor_name || "");
     const [contactName, setContactName] = useState(vendorData?.contact_name || "");
     const [taxId, setTaxId] = useState(vendorData?.tax_id || "");
     const [creditTerm, setCreditTerm] = useState(vendorData?.credit_term || "");
+    // ฟังก์ชันแยกข้อมูลที่มี delimiter
+    const parseMultipleValues = (value: string | undefined): string[] => {
+        if (!value || value.trim() === "") return [""];
+        // แยกโดยใช้ comma, semicolon, หรือ pipe
+        const parsed = value.split(/[,;|]/).map(v => v.trim()).filter(v => v !== "");
+        return parsed.length > 0 ? parsed : [""];
+    };
+
     // เปลี่ยนเป็น array สำหรับ multiple emails, tel numbers และ fax numbers
-    const [emails, setEmails] = useState<string[]>([vendorData?.email || ""]);
-    const [emailErrors, setEmailErrors] = useState<string[]>([""]);
-    const [telNos, setTelNos] = useState<string[]>([vendorData?.tel || ""]);
-    const [faxNos, setFaxNos] = useState<string[]>([vendorData?.fax_no || ""]);
+    const [emails, setEmails] = useState<string[]>(parseMultipleValues(vendorData?.email));
+    const [emailErrors, setEmailErrors] = useState<string[]>(parseMultipleValues(vendorData?.email).map(() => ""));
+    const [telNos, setTelNos] = useState<string[]>(parseMultipleValues(vendorData?.tel));
+    const [faxNos, setFaxNos] = useState<string[]>(parseMultipleValues(vendorData?.fax_no));
     const token = useToken();
     const { isDarkMode } = useTheme();
 
@@ -122,15 +129,19 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
 
     // sync state with vendorData when modal opens or vendorData changes
     React.useEffect(() => {
-        setVendorId(vendorData?.ID || 0);
         setVendorName(vendorData?.vendor_name || "");
         setContactName(vendorData?.contact_name || "");
         setTaxId(vendorData?.tax_id || "");
         setCreditTerm(vendorData?.credit_term || "");
-        setEmails([vendorData?.email || ""]);
-        setEmailErrors([""]);
-        setTelNos([vendorData?.tel || ""]);
-        setFaxNos([vendorData?.fax_no || ""]);
+        
+        const parsedEmails = parseMultipleValues(vendorData?.email);
+        const parsedTels = parseMultipleValues(vendorData?.tel);
+        const parsedFaxes = parseMultipleValues(vendorData?.fax_no);
+        
+        setEmails(parsedEmails);
+        setEmailErrors(parsedEmails.map(() => ""));
+        setTelNos(parsedTels);
+        setFaxNos(parsedFaxes);
     }, [vendorData]);
 
     // ฟังก์ชันสำหรับจัดการ multiple emails

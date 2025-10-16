@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
-import { setCookie } from "../utils/cookies";
+import { setCookie, getThemeCookie } from "../utils/cookies";
 
 const h1Style = {
   fontSize: "2.5rem",
@@ -351,6 +351,15 @@ export default function Home() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // อ่าน theme จาก cookies เมื่อเข้า login page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const theme = getThemeCookie();
+      if (theme === 'dark') setIsDarkMode(true);
+      else if (theme === 'light') setIsDarkMode(false);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();

@@ -25,3 +25,12 @@ export const getCookie = (name: string): string | null => {
 export const deleteCookie = (name: string) => {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 };
+
+// Theme cookie helpers
+export const setThemeCookie = (theme: string, days: number = 365) => {
+  setCookie('theme', theme, days);
+};
+
+export const getThemeCookie = (): string | null => {
+  return getCookie('theme');
+};

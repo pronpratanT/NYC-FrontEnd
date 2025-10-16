@@ -564,7 +564,7 @@ export default function TestPage() {
                               <input
                                 type="number"
                                 min="0" step="1"
-                                className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
                                 value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : (partInfo.qty !== null && partInfo.qty !== undefined ? partInfo.qty : '')}
                                 onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
                                 onBlur={e => {
@@ -594,7 +594,7 @@ export default function TestPage() {
                             </td>
                             <td className="px-2 py-3 w-64">
                               <textarea
-                                className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
                                 placeholder="วัตถุประสงค์"
                                 rows={1}
                                 value={pagedObjective[idx] || ''}
@@ -654,7 +654,7 @@ export default function TestPage() {
                               <input
                                 type="number"
                                 min="0" step="1"
-                                className={`w-full h-10 px-2 py-2 border rounded text-center text-sm text-right focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                className={`w-full h-10 px-2 py-2 border rounded text-center text-sm text-right focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
                                 placeholder="0"
                                 value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : ''}
                                 onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
@@ -671,7 +671,7 @@ export default function TestPage() {
                                 type="text"
                                 value={unitData[(page - 1) * rowsPerPage + idx] || ''}
                                 onChange={e => handleUnitChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
                                 placeholder="หน่วย"
                               />
                             </td>
@@ -694,7 +694,7 @@ export default function TestPage() {
                             </td>
                             <td className="px-2 py-3 w-64">
                               <textarea
-                                className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
                                 placeholder="วัตถุประสงค์"
                                 rows={1}
                                 value={pagedObjective[idx] || ''}
@@ -709,13 +709,17 @@ export default function TestPage() {
                               </div>
                             </td>
                             <td className="px-2 py-3 w-16">
-                              <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-gray-900/20 text-gray-400 border border-gray-800/50' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}>
-                                0.00
+                              <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
+                                <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
+                                  0.00
+                                </span>
                               </div>
                             </td>
                             <td className="px-2 py-3 w-16">
-                              <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-gray-900/20 text-gray-400 border border-gray-800/50' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}>
-                                ฿0.00
+                              <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
+                                <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
+                                  ฿0.00
+                                </span>
                               </div>
                             </td>
                             <td className="px-2 py-3 w-22">
