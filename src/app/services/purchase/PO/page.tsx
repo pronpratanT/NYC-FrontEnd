@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 // Calendar
 import { Thai } from "flatpickr/dist/l10n/th.js";
@@ -75,6 +75,8 @@ export default function PurchaseOrderPage() {
 
     // Router
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
 
     // Error and loading states
     const [error, setError] = useState<string | null>(null);
@@ -154,9 +156,15 @@ export default function PurchaseOrderPage() {
         });
     }
 
-    // NOTE: Pagination states
-    const [itemsPerPage, setItemsPerPage] = useState(10);
-    const [currentPage, setCurrentPage] = useState(1);
+    // NOTE: Pagination states (sync with URL)
+    const [itemsPerPage, setItemsPerPage] = useState(() => {
+        const urlPerPage = searchParams.get('perPage');
+        return urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
+    });
+    const [currentPage, setCurrentPage] = useState(() => {
+        const urlPage = searchParams.get('page');
+        return urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
+    });
     const totalItems = displayedPoCards.length;
     const startIndex = (currentPage - 1) * itemsPerPage;
     const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
@@ -166,9 +174,42 @@ export default function PurchaseOrderPage() {
     const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
     const paginatedPoCards = displayedPoCards.slice(actualStartIndex, actualEndIndex);
 
-    React.useEffect(() => {
+    // Reset to page 1 when filters change and update URL
+    useEffect(() => {
         setCurrentPage(1);
+        updateUrlParams(1, itemsPerPage);
     }, [departmentFilter, statusFilter, search, sortBy]);
+
+    // Sync state with URL params only on mount or true URL change
+    useEffect(() => {
+        const urlPage = searchParams.get('page');
+        const urlPerPage = searchParams.get('perPage');
+        const newPage = urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
+        const newPerPage = urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
+        setCurrentPage(newPage);
+        setItemsPerPage(newPerPage);
+    }, [pathname]);
+
+    // Function to update URL parameters
+    const updateUrlParams = (newPage?: number, newPerPage?: number) => {
+        const params = new URLSearchParams(window.location.search);
+        if (newPage !== undefined) {
+            if (newPage === 1) {
+                params.delete('page');
+            } else {
+                params.set('page', newPage.toString());
+            }
+        }
+        if (newPerPage !== undefined) {
+            if (newPerPage === 10) {
+                params.delete('perPage');
+            } else {
+                params.set('perPage', newPerPage.toString());
+            }
+        }
+        const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+        router.replace(newUrl, { scroll: false });
+    };
 
     // Format ISO date to DD/MM/YYYY
     function formatISOToDisplay(iso: string) {
@@ -677,8 +718,10 @@ export default function PurchaseOrderPage() {
                                     <select
                                         value={itemsPerPage}
                                         onChange={(e) => {
-                                            setItemsPerPage(Number(e.target.value));
+                                            const newPerPage = Number(e.target.value);
+                                            setItemsPerPage(newPerPage);
                                             setCurrentPage(1);
+                                            updateUrlParams(1, newPerPage);
                                         }}
                                         className={`border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
                                     >
@@ -713,7 +756,11 @@ export default function PurchaseOrderPage() {
                                             type="button"
                                             className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
                                             disabled={currentPage === 1}
-                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            onClick={() => {
+                                                const newPage = Math.max(1, currentPage - 1);
+                                                setCurrentPage(newPage);
+                                                updateUrlParams(newPage, itemsPerPage);
+                                            }}
                                         >
                                             <IoIosArrowBack className="w-5 h-5" />
                                         </button>
@@ -721,7 +768,11 @@ export default function PurchaseOrderPage() {
                                             type="button"
                                             className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                                             disabled={currentPage >= totalPages}
-                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                            onClick={() => {
+                                                const newPage = Math.min(totalPages, currentPage + 1);
+                                                setCurrentPage(newPage);
+                                                updateUrlParams(newPage, itemsPerPage);
+                                            }}
                                         >
                                             <IoIosArrowForward className="w-5 h-5" />
                                         </button>

@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useRef, useEffect } from "react";
 import { useTheme } from "../ThemeProvider";
 
@@ -9,18 +10,26 @@ import { useToken } from "@/app/context/TokenContext";
 import CreatPartNo from "./CreatPartNo";
 
 type POList = {
-  po_list_id: number;
-  part_no: string;
-  part_name: string;
-  prod_code: string;
-  pr_no: string;
-  qty: number;
-  unit: string;
-  unit_price: number;
-  discount: number[];
-  amount: number;
-  // เพิ่ม field อื่น ๆ ตามต้องการ
+    po_list_id: number;
+    part_no: string;
+    part_name: string;
+    prod_code: string;
+    pr_no: string;
+    qty: number;
+    unit: string;
+    unit_price: number;
+    discount: number[];
+    amount: number;
+    deli_date: string;
+    free_item: FreeItems[];
 };
+
+type FreeItems = {
+    po_list_id: number;
+    part_no: string;
+    qty: number;
+    remark: string;
+}
 
 interface POModalProps {
     open: boolean;
@@ -81,6 +90,9 @@ const scrollbarStyles = `
 `;
 
 const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => {
+    // ดึงรายการของแถมเดิมไว้ใช้เช็คซ้ำ (เฉพาะก่อนเครื่องหมาย |)
+    const existingFreeItems = part?.free_item?.map((f: FreeItems) => f.part_no.split('|')[0].trim()) || [];
+    
     const { isDarkMode } = useTheme();
     const [remark, setRemark] = useState("");
     // freebieQtys: { [partNo: string]: number }
@@ -90,13 +102,36 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
 
     // Part No. search states
     const [search, setSearch] = useState("");
-    const [partNos, setPartNos] = useState<string[]>([]);
+    type PartNoType = string | { part_no: string; [key: string]: any };
+    const [partNos, setPartNos] = useState<PartNoType[]>([]);
     const [selectedParts, setSelectedParts] = useState<string[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showCreatPartNo, setShowCreatPartNo] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Auto-select partNo and set qty from free_item after partNos are loaded
+    // (ต้องอยู่หลังการประกาศ partNos)
+
+
+    // เมื่อเปิด modal หรือ part เปลี่ยน ให้แสดงข้อมูลของแถมทันทีใน Part No. ที่เลือกและ qty
+    useEffect(() => {
+        if (part?.free_item && part.free_item.length > 0) {
+            // ใช้ part_no จาก free_item แบบเต็ม ไม่ต้องตัดหลัง |
+            const freePartNos = part.free_item.map(f => f.part_no.trim());
+            setSelectedParts(freePartNos);
+            // set qty ให้ตรงกับ free_item
+            const qtyObj: { [partNo: string]: number } = {};
+            for (const item of part.free_item) {
+                qtyObj[item.part_no.trim()] = item.qty;
+            }
+            setFreebieQtys(qtyObj);
+        } else {
+            setSelectedParts([]);
+            setFreebieQtys({});
+        }
+    }, [part]);
 
     // Search part no
     useEffect(() => {
@@ -108,7 +143,9 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const response = await fetch(`/api/proxy/purchase/search-part-no?keyword=${encodeURIComponent(search)}`, { cache: "no-store" });
+                const keyword = search; // ใช้ search จาก input เท่านั้น
+                console.log("Searching Part No. with keyword:", keyword);
+                const response = await fetch(`/api/proxy/purchase/search-part-no?keyword=${encodeURIComponent(keyword)}`, { cache: "no-store" });
                 if (!response.ok) {
                     throw new Error(`PartNo API error: HTTP ${response.status} ${response.statusText}`);
                 }
@@ -161,10 +198,17 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
             alert("กรุณาเลือก Part No. ที่ต้องการเพิ่มของแถม");
             return;
         }
+        // สร้าง array ของ part_no ที่มีอยู่แล้วใน free_item
+        const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
         let successCount = 0;
         for (const partNoRaw of selectedParts) {
             // Use only the first part_no before '|'
             const partNo = partNoRaw.split('|')[0].trim();
+            // เช็คว่ามีอยู่แล้วใน free_item หรือไม่
+            if (existingFreeItems.includes(partNoRaw.trim())) {
+                alert(`Part No. ${partNoRaw} มีอยู่ในรายการของแถมแล้ว ไม่สามารถเพิ่มซ้ำได้`);
+                continue;
+            }
             const qty = freebieQtys[partNoRaw] || 0;
             if (qty <= 0) continue; // skip if qty is not set or zero
             const body = {
@@ -353,22 +397,31 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
                                                     พบ {partNos.length} รายการ
                                                 </div>
                                                 {partNos.map((part, idx) => (
-                                                    <div
-                                                        key={part + '-' + idx}
-                                                        className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${selectedParts.includes(part) ? (isDarkMode ? 'bg-blue-900/30 border-l-4 border-blue-500 font-semibold text-blue-400' : 'bg-blue-50 border-l-4 border-blue-500 font-semibold text-blue-700') : (isDarkMode ? 'hover:bg-slate-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700')}`}
-                                                        onClick={() => {
-                                                            if (selectedParts.includes(part)) {
-                                                                setSelectedParts(selectedParts.filter(p => p !== part));
-                                                            } else {
-                                                                setSelectedParts([...selectedParts, part]);
-                                                            }
-                                                        }}
-                                                    >
-                                                        {selectedParts.includes(part) && (
-                                                            <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-blue-500' : 'bg-blue-600'}`} title="Selected"></span>
-                                                        )}
-                                                        <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{part}</span>
-                                                    </div>
+                                                    ((item, idx) => {
+                                                        const partNo = typeof item === 'string' ? item : item.part_no;
+                                                        const partNoKey = partNo.split('|')[0].trim();
+                                                        // เช็คซ้ำเฉพาะก่อนเครื่องหมาย |
+                                                        const selectedKeys = selectedParts.map(p => p.split('|')[0].trim());
+                                                        const isAlreadySelected = selectedKeys.includes(partNoKey) || existingFreeItems.includes(partNoKey);
+                                                        return (
+                                                            <div
+                                                                key={partNo + '-' + idx}
+                                                                className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${isAlreadySelected ? (isDarkMode ? 'bg-blue-900/30 border-l-4 border-blue-500 font-semibold text-blue-400 opacity-60 cursor-not-allowed' : 'bg-blue-50 border-l-4 border-blue-500 font-semibold text-blue-700 opacity-60 cursor-not-allowed') : (isDarkMode ? 'hover:bg-slate-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700')}`}
+                                                                onClick={() => {
+                                                                    if (isAlreadySelected) {
+                                                                        alert(`Part No. ${partNoKey} มีอยู่ในรายการของแถมหรือเลือกไว้แล้ว ไม่สามารถเลือกซ้ำได้`);
+                                                                        return;
+                                                                    }
+                                                                    setSelectedParts([...selectedParts, partNo]);
+                                                                }}
+                                                            >
+                                                                {selectedKeys.includes(partNoKey) && (
+                                                                    <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-blue-500' : 'bg-blue-600'}`} title="Selected"></span>
+                                                                )}
+                                                                <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{partNo}</span>
+                                                            </div>
+                                                        );
+                                                    })(part, idx)
                                                 ))}
                                             </div>
                                         </div>

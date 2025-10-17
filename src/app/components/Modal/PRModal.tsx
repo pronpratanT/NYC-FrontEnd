@@ -101,6 +101,7 @@ type RecentPurchase = {
   price_for_approve: number | null;
   discount: number[];
   date: string;
+  due_date: string;
 }
 
 type CompareData = {
@@ -179,6 +180,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }>>([]);
   const [purchaseType, setPurchaseType] = useState<'D' | 'I' | undefined>(undefined);
   const [remark, setRemark] = useState<string>("");
+  const [lastDiscount, setLastDiscount] = useState<number | null>(null);
   const [compareData, setCompareData] = useState<PartNo | null>(null);
   const [loading, setLoading] = useState(true);
   // loading สำหรับ vendor dropdown เท่านั้น
@@ -194,7 +196,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   //search vendor
   // เช็คสถานะ PR เพื่อ disabled ช่อง search และปุ่มเพิ่ม Vendor
   const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
-  const isVendorInputDisabled = prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'ORDERED';
+  const isVendorInputDisabled = prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'Compared' || prItem?.status === 'Po Created' || prItem?.status === 'PO Approved' || prItem?.status === 'ORDERED';
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState<string>("");
@@ -649,6 +651,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       };
     });
 
+    // ตรวจสอบราคาทุก vendor
+    const missingPrice = edited_prices.some(item => !item.price || item.price === 0);
+    if (missingPrice) {
+      alert('กรุณากรอกราคาสินค้าทุกแถวก่อนบันทึก');
+      return;
+    }
+
     console.log("Submitting payload:", payload);
     console.log("Edited prices:", edited_prices);
 
@@ -719,6 +728,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const poCreate = {
       material_type: purchaseType,
       remark: remark,
+      ext_discount: lastDiscount,
       po_list: [
         {
           pcl_id: compareData?.pcl_id,
@@ -766,7 +776,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
     const poCreate = {
       material_type: selectedMaterialType,
-      remark: '',
+      remark: remark,
+      ext_discount: lastDiscount,
       po_list: selectedPclIds
     };
     console.log("Creating PO with data:", poCreate);
@@ -1557,22 +1568,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
                                       <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                         {(() => {
-                                          let vendorId: number | undefined;
-                                          if (prWithPO.recent_purchase) {
-                                            if (Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0) {
-                                              vendorId = prWithPO.recent_purchase[0].vendor_id;
-                                            } else if (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { vendor_id?: number }).vendor_id) {
-                                              vendorId = (prWithPO.recent_purchase as { vendor_id: number }).vendor_id;
-                                            }
+                                          let deliverDate: string | null = null;
+                                          const rp = prWithPO.recent_purchase;
+                                          if (Array.isArray(rp) && rp.length > 0) {
+                                            deliverDate = rp[0]?.date || null;
+                                          } else if (rp && typeof rp === 'object' && 'date' in rp) {
+                                            deliverDate = (rp as { date?: string }).date || null;
                                           }
-                                          let dueDate = null;
-                                          if (vendorId !== undefined) {
-                                            const vendor = compareData?.compare_vendors?.find(v => v.vendor_id === vendorId);
-                                            if (vendor && vendor.due_date) {
-                                              dueDate = vendor.due_date;
-                                            }
-                                          }
-                                          return dueDate ? new Date(dueDate).toLocaleDateString('th-TH') : '-';
+                                          return deliverDate ? new Date(deliverDate).toLocaleDateString('th-TH') : '-';
                                         })()}
                                       </div>
                                     </div>
@@ -1581,13 +1584,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <div className="flex flex-row gap-4">
                                     <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ต้องการใช้สินค้า</label>
-                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
-                                        ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
-                                          ? new Date((prWithPO.recent_purchase[0] as { date: string }).date).toLocaleDateString('th-TH')
-                                          : '-')
-                                        : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { date?: string })?.date)
-                                          ? new Date((prWithPO.recent_purchase as { date: string }).date).toLocaleDateString('th-TH')
-                                          : '-'}</div>
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                        {(() => {
+                                          let useDate: string | null = null;
+                                          const rp = prWithPO.recent_purchase;
+                                          if (Array.isArray(rp) && rp.length > 0) {
+                                            useDate = rp[0]?.due_date || null;
+                                          } else if (rp && typeof rp === 'object' && 'due_date' in rp) {
+                                            useDate = (rp as { due_date?: string }).due_date || null;
+                                          }
+                                          return useDate ? new Date(useDate).toLocaleDateString('th-TH') : '-';
+                                        })()}
+                                      </div>
                                     </div>
                                     <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
@@ -1824,9 +1832,23 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         onChange={e => setRemark(e.target.value)}
                                       />
                                     </div>
+                                    {/* last discount input field */}
+                                    <div className="mt-6">
+                                      <label htmlFor="last_discount" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>ส่วนลดท้ายบิล</label>
+                                      <input
+                                        id="last_discount"
+                                        type="number"
+                                        className={`w-full p-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-cyan-200 focus:ring-cyan-400' : 'bg-white border-gray-300 text-cyan-800 focus:ring-cyan-500'}`}
+                                        placeholder="ระบุส่วนลดท้ายบิล (Last Discount)"
+                                        value={lastDiscount ?? ''}
+                                        onChange={e => {
+                                          const value = e.target.value;
+                                          setLastDiscount(value === '' ? null : Number(value));
+                                        }}
+                                      />
+                                    </div>
                                   </div>
-                                  <div className={`p-4`}>
-                                    {/* <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}> */}
+                                  {/* <div className={`p-4`}>
                                     <div className="flex justify-center gap-4">
                                       <button
                                         type="button"
@@ -1846,7 +1868,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
                                       </button>
                                     </div>
-                                  </div>
+                                  </div> */}
                                 </>
                               )}
 
@@ -1966,13 +1988,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <div className="flex flex-row gap-4">
                                     <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ต้องการใช้สินค้า</label>
-                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
-                                        ? ((prWithPO.recent_purchase[0] as { date?: string })?.date
-                                          ? new Date((prWithPO.recent_purchase[0] as { date: string }).date).toLocaleDateString('th-TH')
-                                          : '-')
-                                        : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { date?: string })?.date)
-                                          ? new Date((prWithPO.recent_purchase as { date: string }).date).toLocaleDateString('th-TH')
-                                          : '-'}</div>
+                                      <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                        {(() => {
+                                          let useDate: string | null = null;
+                                          const rp = prWithPO.recent_purchase;
+                                          if (Array.isArray(rp) && rp.length > 0) {
+                                            useDate = rp[0]?.due_date || null;
+                                          } else if (rp && typeof rp === 'object' && 'due_date' in rp) {
+                                            useDate = (rp as { due_date?: string }).due_date || null;
+                                          }
+                                          return useDate ? new Date(useDate).toLocaleDateString('th-TH') : '-';
+                                        })()}
+                                      </div>
                                     </div>
                                     <div className={`p-3 rounded-lg border flex-1 ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ดำเนินการเปรียบเทียบ</label>
@@ -1993,6 +2020,27 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{compareData.pu_responsible}</div>
                                     </div>
                                   )}
+                                </div>
+                              </div>
+                              <div className={`p-4`}>
+                                <div className="flex justify-center gap-4">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (!purchaseType || isSaving) return;
+                                      setIsSaving(true);
+                                      try {
+                                        await handleSubmitPOCreate();
+                                      } finally {
+                                        setIsSaving(false);
+                                      }
+                                    }}
+                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'} ${!purchaseType || isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                    style={!purchaseType || isSaving ? { cursor: 'not-allowed' } : undefined}
+                                    disabled={!purchaseType || isSaving}
+                                  >
+                                    {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -2478,6 +2526,33 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               </div>
                             )}
                           </div>
+                          {/* Remark input field */}
+                          <div className="mt-6">
+                            <label htmlFor="remark" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Remark</label>
+                            <input
+                              id="remark"
+                              type="text"
+                              className={`w-full p-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-200 focus:ring-amber-400' : 'bg-white border-gray-300 text-gray-800 focus:ring-amber-500'}`}
+                              placeholder="ระบุหมายเหตุเพิ่มเติม (Remark)"
+                              value={remark || ''}
+                              onChange={e => setRemark(e.target.value)}
+                            />
+                          </div>
+                          {/* last discount input field */}
+                          <div className="mt-6">
+                            <label htmlFor="last_discount" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>ส่วนลดท้ายบิล</label>
+                            <input
+                              id="last_discount"
+                              type="number"
+                              className={`w-full p-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-cyan-200 focus:ring-cyan-400' : 'bg-white border-gray-300 text-cyan-800 focus:ring-cyan-500'}`}
+                              placeholder="ระบุส่วนลดท้ายบิล (Last Discount)"
+                              value={lastDiscount ?? ''}
+                              onChange={e => {
+                                const value = e.target.value;
+                                setLastDiscount(value === '' ? null : Number(value));
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -2558,10 +2633,26 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           const pagedRows = allCompareData.slice(startIdx, startIdx + rowsPerPage);
                           return pagedRows.length > 0 ? pagedRows.map((vendor, index) => {
                             // Find matching purchase row for this vendor
-                            const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no);
-                            // Disable if status is 'Pending Approval', 'Approved', or 'ORDERED'
+                            const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no && item.po_no.trim() !== '');
                             const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
-                            const isDisabled = !!matchingPurchase || (prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'Compared' || prItem?.status === 'Po Created' || prItem?.status === 'PO Approved' || prItem?.status === 'ORDERED');
+                            
+                            // Debug log สำหรับทุก vendor row
+                            console.log(`Row ${index + 1} - Vendor: ${vendor.vendor_name}`);
+                            console.log(`Status: "${prItem?.status}"`);
+                            console.log(`Has PO: ${!!matchingPurchase}`);
+                            console.log(`Should be clickable: ${!matchingPurchase && (!prItem?.status || prItem?.status === 'pending' || prItem?.status === 'Po Rejected' || prItem?.status === 'Rejected')}`);
+                            console.log('---');
+                            
+                            // Logic: Po Rejected always clickable, pending only if no PO, others disabled
+                            let isDisabled = false;
+                            const status = prItem?.status ? prItem.status.trim().toLowerCase() : '';
+                            if (status === 'po rejected' || status === 'rejected') {
+                              isDisabled = false;
+                            } else if (status === 'pending' || !status) {
+                              isDisabled = !!matchingPurchase;
+                            } else {
+                              isDisabled = true;
+                            }
                             // Visual indicator for editability: underline color
                             const editableBorder = isDisabled
                               ? (isDarkMode ? 'border-b' : 'border-b border-gray-200')
@@ -2575,7 +2666,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   if ((e.target as HTMLElement).closest('input')) return;
                                   handleCompareRowClick(vendor);
                                 }}
-                                style={isDisabled ? { pointerEvents: 'none' } : {}}
                               >
                                 <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{startIdx + index + 1}</td>
                                 <td className={`px-4 py-3 text-sm text-center font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{vendor.vendor_code}</td>

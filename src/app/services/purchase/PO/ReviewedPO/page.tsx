@@ -45,6 +45,7 @@ type ReviewedPO = {
     remark: string;
     issued_by: string;
     approved_by: string;
+    rejected_by: string;
     po_lists: POList[];
 };
 
@@ -263,8 +264,8 @@ export default function ReviewedPOPage() {
                                                 <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                     PO #{poData.po_no}
                                                 </h1>
-                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${!poData.issued_by ? (isDarkMode ? 'bg-gray-700 text-gray-300 border border-gray-600' : 'bg-gray-100 text-gray-600 border border-gray-300') : poData.approved_by ? (isDarkMode ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-green-100 text-green-700 border border-green-200') : (isDarkMode ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30' : 'bg-yellow-100 text-yellow-700 border border-yellow-200')}`}>
-                                                    {!poData.issued_by ? 'รอการตรวจสอบ' : poData.approved_by ? 'อนุมัติเสร็จสิ้น' : 'รอดำเนินการ'}
+                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${!poData.issued_by ? (isDarkMode ? 'bg-gray-700 text-gray-300 border border-gray-600' : 'bg-gray-100 text-gray-600 border border-gray-300') : poData.approved_by ? (isDarkMode ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-green-100 text-green-700 border border-green-200') : poData.rejected_by ? (isDarkMode ? 'bg-red-500/20 text-red-200 border border-red-500/30' : 'bg-red-100 text-red-700 border border-red-200') : (isDarkMode ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30' : 'bg-yellow-100 text-yellow-700 border border-yellow-200')}`}>
+                                                    {!poData.issued_by ? 'รอการตรวจสอบ' : poData.approved_by ? 'อนุมัติเสร็จสิ้น' : poData.rejected_by ? 'ปฏิเสธแล้ว' : 'รอดำเนินการ'}
                                                 </div>
                                             </div>
                                             <div className={`flex items-center gap-4 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
@@ -282,7 +283,7 @@ export default function ReviewedPOPage() {
                                     </div>
                                     <div className="flex gap-3">
                                         {/* แสดงปุ่มอนุมัติ เฉพาะเมื่อยังไม่มี approved_by */}
-                                        {!poData.approved_by && (
+                                        {!poData.approved_by && !poData.rejected_by && (
                                             <>
                                                 <button
                                                     type="button"
@@ -490,32 +491,32 @@ export default function ReviewedPOPage() {
                                         <div className="flex justify-between items-center">
                                             <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>รวมรายการ</span>
                                             <span className={`text-sm font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
-                                                ฿{(poData.sub_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {(poData.sub_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
-                                            <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ส่วนลด</span>
+                                            <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ส่วนลดท้ายบิล</span>
                                             <span className={`text-sm font-bold ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>
-                                                - ฿{(poData.ext_discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                - {(poData.ext_discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>ราคาหลังหักส่วนลด</span>
                                             <span className={`text-sm font-bold ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
-                                                ฿{(poData.sub_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {(poData.total_minus_discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>VAT 7%</span>
                                             <span className={`text-sm font-bold ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-                                                + ฿{(poData.vat || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                + {(poData.vat || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                         <div className={`border-t pt-3 mt-2 ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                                             <div className="flex justify-between items-center">
                                                 <span className={`font-bold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>รวมสุทธิ</span>
                                                 <span className={`text-lg font-bold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                                                    ฿{(poData.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {(poData.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
                                         </div>
@@ -628,7 +629,7 @@ export default function ReviewedPOPage() {
                                                 {/* Freebie items rows */}
                                                 {Array.isArray(part.free_item) && part.free_item.length > 0 && (
                                                     part.free_item.map((item, i) => (
-                                                        <tr key={part.part_no + '-freebie-' + i + '-' + idx} className={`${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-50/80'}`}>
+                                                        <tr key={`${part.part_no}-freebie-${item.part_no}-${i}-${idx}`} className={`${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-50/80'}`}>
                                                             <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
                                                                     ของแถม
