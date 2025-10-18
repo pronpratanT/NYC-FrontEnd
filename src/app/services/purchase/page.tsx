@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useState, useRef, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 // Calendar
 import { Thai } from "flatpickr/dist/l10n/th.js";
@@ -75,7 +75,11 @@ export default function PurchasePage() {
 
     // Router
     const router = useRouter();
-    const searchParams = useSearchParams();
+    // Helper to get search param from URL (client only)
+    function getSearchParam(key: string) {
+        if (typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get(key);
+    }
     const pathname = usePathname();
 
     // Error and loading states
@@ -165,11 +169,11 @@ export default function PurchasePage() {
 
     // NOTE: Pagination states (sync with URL)
     const [itemsPerPage, setItemsPerPage] = useState(() => {
-        const urlPerPage = searchParams.get('perPage');
+        const urlPerPage = typeof window !== 'undefined' ? getSearchParam('perPage') : null;
         return urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
     });
     const [currentPage, setCurrentPage] = useState(() => {
-        const urlPage = searchParams.get('page');
+        const urlPage = typeof window !== 'undefined' ? getSearchParam('page') : null;
         return urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
     });
     const totalItems = displayedPrCards.length;
@@ -180,24 +184,8 @@ export default function PurchasePage() {
     const actualStartIndex = currentPage === 1 ? 0 : startIndex - 1; // -1 because first page has create card
     const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
     const paginatedPrCards = displayedPrCards.slice(actualStartIndex, actualEndIndex);
-    // Reset to page 1 when filters change and update URL
-    useEffect(() => {
-        setCurrentPage(1);
-        updateUrlParams(1, itemsPerPage);
-    }, [departmentFilter, statusFilter, search, sortBy]);
-
-    // Sync state with URL params only on mount or true URL change
-    useEffect(() => {
-        const urlPage = searchParams.get('page');
-        const urlPerPage = searchParams.get('perPage');
-        const newPage = urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
-        const newPerPage = urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
-        setCurrentPage(newPage);
-        setItemsPerPage(newPerPage);
-    }, [pathname]);
-
     // Function to update URL parameters
-    const updateUrlParams = (newPage?: number, newPerPage?: number) => {
+    const updateUrlParams = React.useCallback((newPage?: number, newPerPage?: number) => {
         const params = new URLSearchParams(window.location.search);
         if (newPage !== undefined) {
             if (newPage === 1) {
@@ -215,7 +203,36 @@ export default function PurchasePage() {
         }
         const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
         router.replace(newUrl, { scroll: false });
-    };
+    }, [pathname, router]);
+
+    // Reset to page 1 when filters change and update URL
+    // Reset to page 1 only if filters actually change, not on every mount/navigation
+    const prevFilters = useRef({ departmentFilter, statusFilter, search, sortBy, itemsPerPage });
+    useEffect(() => {
+        const prev = prevFilters.current;
+        // Only reset if any filter (not page) actually changed
+        if (
+            prev.departmentFilter !== departmentFilter ||
+            prev.statusFilter !== statusFilter ||
+            prev.search !== search ||
+            prev.sortBy !== sortBy ||
+            prev.itemsPerPage !== itemsPerPage
+        ) {
+            setCurrentPage(1);
+            updateUrlParams(1, itemsPerPage);
+        }
+        prevFilters.current = { departmentFilter, statusFilter, search, sortBy, itemsPerPage };
+    }, [departmentFilter, statusFilter, search, sortBy, itemsPerPage, updateUrlParams]);
+
+    // Sync state with URL params only on mount or true URL change
+    useEffect(() => {
+        const urlPage = getSearchParam('page');
+        const urlPerPage = getSearchParam('perPage');
+        const newPage = urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
+        const newPerPage = urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
+        setCurrentPage(newPage);
+        setItemsPerPage(newPerPage);
+    }, [pathname]);
 
     // Format ISO date to DD/MM/YYYY
     function formatISOToDisplay(iso: string) {

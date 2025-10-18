@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useState, useRef, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 // Calendar
 import { Thai } from "flatpickr/dist/l10n/th.js";
@@ -29,6 +29,7 @@ type PoDocs = {
     issued_by: string | null;
     approved_by: string | null;
     rejected_by: string | null;
+    count_list: number;
 }
 type POCard = {
     ID: number;
@@ -75,7 +76,11 @@ export default function PurchaseOrderPage() {
 
     // Router
     const router = useRouter();
-    const searchParams = useSearchParams();
+    // Helper to get search param from URL (client only)
+    function getSearchParam(key: string) {
+        if (typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get(key);
+    }
     const pathname = usePathname();
 
     // Error and loading states
@@ -158,37 +163,20 @@ export default function PurchaseOrderPage() {
 
     // NOTE: Pagination states (sync with URL)
     const [itemsPerPage, setItemsPerPage] = useState(() => {
-        const urlPerPage = searchParams.get('perPage');
+        const urlPerPage = typeof window !== 'undefined' ? getSearchParam('perPage') : null;
         return urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
     });
     const [currentPage, setCurrentPage] = useState(() => {
-        const urlPage = searchParams.get('page');
+        const urlPage = typeof window !== 'undefined' ? getSearchParam('page') : null;
         return urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
     });
     const totalItems = displayedPoCards.length;
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
-    // const showCreateCard = currentPage === 1;
-    const itemsToShow = currentPage === 1 ? itemsPerPage : itemsPerPage; // -1 is createPR card
-    const actualStartIndex = currentPage === 1 ? 0 : startIndex; // -1 because first page has create card
-    const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const itemsToShow = itemsPerPage;
+    const actualStartIndex = startIndex;
+    const actualEndIndex = actualStartIndex + itemsToShow;
     const paginatedPoCards = displayedPoCards.slice(actualStartIndex, actualEndIndex);
-
-    // Reset to page 1 when filters change and update URL
-    useEffect(() => {
-        setCurrentPage(1);
-        updateUrlParams(1, itemsPerPage);
-    }, [departmentFilter, statusFilter, search, sortBy]);
-
-    // Sync state with URL params only on mount or true URL change
-    useEffect(() => {
-        const urlPage = searchParams.get('page');
-        const urlPerPage = searchParams.get('perPage');
-        const newPage = urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
-        const newPerPage = urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
-        setCurrentPage(newPage);
-        setItemsPerPage(newPerPage);
-    }, [pathname]);
 
     // Function to update URL parameters
     const updateUrlParams = (newPage?: number, newPerPage?: number) => {
@@ -210,6 +198,35 @@ export default function PurchaseOrderPage() {
         const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
         router.replace(newUrl, { scroll: false });
     };
+
+    // Reset to page 1 when filters change and update URL
+    // Reset to page 1 only if filters actually change, not on every mount/navigation
+    const prevFilters = useRef({ departmentFilter, statusFilter, search, sortBy, itemsPerPage });
+    useEffect(() => {
+        const prev = prevFilters.current;
+        // Only reset if any filter (not page) actually changed
+        if (
+            prev.departmentFilter !== departmentFilter ||
+            prev.statusFilter !== statusFilter ||
+            prev.search !== search ||
+            prev.sortBy !== sortBy ||
+            prev.itemsPerPage !== itemsPerPage
+        ) {
+            setCurrentPage(1);
+            updateUrlParams(1, itemsPerPage);
+        }
+        prevFilters.current = { departmentFilter, statusFilter, search, sortBy, itemsPerPage };
+    }, [departmentFilter, statusFilter, search, sortBy, itemsPerPage]);
+
+    // Sync state with URL params only on mount or true URL change
+    useEffect(() => {
+        const urlPage = getSearchParam('page');
+        const urlPerPage = getSearchParam('perPage');
+        const newPage = urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
+        const newPerPage = urlPerPage && [10, 25, 50, 100].includes(Number(urlPerPage)) ? Number(urlPerPage) : 10;
+        setCurrentPage(newPage);
+        setItemsPerPage(newPerPage);
+    }, [pathname]);
 
     // Format ISO date to DD/MM/YYYY
     function formatISOToDisplay(iso: string) {
@@ -737,14 +754,13 @@ export default function PurchaseOrderPage() {
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                     <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
-                                            const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
-                                            const startItem = totalItemsWithCreate === 1 ? 0 : (currentPage === 1 ? 1 : startIndex + 1);
-                                            const endItem = currentPage === 1 ? Math.min(itemsPerPage, totalItemsWithCreate) : Math.min(startIndex + itemsPerPage, totalItemsWithCreate);
+                                            const startItem = totalItems === 0 ? 0 : startIndex + 1;
+                                            const endItem = Math.min(startIndex + itemsPerPage, totalItems);
                                             return (
                                                 <>
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
                                                     {' '}จาก{' '}
-                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItemsWithCreate}</span>
+                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItems}</span>
                                                 </>
                                             );
                                         })()}
@@ -892,13 +908,25 @@ export default function PurchaseOrderPage() {
                                             <GoDownload className="w-7 h-7" />
                                         </button>
                                     </div>
-                                    {/* <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                                        {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
-                                            <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list} รายการ</span></>
-                                        ) : (
-                                            <>ดำเนินการ {pr.waiting} | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></>
-                                        )}
-                                    </span> */}
+                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                        {(() => {
+                                            const doc = poCards.find(doc => doc.po.po_no === po.po_no);
+                                            const countList = doc?.count_list ?? 0;
+                                            if (po.rejected_by) {
+                                                return <>
+                                                    ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{countList} รายการ</span>
+                                                </>;
+                                            } else if (po.approved_by) {
+                                                return <>
+                                                    ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
+                                                </>;
+                                            } else {
+                                                return <>
+                                                    รอดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
+                                                </>;
+                                            }
+                                        })()}
+                                    </span>
                                 </div>
                             </div>
                         ))}

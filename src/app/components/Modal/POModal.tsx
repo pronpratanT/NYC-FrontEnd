@@ -102,7 +102,7 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
 
     // Part No. search states
     const [search, setSearch] = useState("");
-    type PartNoType = string | { part_no: string; [key: string]: any };
+    type PartNoType = string | { part_no: string; [key: string]: string | number | boolean | null | undefined };
     const [partNos, setPartNos] = useState<PartNoType[]>([]);
     const [selectedParts, setSelectedParts] = useState<string[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);

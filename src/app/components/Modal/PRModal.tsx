@@ -118,6 +118,7 @@ type CompareData = {
   price: number;
   discount: number[];
   due_date: string;
+  date_shipped: string;
 };
 
 type SelectedToPOGen = {
@@ -1964,22 +1965,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
                                       <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                         {(() => {
-                                          let vendorId: number | undefined;
-                                          if (prWithPO.recent_purchase) {
-                                            if (Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0) {
-                                              vendorId = prWithPO.recent_purchase[0].vendor_id;
-                                            } else if (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { vendor_id?: number }).vendor_id) {
-                                              vendorId = (prWithPO.recent_purchase as { vendor_id: number }).vendor_id;
-                                            }
-                                          }
-                                          let dueDate = null;
-                                          if (vendorId !== undefined) {
-                                            const vendor = compareData?.compare_vendors?.find(v => v.vendor_id === vendorId);
-                                            if (vendor && vendor.due_date) {
-                                              dueDate = vendor.due_date;
-                                            }
-                                          }
-                                          return dueDate ? new Date(dueDate).toLocaleDateString('th-TH') : '-';
+                                          // Use compare_vendors[0].date_shipped for delivery date
+                                          const dateShipped = compareData?.compare_vendors && compareData.compare_vendors.length > 0 && compareData.compare_vendors[0].date_shipped;
+                                          return dateShipped ? new Date(dateShipped).toLocaleDateString('th-TH') : '-';
                                         })()}
                                       </div>
                                     </div>
@@ -1990,14 +1978,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ต้องการใช้สินค้า</label>
                                       <div className={`text-sm text-center ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                         {(() => {
-                                          let useDate: string | null = null;
-                                          const rp = prWithPO.recent_purchase;
-                                          if (Array.isArray(rp) && rp.length > 0) {
-                                            useDate = rp[0]?.due_date || null;
-                                          } else if (rp && typeof rp === 'object' && 'due_date' in rp) {
-                                            useDate = (rp as { due_date?: string }).due_date || null;
-                                          }
-                                          return useDate ? new Date(useDate).toLocaleDateString('th-TH') : '-';
+                                          // Use compare_vendors[0].due_date for usage date
+                                          const dueDate = compareData?.compare_vendors && compareData.compare_vendors.length > 0 && compareData.compare_vendors[0].due_date;
+                                          return dueDate ? new Date(dueDate).toLocaleDateString('th-TH') : '-';
                                         })()}
                                       </div>
                                     </div>
@@ -2635,14 +2618,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             // Find matching purchase row for this vendor
                             const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no && item.po_no.trim() !== '');
                             const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
-                            
+
                             // Debug log สำหรับทุก vendor row
                             console.log(`Row ${index + 1} - Vendor: ${vendor.vendor_name}`);
                             console.log(`Status: "${prItem?.status}"`);
                             console.log(`Has PO: ${!!matchingPurchase}`);
                             console.log(`Should be clickable: ${!matchingPurchase && (!prItem?.status || prItem?.status === 'pending' || prItem?.status === 'Po Rejected' || prItem?.status === 'Rejected')}`);
                             console.log('---');
-                            
+
                             // Logic: Po Rejected always clickable, pending only if no PO, others disabled
                             let isDisabled = false;
                             const status = prItem?.status ? prItem.status.trim().toLowerCase() : '';
@@ -3218,11 +3201,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <div className="relative w-full">
                                     <DatePicker
                                       selected={deliveryDate ? new Date(deliveryDate) : (
-                                        Array.isArray(selectedRowData.recent_purchase) && selectedRowData.recent_purchase.length > 0 && (selectedRowData.recent_purchase[0] as { date?: string })?.date
-                                          ? new Date((selectedRowData.recent_purchase[0] as { date: string }).date)
-                                          : (!Array.isArray(selectedRowData.recent_purchase) && (selectedRowData.recent_purchase as { date?: string })?.date)
-                                            ? new Date((selectedRowData.recent_purchase as { date: string }).date)
-                                            : null
+                                        compareData?.compare_vendors && compareData.compare_vendors.length > 0 && compareData.compare_vendors[0].date_shipped
+                                          ? new Date(compareData.compare_vendors[0].date_shipped)
+                                          : null
                                       )}
                                       onChange={handleDeliveryDateChange}
                                       dateFormat="dd/MM/yyyy"
@@ -3238,35 +3219,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   </div>
                                 </div>
                                 <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                  <label className={`block text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    วันที่ต้องการใช้สินค้า
-                                    {(() => {
-                                      let purchaseDate = null;
-                                      if (selectedRowData.recent_purchase) {
-                                        if (Array.isArray(selectedRowData.recent_purchase) && selectedRowData.recent_purchase.length > 0) {
-                                          purchaseDate = selectedRowData.recent_purchase[0].date;
-                                        } else if (!Array.isArray(selectedRowData.recent_purchase) && (selectedRowData.recent_purchase as any).date) {
-                                          purchaseDate = (selectedRowData.recent_purchase as any).date;
-                                        }
-                                      }
-                                      return purchaseDate ? (
-                                        <span className={`ml-2 text-[11px] font-normal ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
-                                          {/* (ล่าสุด: {new Date(purchaseDate).toLocaleDateString('th-TH')}) */}
-                                        </span>
-                                      ) : null;
-                                    })()}
-                                  </label>
+                                  <label className={`block text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ต้องการใช้สินค้า</label>
                                   <div className={`px-3 py-2 border rounded-lg text-sm text-center ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200' : 'border-slate-300 bg-white text-slate-800'}`}>
                                     {(() => {
-                                      let purchaseDate = null;
-                                      if (selectedRowData.recent_purchase) {
-                                        if (Array.isArray(selectedRowData.recent_purchase) && selectedRowData.recent_purchase.length > 0) {
-                                          purchaseDate = selectedRowData.recent_purchase[0].date;
-                                        } else if (!Array.isArray(selectedRowData.recent_purchase) && (selectedRowData.recent_purchase as any).date) {
-                                          purchaseDate = (selectedRowData.recent_purchase as any).date;
-                                        }
-                                      }
-                                      return purchaseDate ? new Date(purchaseDate).toLocaleDateString('th-TH') : '-';
+                                      const dueDate = compareData?.compare_vendors && compareData.compare_vendors.length > 0 && compareData.compare_vendors[0].due_date;
+                                      return dueDate ? new Date(dueDate).toLocaleDateString('th-TH') : '-';
                                     })()}
                                   </div>
                                 </div>
