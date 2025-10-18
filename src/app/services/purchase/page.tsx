@@ -782,7 +782,7 @@ export default function PurchasePage() {
                                         <option value={10}>10 per page</option>
                                         <option value={25}>25 per page</option>
                                         <option value={50}>50 per page</option>
-                                        <option value={100}>100 per page</option>
+                                        {/* <option value={100}>100 per page</option> */}
                                     </select>
                                     {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
                                 </div>
@@ -928,8 +928,28 @@ export default function PurchasePage() {
                                         <tbody>
                                             <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>{pr.pr_no}</td></tr>
                                             <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.dept_name}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{pr.requester_name}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td><td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{pr.pu_responsible}</td></tr>
+                                            <tr>
+                                                <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td>
+                                                <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
+                                                    style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                    title={pr.requester_name}
+                                                >
+                                                    {pr.requester_name && pr.requester_name.length > 18
+                                                        ? pr.requester_name.slice(0, 16) + '...'
+                                                        : pr.requester_name}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td>
+                                                <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
+                                                    style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                    title={pr.pu_responsible}
+                                                >
+                                                    {pr.pu_responsible && pr.pu_responsible.length > 18
+                                                        ? pr.pu_responsible.slice(0, 16) + '...'
+                                                        : pr.pu_responsible}
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>

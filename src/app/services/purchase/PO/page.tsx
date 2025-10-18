@@ -24,13 +24,14 @@ import { GoDownload } from "react-icons/go";
 import { HiDocumentText } from "react-icons/hi2";
 
 // Types
-type PoDocs = {
+// ปรับ type ให้ตรงกับโครงสร้างใหม่
+type PoCardItem = {
     po: POCard;
     issued_by: string | null;
     approved_by: string | null;
     rejected_by: string | null;
     count_list: number;
-}
+};
 type POCard = {
     ID: number;
     CreatedAt: string;
@@ -73,25 +74,18 @@ const departmentColors: { [key: string]: string } = {
 export default function PurchaseOrderPage() {
     // Theme context
     const { isDarkMode } = useTheme();
-
     // Router
     const router = useRouter();
-    // Helper to get search param from URL (client only)
-    function getSearchParam(key: string) {
-        if (typeof window === 'undefined') return null;
-        return new URLSearchParams(window.location.search).get(key);
-    }
-    const pathname = usePathname();
+    const { user } = useUser();
+    const departmentId = user?.Department?.ID;
 
     // Error and loading states
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     // NOTE: Data states
-    const [poCards, setPoCards] = useState<PoDocs[]>([]);
+    const [poCards, setPoCards] = useState<PoCardItem[]>([]);
     const token = useToken();
-    const { user } = useUser();
-    const departmentId = user?.Department?.ID;
     const [departments, setDepartments] = useState<Department[]>([]);
 
     // NOTE: Search and filter states
@@ -106,8 +100,23 @@ export default function PurchaseOrderPage() {
     const [sortBy, setSortBy] = useState("newest");
     const [statusFilter, setStatusFilter] = useState<string>("");
 
+    // Helper to get search param from URL (client only)
+    function getSearchParam(key: string) {
+        if (typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get(key);
+    }
+    const pathname = usePathname();
+
+    // NOTE: Check department access
+    useEffect(() => {
+        if (departmentId !== undefined && departmentId !== 10086) {
+            alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
+            router.replace('/services/purchase');
+        }
+    }, [departmentId, router]);
+
     // TODO: Card Display Logic
-    // รวม POCard ทั้งหมดจากทุก PoDocs
+    // รวม POCard ทั้งหมดจากทุก PoCardItem
     const allPoCards: POCard[] = poCards.map(doc => doc.po);
     let displayedPoCards = allPoCards;
 
@@ -170,13 +179,11 @@ export default function PurchaseOrderPage() {
         const urlPage = typeof window !== 'undefined' ? getSearchParam('page') : null;
         return urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
     });
-    const totalItems = displayedPoCards.length;
+    // Use totalItems from API (amount_po) for pagination
+    const [totalItems, setTotalItems] = useState(0);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const itemsToShow = itemsPerPage;
-    const actualStartIndex = startIndex;
-    const actualEndIndex = actualStartIndex + itemsToShow;
-    const paginatedPoCards = displayedPoCards.slice(actualStartIndex, actualEndIndex);
+    const paginatedPoCards = displayedPoCards;
 
     // Function to update URL parameters
     const updateUrlParams = (newPage?: number, newPerPage?: number) => {
@@ -276,7 +283,7 @@ export default function PurchaseOrderPage() {
                 }
 
                 // กำหนด URL และ options สำหรับ fetch
-                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all`;
+                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=${currentPage}&limit=${itemsPerPage}`;
                 let fetchOptions: RequestInit = {
                     headers: { 
                         'Content-Type': 'application/json', 
@@ -307,11 +314,12 @@ export default function PurchaseOrderPage() {
 
                 const data = await responsePO.json();
                 console.log("Fetched PO data:", data);
-                let posArray = Array.isArray(data.poDocs) ? data.poDocs : [];
+                // data.poDocs.po_all เป็น array ของ PO
+                let posArray = Array.isArray(data.poDocs?.po_all) ? data.poDocs.po_all : [];
 
                 //Filter by date range BEFORE setPoCards
                 if (dateRange && dateRange.start && dateRange.end) {
-                    posArray = posArray.filter((doc: PoDocs) => {
+                    posArray = posArray.filter((doc: PoCardItem) => {
                         if (!doc.po.po_date) return false;
                         const poDate = new Date(doc.po.po_date);
                         const startDate = new Date(dateRange.start);
@@ -322,6 +330,8 @@ export default function PurchaseOrderPage() {
                     });
                 }
                 setPoCards(posArray);
+                // Set totalItems from amount_po in response
+                setTotalItems(data.poDocs?.amount_po || 0);
                 console.log("Filtered PO cards:", posArray.length, "items");
             } catch (error: unknown) {
                 console.error("Failed to fetch PO cards:", error);
@@ -337,7 +347,7 @@ export default function PurchaseOrderPage() {
         if (token !== null) {
             fetchPoCards();
         }
-    }, [token, router, search, dateRange]);
+    }, [token, router, search, dateRange, currentPage, itemsPerPage]);
 
     {/* departments */ }
     useEffect(() => {
@@ -745,7 +755,7 @@ export default function PurchaseOrderPage() {
                                         <option value={10}>10 per page</option>
                                         <option value={25}>25 per page</option>
                                         <option value={50}>50 per page</option>
-                                        <option value={100}>100 per page</option>
+                                        {/* <option value={100}>100 per page</option> */}
                                     </select>
                                     {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
                                 </div>

@@ -323,7 +323,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>หมายเลข PR</span>
                                     </div>
                                     {/* Approve / Reject Buttons */}
-                                    {!(prData?.manager_approve && prData?.supervisor_approve && prData?.pu_operator_approve) && !(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at) && (
+                                    {!(prData?.manager_approve && prData?.supervisor_approve && prData?.pu_operator_approve)
+                                        && !(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at)
+                                        && (!(prData?.manager_approve && prData?.supervisor_approve) || departmentId === 10086) && (
                                         <div className="flex items-center gap-2 relative">
                                             <div className="flex items-center">
                                                 <button
@@ -530,9 +532,13 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
-                                            <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
+                                            {departmentId === 10086 && (
+                                                <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
+                                            )}
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
-                                            <th className={`px-2 py-3 text-right font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
+                                            {departmentId === 10086 && (
+                                                <th className={`px-2 py-3 text-right font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
+                                            )}
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
                                         </tr>
                                     </thead>
@@ -638,9 +644,13 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <td className={`px-2 py-3 w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.objective}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.qty}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.unit}</td>
-                                                <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.vendor}</td>
+                                                {departmentId === 10086 && (
+                                                    <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.vendor}</td>
+                                                )}
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.stock}</td>
-                                                <td className={`px-2 py-3 w-16 text-right ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
+                                                {departmentId === 10086 && (
+                                                    <td className={`px-2 py-3 w-16 text-right ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
+                                                )}
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.plant}</td>
                                             </tr>
                                         ))}

@@ -520,15 +520,15 @@ export default function TestPage() {
                     <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>ลบ</th>
                     <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
                     <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
-                    <th className={`px-2 py-3 text-left font-semibold w-26 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
-                    <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
+                    <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
+                    <th className={`px-2 py-3 text-left font-semibold w-36 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
+                    <th className={`px-2 py-3 text-center font-semibold w-24 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                     <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-30 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
+                    <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
                     <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
+                    {/* <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th> */}
                     <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
+                    {/* <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th> */}
                     <th className={`px-2 py-3 text-center font-semibold w-22 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
                   </tr>
                 </thead>
@@ -554,13 +554,13 @@ export default function TestPage() {
                             <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
                               {partInfo.part_no && partInfo.part_no.indexOf(' |') !== -1 ? partInfo.part_no.slice(0, partInfo.part_no.indexOf(' |')) : partInfo.part_no}
                             </td>
-                            <td className={`px-2 py-3 font-medium w-26 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
                               {partInfo.prod_code && partInfo.prod_code.indexOf(' |') !== -1 ? partInfo.prod_code.slice(0, partInfo.prod_code.indexOf(' |')) : partInfo.prod_code}
                             </td>
-                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                            <td className={`px-2 py-3 font-medium w-36 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
                               {partInfo.part_name && partInfo.part_name.indexOf(' |') !== -1 ? partInfo.part_name.slice(0, partInfo.part_name.indexOf(' |')) : partInfo.part_name}
                             </td>
-                            <td className="px-2 py-3 w-20">
+                            <td className="px-2 py-3 w-24">
                               <input
                                 type="number"
                                 min="0" step="1"
@@ -579,7 +579,7 @@ export default function TestPage() {
                             <td className="px-2 py-3 w-20">
                               <input type="text" className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.unit ?? ''} readOnly />
                             </td>
-                            <td className={`px-2 py-5 whitespace-nowrap text-sm w-30 ${isDarkMode ? 'text-slate-300 border-r border-slate-700' : 'text-gray-700 border-r border-green-100'}`}>
+                            <td className={`px-2 py-5 whitespace-nowrap text-sm w-32 ${isDarkMode ? 'text-slate-300 border-r border-slate-700' : 'text-gray-700 border-r border-green-100'}`}>
                               <div className="relative w-full">
                                 <DatePicker
                                   selected={pagedDueDates[idx]}
@@ -601,21 +601,21 @@ export default function TestPage() {
                                 onChange={(e) => handleObjectiveChange((page - 1) * rowsPerPage + idx, e.target.value)}
                               />
                             </td>
-                            <td className="px-2 py-3 w-16">
+                            {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-center text-sm font-medium ${isDarkMode ? 'bg-slate-700/50 text-slate-200 border border-slate-600/50' : 'bg-gray-50 text-gray-700 border border-gray-200'}`}>
                                 {partInfo.vendor || '-'}
                               </div>
-                            </td>
+                            </td> */}
                             <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-blue-900/20 text-blue-300 border border-blue-800/50' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
                                 {Number(partInfo.stock ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                               </div>
                             </td>
-                            <td className="px-2 py-3 w-16">
+                            {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                 ฿{Number(partInfo.price_per_unit ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                               </div>
-                            </td>
+                            </td> */}
                             <td className="px-2 py-3 w-22">
                               <select
                                 value={destinationData[(page - 1) * rowsPerPage + idx] || 'Plant 1'}
@@ -701,13 +701,13 @@ export default function TestPage() {
                                 onChange={(e) => handleObjectiveChange((page - 1) * rowsPerPage + idx, e.target.value)}
                               />
                             </td>
-                            <td className="px-2 py-3 w-16">
+                            {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 py-2 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
                                 <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
                                   ไม่มีข้อมูล
                                 </span>
                               </div>
-                            </td>
+                            </td> */}
                             <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
                                 <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
@@ -715,13 +715,13 @@ export default function TestPage() {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-2 py-3 w-16">
+                            {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
                                 <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
                                   ฿0.00
                                 </span>
                               </div>
-                            </td>
+                            </td> */}
                             <td className="px-2 py-3 w-22">
                               <select
                                 value={destinationData[(page - 1) * rowsPerPage + idx] || 'Plant 1'}

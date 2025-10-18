@@ -2005,27 +2005,31 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   )}
                                 </div>
                               </div>
-                              <div className={`p-4`}>
-                                <div className="flex justify-center gap-4">
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      if (!purchaseType || isSaving) return;
-                                      setIsSaving(true);
-                                      try {
-                                        await handleSubmitPOCreate();
-                                      } finally {
-                                        setIsSaving(false);
-                                      }
-                                    }}
-                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'} ${!purchaseType || isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                    style={!purchaseType || isSaving ? { cursor: 'not-allowed' } : undefined}
-                                    disabled={!purchaseType || isSaving}
-                                  >
-                                    {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-                                  </button>
-                                </div>
-                              </div>
+                              {prWithPO.status !== 'Po Created' && (
+                                <>
+                                  <div className={`p-4`}>
+                                    <div className="flex justify-center gap-4">
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          if (!purchaseType || isSaving) return;
+                                          setIsSaving(true);
+                                          try {
+                                            await handleSubmitPOCreate();
+                                          } finally {
+                                            setIsSaving(false);
+                                          }
+                                        }}
+                                        className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'} ${!purchaseType || isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        style={!purchaseType || isSaving ? { cursor: 'not-allowed' } : undefined}
+                                        disabled={!purchaseType || isSaving}
+                                      >
+                                        {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2231,7 +2235,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <option value={10}>10 per page</option>
                         <option value={25}>25 per page</option>
                         <option value={50}>50 per page</option>
-                        <option value={100}>100 per page</option>
+                        {/* <option value={100}>100 per page</option> */}
                       </select>
                     </div>
 
@@ -2963,7 +2967,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <option value={10}>10 per page</option>
                           <option value={25}>25 per page</option>
                           <option value={50}>50 per page</option>
-                          <option value={100}>100 per page</option>
+                          {/* <option value={100}>100 per page</option> */}
                         </select>
                       </div>
                       {/* Pagination info และปุ่มเลื่อนหน้า */}

@@ -332,29 +332,32 @@ export default function ReviewedPOPage() {
                                             <h3 className={`font-semibold text-lg ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>ข้อมูลผู้ขาย</h3>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <button
-                                                type="button"
-                                                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 border font-semibold ${isDarkMode ? 'bg-blue-500/10 border-blue-700 text-blue-400 hover:bg-blue-700/30 hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white'}`}
-                                                title="แก้ไขข้อมูลผู้ขาย"
-                                                onClick={e => {
-                                                    e.stopPropagation();
-                                                    setEditVendorData({
-                                                        ID: poData.vendor_id,
-                                                        vendor_code: poData.vendor_code,
-                                                        vendor_name: poData.vendor_name,
-                                                        tax_id: poData.tax_id ?? null,
-                                                        credit_term: poData.credit_term,
-                                                        tel_no: poData.tel_no,
-                                                        fax_no: poData.fax_no ?? '',
-                                                        contact_person: poData.contact_name ?? '',
-                                                        email: poData.email ?? '',
-                                                    });
-                                                    setShowEditVendor(true);
-                                                }}
-                                            >
-                                                <FaRegEdit className="h-5 w-5" />
-                                                <span className="sr-only">Edit Vendor Information</span>
-                                            </button>
+                                            {/* Hide edit vendor button if status is approved or rejected */}
+                                            {!(poData.approved_by || poData.rejected_by) && (
+                                                <button
+                                                    type="button"
+                                                    className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 border font-semibold ${isDarkMode ? 'bg-blue-500/10 border-blue-700 text-blue-400 hover:bg-blue-700/30 hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white'}`}
+                                                    title="แก้ไขข้อมูลผู้ขาย"
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        setEditVendorData({
+                                                            ID: poData.vendor_id,
+                                                            vendor_code: poData.vendor_code,
+                                                            vendor_name: poData.vendor_name,
+                                                            tax_id: poData.tax_id ?? null,
+                                                            credit_term: poData.credit_term,
+                                                            tel_no: poData.tel_no,
+                                                            fax_no: poData.fax_no ?? '',
+                                                            contact_person: poData.contact_name ?? '',
+                                                            email: poData.email ?? '',
+                                                        });
+                                                        setShowEditVendor(true);
+                                                    }}
+                                                >
+                                                    <FaRegEdit className="h-5 w-5" />
+                                                    <span className="sr-only">Edit Vendor Information</span>
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="p-5 space-y-3">
@@ -565,8 +568,15 @@ export default function ReviewedPOPage() {
                                         {pagedParts.map((part, idx) => (
                                             <>
                                                 <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
-                                                    className={`transition-all duration-200 cursor-pointer ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400 hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'bg-white border-l-orange-400/70 hover:bg-orange-50/30 hover:shadow-md'}`}
-                                                    onClick={() => { setSelectedPart(part); setShowPOModal(true); }}
+                                                    className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400' : 'bg-white border-l-orange-400/70'}
+                                                        ${!(poData.approved_by || poData.rejected_by) ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-not-allowed opacity-60'}
+                                                    `}
+                                                    onClick={() => {
+                                                        if (!(poData.approved_by || poData.rejected_by)) {
+                                                            setSelectedPart(part);
+                                                            setShowPOModal(true);
+                                                        }
+                                                    }}
                                                 >
                                                     <td className={`px-4 py-4 text-center text-sm font-bold ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
                                                         {(page - 1) * rowsPerPage + idx + 1}
