@@ -1291,7 +1291,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       >
                         <div className="flex items-center space-x-2">
                           <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                          <span>รายละเอียดการขอซื้อ</span>
+                          <span>รายละเอียดการสั่งซื้อ</span>
                         </div>
                       </button>
                     );
@@ -1307,7 +1307,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       >
                         <div className="flex items-center space-x-2">
                           <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                          <span>ผลสรุปรายละเอียด</span>
+                          <span>รายละเอียดการสั่งซื้อ</span>
                         </div>
                       </button>
                     );
@@ -1376,7 +1376,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <div className="flex flex-col h-full">
                         {/* Header */}
                         <div className={`bg-gradient-to-r px-8 py-4 border-b ${isDarkMode ? 'from-yellow-900/60 to-orange-900/60 border-yellow-700/60' : 'from-yellow-50 to-orange-50 border-yellow-200/60'}`}>
-                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>รออนุมัติ PR ล่าสุด</h3>
+                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>รออนุมัติใบเปรียบเทียบ</h3>
                         </div>
 
                         {/* Content */}
@@ -1674,7 +1674,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <div className="flex flex-col h-full">
                         {/* Header */}
                         <div className={`bg-gradient-to-r px-8 py-4 border-b ${isDarkMode ? 'from-blue-900/60 to-indigo-900/60 border-blue-700/60' : 'from-blue-50 to-indigo-50 border-blue-200/60'}`}>
-                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>ผลสรุปรายละเอียดการขอซื้อ</h3>
+                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>ผลสรุปรายละเอียดการสั่งซื้อ</h3>
                         </div>
 
                         {/* Content */}
