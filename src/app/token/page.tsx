@@ -41,7 +41,7 @@ export default function AdminTokensPage() {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const response = await fetch("/api/proxy/user/deps", { cache: "no-store" });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();

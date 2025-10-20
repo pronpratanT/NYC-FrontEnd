@@ -366,7 +366,7 @@ export default function Home() {
       setError("");
       setIsLoading(true);
       try {
-        const response = await fetch("/api/proxy/user/login", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: empID, password })

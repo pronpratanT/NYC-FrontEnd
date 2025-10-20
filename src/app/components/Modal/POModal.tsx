@@ -145,7 +145,7 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
                 setLoading(true);
                 const keyword = search; // ใช้ search จาก input เท่านั้น
                 console.log("Searching Part No. with keyword:", keyword);
-                const response = await fetch(`/api/proxy/purchase/search-part-no?keyword=${encodeURIComponent(keyword)}`, { cache: "no-store" });
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(keyword)}`, { cache: "no-store" });
                 if (!response.ok) {
                     throw new Error(`PartNo API error: HTTP ${response.status} ${response.statusText}`);
                 }

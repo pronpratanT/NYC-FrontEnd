@@ -62,9 +62,9 @@ export default function Page() {
                 setError(null);
 
                 const [resUsers, resDeps, resServices] = await Promise.all([
-                    fetch("/api/proxy/user", { cache: "no-store" }),
-                    fetch("/api/proxy/user/deps", { cache: "no-store" }),
-                    fetch("/api/proxy/admin/services", { cache: "no-store" }),
+                    fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user`, { cache: "no-store" }),
+                    fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" }),
+                    fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_ADMIN_SERVICE}/api/admin/services`, { cache: "no-store" }),
                 ]);
 
                 if (!resUsers.ok) {
@@ -145,7 +145,7 @@ export default function Page() {
 
                 console.log("Posting:", payload);
 
-                const res = await fetch("/api/proxy/admin/add-department-service", {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_ADMIN_SERVICE}/api/admin/add-department-service`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),

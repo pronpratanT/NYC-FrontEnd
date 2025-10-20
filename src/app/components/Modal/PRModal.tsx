@@ -436,7 +436,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const fetchData = async () => {
       try {
         setVendorLoading(true);
-        const response = await fetch(`/api/proxy/purchase/search-vendor?keyword=${encodeURIComponent(search)}`, { cache: "no-store" });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-vendor?keyword=${encodeURIComponent(search)}`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Vendor API error: HTTP ${response.status} ${response.statusText}`);
         }
@@ -488,13 +488,19 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         const vendorData = Array.isArray(data) ? data[0] : (data.data ? data.data : data);
         setSelectedVendorDetail(vendorData as VendorSelected);
         if (vendorData && vendorData.vendor_code) {
-
+          // ตรวจสอบ vendor_id ซ้ำใน compare_vendors ก่อนเพิ่ม
+          const vendorId = vendorData.ID;
+          const exists = compareData?.compare_vendors?.some(v => v.vendor_id === vendorId);
+          if (exists) {
+            alert('มี Vendor นี้อยู่ในตารางแล้ว ไม่สามารถเพิ่มซ้ำได้');
+            return;
+          }
           try {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/insert-vendor-for-compare`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ vendor_id: vendorData.ID, pcl_id: compareData?.pcl_id })
+              body: JSON.stringify({ vendor_id: vendorId, pcl_id: compareData?.pcl_id })
             });
             // รีโหลดข้อมูล vendor ในตารางทันทีหลัง POST
             if (typeof fetchCompareData === 'function') {
@@ -585,7 +591,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   };
 
   const handleDeleteVendor = async (vendor: CompareData) => {
-    // console.log("Deleting vendor:", vendor.compare_id);
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/remove-vendor-from-clv?clvId=${vendor.compare_id}`, {
         method: 'DELETE',
@@ -595,6 +600,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || 'ลบผู้ขายไม่สำเร็จ');
       }
+      // Remove from selectedVendors if present
+      setSelectedVendors(prev => prev.filter(v => {
+        const vendorCode = v.split(' |')[0];
+        return vendorCode !== vendor.vendor_code;
+      }));
       // Reload compare data after delete
       if (typeof fetchCompareData === 'function') {
         await fetchCompareData();
@@ -1537,8 +1547,22 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         </div>
                                       </div>
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
-                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount?.length ? prWithPO.recent_purchase[0].discount.join(' + ') + '%' : '0%'}</div>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด %</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                          {(() => {
+                                            const rp = prWithPO.recent_purchase;
+                                            let discountArr: number[] = [];
+                                            function hasDiscount(obj: unknown): obj is { discount: number[] } {
+                                              return !!obj && typeof obj === 'object' && 'discount' in obj && Array.isArray((obj as { discount: number[] }).discount);
+                                            }
+                                            if (Array.isArray(rp) && rp.length > 0 && hasDiscount(rp[0])) {
+                                              discountArr = rp[0].discount;
+                                            } else if (hasDiscount(rp)) {
+                                              discountArr = (rp as { discount: number[] }).discount;
+                                            }
+                                            return discountArr.length ? discountArr.join(' , ') : '0';
+                                          })()}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -1931,8 +1955,22 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         </div>
                                       </div>
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
-                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prWithPO.recent_purchase?.[0]?.discount?.length ? prWithPO.recent_purchase[0].discount.join(' + ') + '%' : '0%'}</div>
+                                        <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด %</label>
+                                        <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                          {(() => {
+                                            const rp = prWithPO.recent_purchase;
+                                            let discountArr: number[] = [];
+                                            function hasDiscount(obj: unknown): obj is { discount: number[] } {
+                                              return !!obj && typeof obj === 'object' && 'discount' in obj && Array.isArray((obj as { discount: number[] }).discount);
+                                            }
+                                            if (Array.isArray(rp) && rp.length > 0 && hasDiscount(rp[0])) {
+                                              discountArr = rp[0].discount;
+                                            } else if (hasDiscount(rp)) {
+                                              discountArr = (rp as { discount: number[] }).discount;
+                                            }
+                                            return discountArr.length ? discountArr.join(' , ') : '0';
+                                          })()}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -2575,7 +2613,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
                         <col style={{ width: '50px' }} />
-                        <col style={{ width: '50px' }} />
+                        <col style={{ width: '80px' }} />
                         <col style={{ width: '200px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
@@ -2604,7 +2642,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
                         <col style={{ width: '50px' }} />
-                        <col style={{ width: '50px' }} />
+                        <col style={{ width: '80px' }} />
                         <col style={{ width: '200px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
@@ -2894,24 +2932,40 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               <div className={`text-xs px-4 py-3 border-b rounded-t-lg ${isDarkMode ? 'text-slate-400 bg-slate-800/50' : 'text-purple-700 border-purple-200 bg-purple-100'}`}>
                                 พบ {vendors.length} รายการ
                               </div>
-                              {vendors.map((vendor, idx) => (
-                                <div
-                                  key={vendor + '-' + idx}
-                                  className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${selectedVendors.includes(vendor) ? (isDarkMode ? 'bg-slate-700/50 border-l-4 border-purple-500 font-semibold text-purple-300' : 'bg-purple-100 border-l-4 border-purple-500 font-semibold text-purple-800') : (isDarkMode ? 'hover:bg-slate-800/50 text-slate-300' : 'hover:bg-purple-50')}`}
-                                  onClick={() => {
-                                    if (selectedVendors.includes(vendor)) {
-                                      setSelectedVendors(selectedVendors.filter(p => p !== vendor));
-                                    } else {
-                                      setSelectedVendors([...selectedVendors, vendor]);
-                                    }
-                                  }}
-                                >
-                                  {selectedVendors.includes(vendor) && (
-                                    <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`} title="Selected"></span>
-                                  )}
-                                  <span className={`${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{vendor}</span>
-                                </div>
-                              ))}
+                              {vendors.map((vendor, idx) => {
+                                // Extract vendor code for compare
+                                const vendorCode = vendor.split(' |')[0];
+                                // Always use the latest compareData.compare_vendors for check
+                                const isAlreadyAdded = Array.isArray(compareData?.compare_vendors) && compareData.compare_vendors.some(v => v.vendor_code === vendorCode);
+                                return (
+                                  <div
+                                    key={vendor + '-' + idx}
+                                    className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 
+                                      ${isAlreadyAdded
+                                        ? (isDarkMode ? 'bg-purple-900/40 border-l-4 border-purple-500 font-semibold text-purple-300 cursor-not-allowed opacity-70' : 'bg-purple-100 border-l-4 border-purple-500 font-semibold text-purple-800 cursor-not-allowed opacity-70')
+                                        : (selectedVendors.includes(vendor)
+                                          ? (isDarkMode ? 'bg-slate-700/50 border-l-4 border-purple-500 font-semibold text-purple-300' : 'bg-purple-100 border-l-4 border-purple-500 font-semibold text-purple-800')
+                                          : (isDarkMode ? 'hover:bg-slate-800/50 text-slate-300 cursor-pointer' : 'hover:bg-purple-50 cursor-pointer'))
+                                      }`}
+                                    onClick={() => {
+                                      if (isAlreadyAdded) return;
+                                      if (selectedVendors.includes(vendor)) {
+                                        setSelectedVendors(selectedVendors.filter(p => p !== vendor));
+                                      } else {
+                                        setSelectedVendors([...selectedVendors, vendor]);
+                                      }
+                                    }}
+                                    style={isAlreadyAdded ? { pointerEvents: 'none' } : {}}
+                                  >
+                                    {isAlreadyAdded ? (
+                                      <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`} title="มีในตารางแล้ว"></span>
+                                    ) : selectedVendors.includes(vendor) && (
+                                      <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`} title="Selected"></span>
+                                    )}
+                                    <span className={`${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{vendor}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -3176,12 +3230,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     }</div>
                                   </div>
                                   <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด</label>
+                                    <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ส่วนลด %</label>
                                     <div className={`text-sm font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{
                                       (() => {
                                         const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
                                         const discounts = Array.isArray(found?.discounts) ? found.discounts : (Array.isArray(selectedRowData.selectedVendor.discount) ? selectedRowData.selectedVendor.discount : [0]);
-                                        return discounts && discounts.length > 0 ? discounts.map(d => `${d}%`).join(', ') : '0%';
+                                        return discounts && discounts.length > 0 ? discounts.map(d => `${d}`).join(', ') : '0';
                                       })()
                                     }</div>
                                   </div>

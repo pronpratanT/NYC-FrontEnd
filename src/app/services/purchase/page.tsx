@@ -281,7 +281,7 @@ export default function PurchasePage() {
                     return;
                 }
 
-                let url = "/api/proxy/purchase/request/departments";
+                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/departments`;
                 let fetchOptions: RequestInit = {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -291,7 +291,7 @@ export default function PurchasePage() {
 
                 // ถ้ามี search ให้ใช้ API search-pr
                 if (search && search.trim() !== "") {
-                    url = `/api/proxy/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
+                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
                     fetchOptions = {
                         ...fetchOptions,
                         cache: "no-store",
@@ -357,7 +357,7 @@ export default function PurchasePage() {
         const fetchDepartments = async () => {
             try {
                 setError(null);
-                const response = await fetch("/api/proxy/user/deps", { cache: "no-store" });
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" });
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
@@ -390,7 +390,6 @@ export default function PurchasePage() {
             document.head.appendChild(style);
         }
         style.innerHTML = `
-            /* Remove all horizontal gap and force days to fill cell for seamless range */
             .flatpickr-day {
                 margin: 0 !important;
                 gap: 0 !important;
@@ -410,25 +409,115 @@ export default function PurchasePage() {
                 padding: 0 !important;
             }
             .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
-                background: #16a34a !important;
+                background: #059669 !important;
                 color: #fff !important;
             }
             .flatpickr-day.inRange:not(.startRange):not(.endRange) {
-                background: #9ef5bcff !important;
-                color: #fff !important;
+                background: #134e4a !important;
+                color: #a7f3d0 !important;
             }
             .flatpickr-day:not(.selected):not(.inRange):hover {
-                background: #bbf7d0 !important;
-                color: #15803d !important;
+                background: #334155 !important;
+                color: #22d3ee !important;
             }
             .flatpickr-day.today:not(.selected) {
                 border: 1.5px solid #22c55e !important;
             }
-            `;
+            /* Dark mode styles for flatpickr calendar */
+            .flatpickr-calendar.dark-mode,
+            body.dark .flatpickr-calendar {
+                background: #0f172a !important;
+                color: #e2e8f0 !important;
+                border: 1px solid #334155 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-months,
+            body.dark .flatpickr-months {
+                background: #0f172a !important;
+                color: #e2e8f0 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-weekdays,
+            body.dark .flatpickr-weekdays {
+                background: #0f172a !important;
+                color: #34d399 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-weekday,
+            body.dark .flatpickr-weekday {
+                color: #e2e8f0 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-day,
+            body.dark .flatpickr-day {
+                background: #0f172a !important;
+                color: #e2e8f0 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-day.selected,
+            body.dark .flatpickr-day.selected {
+                background: #059669 !important;
+                color: #fff !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-day.inRange:not(.startRange):not(.endRange),
+            body.dark .flatpickr-day.inRange:not(.startRange):not(.endRange) {
+                background: #134e4a !important;
+                color: #a7f3d0 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-day.today:not(.selected),
+            body.dark .flatpickr-day.today:not(.selected) {
+                border: 1.5px solid #22c55e !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-day:hover,
+            body.dark .flatpickr-day:hover {
+                background: #334155 !important;
+                color: #34d399 !important;
+            }
+            /* Month dropdown dark mode */
+            .flatpickr-calendar.dark-mode .flatpickr-monthDropdown-months,
+            body.dark .flatpickr-monthDropdown-months {
+                background: #1e293b !important;
+                color: #e2e8f0 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-monthDropdown-month,
+            body.dark .flatpickr-monthDropdown-month {
+                background: #1e293b !important;
+                color: #e2e8f0 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-current-month,
+            body.dark .flatpickr-current-month {
+                background: #0f172a !important;
+                color: #e2e8f0 !important;
+            }
+            /* Weekday header (อา - ส) dark mode */
+            .flatpickr-calendar.dark-mode .flatpickr-weekdays,
+            body.dark .flatpickr-weekdays {
+                color: #34d399 !important;
+            }
+            .flatpickr-calendar.dark-mode .flatpickr-weekday,
+            body.dark .flatpickr-weekday {
+                color: #e2e8f0 !important;
+            }
+            /* Arrow buttons dark mode */
+            .flatpickr-calendar.dark-mode .flatpickr-prev-month,
+            .flatpickr-calendar.dark-mode .flatpickr-next-month,
+            body.dark .flatpickr-prev-month,
+            body.dark .flatpickr-next-month {
+                color: #e2e8f0 !important;
+                fill: #e2e8f0 !important;
+            }
+        `;
     }
+
     useEffect(() => {
         if (calendarOpen) injectFlatpickrTheme();
         if (calendarOpen && dateRangeInputRef.current) {
+            // Patch: force dark mode on flatpickr calendar
+            setTimeout(() => {
+                const calendars = document.querySelectorAll('.flatpickr-calendar');
+                calendars.forEach(cal => {
+                    if (isDarkMode) {
+                        cal.classList.add('dark-mode');
+                    } else {
+                        cal.classList.remove('dark-mode');
+                    }
+                });
+            }, 10);
             const options: Record<string, unknown> = {
                 mode: "range",
                 dateFormat: "d/m/Y",
@@ -621,12 +710,15 @@ export default function PurchasePage() {
                                                     tabIndex={-1}
                                                     style={{ background: 'transparent' }}
                                                 />
-                                                <div className="absolute right-0 mt-2 z-40 w-[370px] rounded-2xl shadow-2xl border border-emerald-400/60 bg-white dark:bg-slate-900/95 p-6 flex flex-col items-center">
+                                                <div
+                                                    className={`absolute right-0 mt-2 z-40 w-[370px] rounded-2xl shadow-2xl border border-emerald-400/60 p-6 flex flex-col items-center ${isDarkMode ? 'bg-slate-900/95 border-slate-700/60' : 'bg-white'}`}
+                                                    style={isDarkMode ? { boxShadow: '0 8px 32px 0 rgba(34,197,94,0.15)', borderColor: '#059669' } : {}}
+                                                >
                                                     {/* <label className="form-label mb-2 flex items-center gap-2 text-base font-medium"><svg className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z"/></svg>ช่วงวันที่</label> */}
                                                     <div className="input-group flex w-full">
                                                         <input
                                                             type="text"
-                                                            className="form-control flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                            className={`form-control flex-1 border text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 pl-10 p-2.5 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                                                             id="dateRange"
                                                             placeholder="เลือกช่วงวันที่"
                                                             ref={dateRangeInputRef}
@@ -635,7 +727,7 @@ export default function PurchasePage() {
                                                             onFocus={() => setCalendarOpen(true)}
                                                         />
                                                         <button
-                                                            className="btn btn-outline-secondary ml-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:text-red-500"
+                                                            className={`btn btn-outline-secondary ml-2 px-3 py-2 rounded-lg border ${isDarkMode ? 'border-gray-600 text-gray-400 hover:text-red-400' : 'border-gray-300 text-gray-500 hover:text-red-500'}`}
                                                             type="button"
                                                             id="clearDateBtn"
                                                             onClick={() => setDateRange(null)}
@@ -713,21 +805,21 @@ export default function PurchasePage() {
                                             onClick={() => { setStatusFilter('supervisor'); }}
                                         >
                                             <span className="inline-flex items-center gap-2">
-                                               <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />รอหัวหน้าแผนกอนุมัติ</span>
+                                                <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />รอหัวหน้าแผนกอนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
                                             onClick={() => { setStatusFilter('manager'); }}
                                         >
                                             <span className="inline-flex items-center gap-2">
-                                               <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />รอผู้จัดการแผนกอนุมัติ</span>
+                                                <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />รอผู้จัดการแผนกอนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
                                             onClick={() => { setStatusFilter('pu'); }}
                                         >
                                             <span className="inline-flex items-center gap-2">
-                                               <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />รอแผนกจัดซื้ออนุมัติ</span>
+                                                <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />รอแผนกจัดซื้ออนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'processing' ? (isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800') : (isDarkMode ? 'text-slate-300 hover:bg-yellow-900/20 hover:text-yellow-200' : 'text-gray-700 hover:bg-yellow-50 hover:text-yellow-800')}`}

@@ -1,6 +1,7 @@
 "use client";
 
-import RejectPRModal from '../../../components/Modal/Reject_PRModal';
+import RejectPRModal from '../../../components/Modal/Reject_PR';
+import ApprovePRModal from '../../../components/Modal/Approve_PR';
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -79,6 +80,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [selectedPart, setSelectedPart] = useState<Part | null>(null);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectPrNo, setRejectPrNo] = useState<string | null>(null);
+    const [approveModalOpen, setApproveModalOpen] = useState(false);
+    const [approvePrNo, setApprovePrNo] = useState<string | null>(null);
     const [selectedParts, setSelectedParts] = useState<number[]>([]);
     const [multiApprovalModalOpen, setMultiApprovalModalOpen] = useState(false);
 
@@ -210,6 +213,11 @@ function ComparePriceContent({ token }: { token: string | null }) {
         }
     }
 
+    const handleApproveClick = () => {
+        setApprovePrNo(prData?.pr_no ?? null);
+        setApproveModalOpen(true);
+    };
+
     const handleReject = () => {
         setRejectPrNo(prData?.pr_no ?? null);
         setRejectModalOpen(true);
@@ -331,7 +339,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <button
                                                     type="button"
                                                     className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
-                                                    onClick={() => handleApprove()}
+                                                    onClick={() => handleApproveClick()}
                                                     style={{ width: '40px', height: '40px', zIndex: 2 }}
                                                     onMouseEnter={e => {
                                                         e.currentTarget.style.width = '112px';
@@ -809,6 +817,22 @@ function ComparePriceContent({ token }: { token: string | null }) {
                     <div className={`p-8 text-center ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>กรุณาเลือก PR จากหน้าแรก</div>
                 )
                 }
+
+                {/* Approve Confirmation Modal */}
+                <ApprovePRModal
+                    open={approveModalOpen}
+                    onClose={() => setApproveModalOpen(false)}
+                    onConfirm={handleApprove}
+                    prNo={approvePrNo}
+                />
+
+                {/* Reject Modal */}
+                <RejectPRModal
+                    open={rejectModalOpen}
+                    onClose={() => setRejectModalOpen(false)}
+                    onConfirm={handleConfirmReject}
+                    prNo={rejectPrNo}
+                />
             </main >
         </div >
     );

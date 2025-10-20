@@ -17,8 +17,8 @@ export default function Page() {
         setError(null);
 
         const [resUsers, resDeps] = await Promise.all([
-          fetch("/api/proxy/user", { cache: "no-store" }),
-          fetch("/api/proxy/user/deps", { cache: "no-store" }),
+          fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user`, { cache: "no-store" }),
+          fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" }),
         ]);
 
         if (!resUsers.ok) {
@@ -125,7 +125,7 @@ export default function Page() {
       const requests = [];
 
       if (activeIds.length > 0) {
-        requests.push(fetch('/api/proxy/user/UpdateIsActive', {
+        requests.push(fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/UpdateIsActive`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_ids: activeIds, is_active: true }),
@@ -133,7 +133,7 @@ export default function Page() {
       }
 
       if (inactiveIds.length > 0) {
-        requests.push(fetch('/api/proxy/user/UpdateIsActive', {
+        requests.push(fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/UpdateIsActive`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_ids: inactiveIds, is_active: false }),

@@ -199,8 +199,8 @@ export default function DepartmentPage() {
         setDepartmentNotFound(false);
 
         const [resUsers, resDeps] = await Promise.all([
-          fetch("/api/proxy/user", { cache: "no-store" }),
-          fetch("/api/proxy/user/deps", { cache: "no-store" }),
+          fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user`, { cache: "no-store" }),
+          fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" }),
         ]);
 
         if (!resUsers.ok) {
@@ -287,7 +287,7 @@ export default function DepartmentPage() {
 
         console.log("Posting:", payload);
 
-        const res = await fetch('/api/proxy/admin/add-role-department', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_ADMIN_SERVICE}/api/admin/add-role-department`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),

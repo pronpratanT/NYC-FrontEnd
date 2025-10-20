@@ -354,7 +354,7 @@ export default function PurchaseOrderPage() {
         const fetchDepartments = async () => {
             try {
                 setError(null);
-                const response = await fetch("/api/proxy/user/deps", { cache: "no-store" });
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" });
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
