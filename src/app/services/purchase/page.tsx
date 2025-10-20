@@ -57,17 +57,26 @@ type Department = {
 
 // Icon mapping for departments with consistent IoDocumentTextOutline icon
 const departmentColors: { [key: string]: string } = {
-    "Production": "text-blue-500",
-    "Maintenance": "text-green-500",
-    "Quality Control": "text-purple-500",
-    "Engineering": "text-yellow-500",
-    "Logistics": "text-pink-500",
-    "Procurement": "text-indigo-500",
-    "R&D": "text-red-500"
+    "NYC": "text-slate-500",
+    "บุคคล": "text-sky-500",
+    "บัญชี": "text-emerald-500",
+    "จัดซื้อ": "text-indigo-500",
+    "พัฒนาระบบ": "text-cyan-500",
+    "การตลาด": "text-pink-500",
+    "ฉีด": "text-orange-500",
+    "ตกแต่ง นับบรรจุ": "text-teal-500",
+    "ประกอบ": "text-blue-500",
+    "งานโลหะ": "text-gray-500",
+    "พ่นสี สกรีน": "text-rose-500",
+    "คุณภาพ": "text-purple-500",
+    "คลังสินค้า": "text-yellow-500",
+    "แม่พิมพ์": "text-lime-500",
+    "ซ่อมบำรุง": "text-green-500",
+    "วิศวกรรมโครงการ": "text-amber-500",
+    "ประกอบเครื่องใช้ไฟฟ้า": "text-blue-400",
+    "IT-p2": "text-cyan-600",
+    "ฝ่ายผลิต": "text-blue-700"
 };
-
-// Convert JS Date to CalendarDate
-// Removed unused function toCalendarDate
 
 export default function PurchasePage() {
     // Theme context
@@ -656,10 +665,16 @@ export default function PurchasePage() {
                                                     .map(dep => (
                                                         <li
                                                             key={dep.ID}
-                                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 bg-emerald-900/30 text-emerald-400`}
+                                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 bg-emerald-900/30 text-emerald-400 flex items-center justify-between`}
                                                             onClick={() => { setDepartmentFilter(dep.name); setDropdownOpen(false); }}
                                                         >
-                                                            {dep.name} <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}></span>
+                                                            <span>{dep.name}</span>
+                                                            <span className="ml-2 flex items-center">
+                                                                <span
+                                                                    className="inline-block w-3 h-3 rounded-full border"
+                                                                    style={{ backgroundColor: departmentColors[dep.name] || '#38bdf8', borderColor: isDarkMode ? '#334155' : '#e5e7eb' }}
+                                                                ></span>
+                                                            </span>
                                                         </li>
                                                     ))
                                             )}

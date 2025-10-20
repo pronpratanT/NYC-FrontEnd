@@ -2831,7 +2831,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           ))}
 
                                           {/* ปุ่มเพิ่มส่วนลด */}
-                                          {currentDiscounts.length < 6 && (
+                                          {currentDiscounts.length < 6 && !isDisabled && (
                                             <div className="flex justify-center">
                                               <button
                                                 type="button"
