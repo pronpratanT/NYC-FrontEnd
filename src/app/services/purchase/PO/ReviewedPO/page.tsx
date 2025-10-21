@@ -11,6 +11,7 @@ import ApprovePOModal from "@/app/components/Modal/Approve_PO";
 import POModal from "@/app/components/Modal/POModal";
 import EditVendor from '@/app/components/Modal/EditVendor';
 import RejectPOModal from "@/app/components/Modal/Reject_PO";
+import SendMailModal from "@/app/components/Modal/SendMailModal";
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -19,6 +20,9 @@ import { IoDocumentTextOutline } from "react-icons/io5";
 import { LuBriefcaseBusiness } from "react-icons/lu";
 import { HiDocumentText } from "react-icons/hi2";
 import { FaRegEdit } from "react-icons/fa";
+import { LuMail } from "react-icons/lu";
+import { SiMinutemailer } from "react-icons/si";
+import { RiMailSendLine } from "react-icons/ri";
 
 type ReviewedPO = {
     po_id: number;
@@ -126,6 +130,9 @@ export default function ReviewedPOPage() {
     const [showEditVendor, setShowEditVendor] = useState(false);
     const [editVendorData, setEditVendorData] = useState<VendorSelected | null>(null);
 
+    // State สำหรับ modal SendMail
+    const [showSendMailModal, setShowSendMailModal] = useState(false);
+
     useEffect(() => {
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
@@ -193,15 +200,15 @@ export default function ReviewedPOPage() {
             const sendPayload = {
                 poId: poData?.po_id,
             }
-            const sendResponse = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/send-to-vendor/${poData?.po_id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify(sendPayload)
-            });
-            if (!sendResponse.ok) throw new Error('ส่ง PO ไปยัง Vendor ไม่สำเร็จ');
+            // const sendResponse = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/send-to-vendor/${poData?.po_id}`, {
+            //     method: 'PUT',
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //         Authorization: `Bearer ${token}`
+            //     },
+            //     body: JSON.stringify(sendPayload)
+            // });
+            // if (!sendResponse.ok) throw new Error('ส่ง PO ไปยัง Vendor ไม่สำเร็จ');
             alert('อนุมัติ PO และส่งไปยัง Vendor สำเร็จ');
             setShowApproveModal(false);
             // reload PO data
@@ -235,6 +242,40 @@ export default function ReviewedPOPage() {
         } catch {
             alert('เกิดข้อผิดพลาดในการปฏิเสธ PO');
         }
+    };
+
+    const handleSendMail = async (sendMail: boolean, documentLanguage?: 'thai' | 'english') => {
+        if (!sendMail) {
+            // ถ้าเลือกไม่ส่งเมล แค่บันทึกข้อมูล
+            alert('บันทึกข้อมูลเรียบร้อย');
+            return;
+        }
+
+        // try {
+        //     const payload = {
+        //         po_id: poData?.po_id,
+        //         document_language: documentLanguage || 'thai'
+        //     };
+
+        //     const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/send-mail/${poData?.po_id}`, {
+        //         method: 'PUT',
+        //         headers: {
+        //             'Content-Type': 'application/json',
+        //             Authorization: `Bearer ${token}`
+        //         },
+        //         body: JSON.stringify(payload)
+        //     });
+
+        //     if (!response.ok) throw new Error('ส่งอีเมลไม่สำเร็จ');
+
+        //     alert(`ส่งอีเมล PO เป็น${documentLanguage === 'english' ? 'ภาษาอังกฤษ' : 'ภาษาไทย'}เรียบร้อยแล้ว`);
+
+        //     // reload PO data
+        //     await fetchData();
+        // } catch (error) {
+        //     alert('เกิดข้อผิดพลาดในการส่งอีเมล');
+        //     console.error('Send mail error:', error);
+        // }
     };
 
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
@@ -313,6 +354,71 @@ export default function ReviewedPOPage() {
                                                 />
                                             </>
                                         )}
+                                        {/* TODO send email button */}
+                                        {/* Show mail button if approved_by exists and mail_out_date is missing */}
+                                        {poData.approved_by && !poData.mail_out_date && (
+                                            <div className="relative ml-2">
+                                                <button
+                                                    type="button"
+                                                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 font-semibold group relative overflow-hidden
+                                                        ${isDarkMode
+                                                            ? 'bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 text-white hover:scale-110 hover:rotate-3 shadow-lg hover:shadow-emerald-500/40'
+                                                            : 'bg-gradient-to-br from-emerald-400 via-green-400 to-teal-400 text-white hover:scale-110 hover:rotate-3 shadow-lg hover:shadow-emerald-400/40'}
+                                                    `}
+                                                    style={{
+                                                        boxShadow: isDarkMode
+                                                            ? '0 4px 15px -3px rgba(16, 185, 129, 0.2), 0 4px 6px -2px rgba(16, 185, 129, 0.05)'
+                                                            : '0 4px 15px -3px rgba(16, 185, 129, 0.25), 0 4px 6px -2px rgba(16, 185, 129, 0.1)'
+                                                    }}
+                                                    title="ส่งอีเมล PO ไปยังผู้ขาย"
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        setShowSendMailModal(true);
+                                                    }}
+                                                >
+                                                    {/* Ripple effect background */}
+                                                    <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 group-hover:animate-ping transition-opacity duration-300"></div>
+
+                                                    {/* Mail icon with enhanced animation and hover swap */}
+                                                    <span className="relative w-6 h-6 flex items-center justify-center">
+                                                        {/* Default icon */}
+                                                        <LuMail className="h-6 w-6 transition-all duration-300 group-hover:-rotate-12 group-hover:scale-125 absolute inset-0 opacity-100 group-hover:opacity-0 z-10" />
+                                                        {/* Hover icon */}
+                                                        <RiMailSendLine className="h-6 w-6 transition-all duration-300 absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:-rotate-12 group-hover:scale-125 z-10" />
+                                                    </span>
+
+                                                    {/* Glowing border effect */}
+                                                    <div className={`absolute inset-0 rounded-full border-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                                                        ${isDarkMode ? 'border-emerald-300/50' : 'border-white/50'}
+                                                    `}></div>
+                                                </button>
+
+                                                {/* Premium badge with better styling */}
+                                                <div className="absolute -top-1 -right-1">
+                                                    <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[9px] font-black shadow-lg border-2 animate-bounce
+                                                        ${isDarkMode
+                                                            ? 'bg-gradient-to-r from-blue-500 to-sky-400 text-white border-blue-300'
+                                                            : 'bg-gradient-to-r from-blue-200 to-sky-300 text-blue-700 border-blue-200'}
+                                                    `}>
+                                                        <SiMinutemailer className="h-4 w-4" />
+                                                    </span>
+                                                </div>
+
+                                                {/* Enhanced tooltip */}
+                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 z-20 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 transform group-hover:-translate-y-1">
+                                                    <div className={`px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shadow-xl border
+                                                        ${isDarkMode
+                                                            ? 'bg-slate-900/95 text-emerald-300 border-slate-700/50 backdrop-blur-sm'
+                                                            : 'bg-white/95 text-emerald-700 border-emerald-200/50 backdrop-blur-sm'}
+                                                    `}>
+                                                        ส่งอีเมล PO ไปยังผู้ขาย
+                                                        <div className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent
+                                                            ${isDarkMode ? 'border-t-slate-900/95' : 'border-t-white/95'}
+                                                        `}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -377,11 +483,23 @@ export default function ReviewedPOPage() {
                                             <div className="grid grid-cols-2 gap-0">
                                                 <div className="flex items-center gap-2 pr-6 border-r-2 border-dashed border-gray-300 dark:border-slate-700">
                                                     <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>โทรศัพท์</span>
-                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.tel_no}</span>
+                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{
+                                                        poData.tel_no && typeof poData.tel_no === 'string' && poData.tel_no.includes(',')
+                                                            ? poData.tel_no.split(',').map((item, idx) => (
+                                                                <span key={idx} className="block">{item.trim()}</span>
+                                                            ))
+                                                            : poData.tel_no
+                                                    }</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 pl-6 flex justify-end">
                                                     <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>แฟกซ์</span>
-                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.fax_no || '-'}</span>
+                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{
+                                                        poData.fax_no && typeof poData.fax_no === 'string' && poData.fax_no.includes(',')
+                                                            ? poData.fax_no.split(',').map((item, idx) => (
+                                                                <span key={idx} className="block">{item.trim()}</span>
+                                                            ))
+                                                            : (poData.fax_no || '-')
+                                                    }</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -400,7 +518,13 @@ export default function ReviewedPOPage() {
                                         <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/30' : 'bg-gray-50'}`}>
                                             <div className="flex items-center justify-between">
                                                 <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>อีเมล</span>
-                                                <span className={`text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>{poData.email}</span>
+                                                <span className={`text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>{
+                                                    poData.email && typeof poData.email === 'string' && poData.email.includes(',')
+                                                        ? poData.email.split(',').map((item, idx) => (
+                                                            <span key={idx} className="block">{item.trim()}</span>
+                                                        ))
+                                                        : poData.email
+                                                }</span>
                                             </div>
                                         </div>
                                     </div>
@@ -433,7 +557,7 @@ export default function ReviewedPOPage() {
                                         </div>
                                         <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/30' : 'bg-gray-50'}`}>
                                             <div className="flex items-center justify-between">
-                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>วันที่ส่งเมล์</span>
+                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>วันที่ส่งเมล</span>
                                                 <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
                                                     {poData.mail_out_date ? new Date(poData.mail_out_date).toLocaleDateString('th-TH') : '-'}
                                                 </span>
@@ -530,7 +654,7 @@ export default function ReviewedPOPage() {
 
                         {/* Modern Table Section */}
                         <div className={`rounded-2xl overflow-hidden border shadow-md ${isDarkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
-                            <div className={`px-6 py-5 border-b ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                            <div className={`px-6 py-5 ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <h2 className={`text-xl font-bold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>รายการสินค้า</h2>
@@ -547,6 +671,19 @@ export default function ReviewedPOPage() {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* แสดงเหตุผลการปฏิเสธในส่วนหัวตาราง */}
+                            {/* <div className={`px-4 py-3 mb-3 ml-5 mr-5 rounded-lg border ${isDarkMode ? 'bg-red-900/30 border-red-800/50 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                                <div className="flex items-start gap-2">
+                                    <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div>
+                                        <span className={`font-semibold ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>เหตุผลในการปฏิเสธ : </span>
+                                        <span className={isDarkMode ? 'text-red-300' : 'text-red-700'}>{poData.reason_reject}</span>
+                                    </div>
+                                </div>
+                            </div> */}
 
                             <div className="overflow-x-auto">
                                 <table className="min-w-full">
@@ -569,7 +706,7 @@ export default function ReviewedPOPage() {
                                             <>
                                                 <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
                                                     className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400' : 'bg-white border-l-orange-400/70'}
-                                                        ${!(poData.approved_by || poData.rejected_by) ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-not-allowed opacity-60'}
+                                                        ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-pointer hover:bg-amber-100 hover:shadow-xl hover:shadow-orange-200/30') : 'cursor-not-allowed opacity-60'}
                                                     `}
                                                     onClick={() => {
                                                         if (!(poData.approved_by || poData.rejected_by)) {
@@ -790,6 +927,14 @@ export default function ReviewedPOPage() {
                     }}
                 />
             )}
+
+            {/* Send Mail Modal */}
+            <SendMailModal
+                open={showSendMailModal}
+                onClose={() => setShowSendMailModal(false)}
+                onConfirm={handleSendMail}
+                poNo={poNo || ''}
+            />
 
             {/* เพิ่มพื้นที่ว่างด้านล่าง */}
             <div className="h-10 md:h-7"></div>

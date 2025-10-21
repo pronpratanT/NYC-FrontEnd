@@ -22,6 +22,8 @@ import { MdOutlineSort, MdOutlineRemoveRedEye } from "react-icons/md";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { GoDownload, GoSearch } from "react-icons/go";
 import { HiDocumentText } from "react-icons/hi2";
+import { TbLayoutList, TbLayoutCards } from "react-icons/tb";
+import { SiMinutemailer } from "react-icons/si";
 
 // Types
 // ปรับ type ให้ตรงกับโครงสร้างใหม่
@@ -74,6 +76,21 @@ const departmentColors: { [key: string]: string } = {
 export default function PurchaseOrderPage() {
     // Theme context
     const { isDarkMode } = useTheme();
+    // อ่านค่าจาก localStorage ตอน mount
+    const [isListView, setIsListView] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('poLayout');
+            return saved === 'list' ? false : true;
+        }
+        return true;
+    });
+    // Sync ค่า layout กับ localStorage ทุกครั้งที่เปลี่ยน
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('poLayout', isListView ? 'card' : 'list');
+        }
+    }, [isListView]);
+
     // Router
     const router = useRouter();
     const { user } = useUser();
@@ -598,6 +615,41 @@ export default function PurchaseOrderPage() {
                     {/* <h1 className="text-2xl font-bold text-green-700 mb-4">รายการ PR สำหรับเปรียบเทียบราคา</h1> */}
                     <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
                         <form className="max-w-2xl w-full flex items-center gap-3">
+                            {/* NOTE: Card | List View Toggle */}
+                            <button
+                                type="button"
+                                className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-500 overflow-hidden ${isListView
+                                    ? (isDarkMode
+                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:shadow-emerald-500/30 hover:scale-105'
+                                        : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-600/30 hover:scale-105')
+                                    : (isDarkMode
+                                        ? 'bg-slate-800/60 text-emerald-400 border border-slate-600/50 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-slate-700/60'
+                                        : 'bg-white text-emerald-600 border border-gray-300 hover:text-emerald-600 hover:border-emerald-400 shadow-sm hover:shadow-md')
+                                    }`}
+                                onClick={() => setIsListView(v => !v)}
+                                aria-label="Toggle view mode"
+                            >
+                                <div className="relative w-6 h-6">
+                                    {/* Card View Icon */}
+                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${isListView
+                                        ? 'opacity-100 scale-100 rotate-0'
+                                        : 'opacity-0 scale-75 rotate-180'
+                                        }`}>
+                                        <TbLayoutCards className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+                                    </div>
+
+                                    {/* List View Icon */}
+                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${!isListView
+                                        ? 'opacity-100 scale-100 rotate-0'
+                                        : 'opacity-0 scale-75 rotate-180'
+                                        }`}>
+                                        <TbLayoutList className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+                                    </div>
+                                </div>
+                                {/* Ripple effect */}
+                                <div className={`absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity duration-200 ${isDarkMode ? 'bg-white/10' : 'bg-black/5'} rounded-xl`} />
+                            </button>
+
                             <div className={`flex w-full group focus-within:ring-2 focus-within:ring-emerald-500/30 border rounded-xl ${isDarkMode ? 'border-slate-700/50 bg-slate-900/50' : 'border-gray-300 bg-white'}`}>
                                 {/* Custom Dropdown */}
                                 <div className="relative" style={{ minWidth: '180px' }}>
@@ -687,7 +739,7 @@ export default function PurchaseOrderPage() {
                                     <div className="relative">
                                         <button
                                             type="button"
-                                            className="p-3 text-base font-medium h-[48px] text-white bg-green-600 rounded-r-xl hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center"
+                                            className={`p-3 text-base font-medium h-[48px] text-white rounded-r-xl focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                                             style={{ marginLeft: '-1px' }}
                                             onClick={e => {
                                                 e.preventDefault();
@@ -697,7 +749,7 @@ export default function PurchaseOrderPage() {
                                                 }, 0);
                                             }}
                                         >
-                                            <LuCalendarFold className="w-6 h-6 text-white" aria-hidden="true" />
+                                            <LuCalendarFold className="w-6 h-6 text-white transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />
                                             <span className="sr-only">Search</span>
                                         </button>
                                         {calendarOpen && (
@@ -813,6 +865,12 @@ export default function PurchaseOrderPage() {
                                             <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>อนุมัติเสร็จสิ้น</span>
                                         </li>
                                         <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'complete' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
+                                            onClick={() => { setStatusFilter('complete'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2 items-center"><SiMinutemailer className="w-4 h-4 text-green-600" />ส่ง email สำเร็จ</span>
+                                        </li>
+                                        <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'rejected' ? (isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-50 text-red-800') : (isDarkMode ? 'text-slate-300 hover:bg-red-900/20 hover:text-red-200' : 'text-gray-700 hover:bg-red-50 hover:text-red-800')}`}
                                             onClick={() => { setStatusFilter('rejected'); }}
                                         >
@@ -834,24 +892,6 @@ export default function PurchaseOrderPage() {
                         {/* Pagination Controls - Top */}
                         {totalItems > 0 && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                {/* Items per page dropdown */}
-                                {/* <div className="flex items-center space-x-2">
-                                    <select
-                                        value={itemsPerPage}
-                                        onChange={(e) => {
-                                            const newPerPage = Number(e.target.value);
-                                            setItemsPerPage(newPerPage);
-                                            setCurrentPage(1);
-                                            updateUrlParams(1, newPerPage);
-                                        }}
-                                        className={`border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
-                                    >
-                                        <option value={10}>10 per page</option>
-                                        <option value={25}>25 per page</option>
-                                        <option value={50}>50 per page</option>
-                                    </select>
-                                </div> */}
-
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                     <div className="flex items-center space-x-2">
@@ -924,148 +964,287 @@ export default function PurchaseOrderPage() {
                             </div>
                         )}
                     </div>
-                    <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
-                        {/* Add New PR Card - Show only on first page */}
 
-                        {paginatedPoCards.map((po) => (
-                            <div
-                                key={po.po_no}
-                                className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
-                                onClick={() => router.push(`/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`)}
-                            >
-                                {/* Top: Department Icon */}
-                                <div className="w-full flex justify-center pt-12 pb-2">
-                                    <HiDocumentText className={`h-14 w-14 ${departmentColors[po.po_no] || 'text-emerald-400'}`} />
-                                </div>
-                                {/* Status badge top right */}
-                                <div className="absolute top-2 right-2 z-10">
-                                    {!po.rejected_by && !po.issued_by && !po.approved_by ? (
-                                        // ไม่มีข้อมูลอะไรเลย
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-gray-900/30 border-gray-700/60 text-gray-200' : 'bg-gray-50 border-gray-300 text-gray-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                            </svg>
-                                            รอการตรวจสอบ
-                                        </span>
-                                    ) : po.rejected_by ? (
-                                        // Red - ปฏิเสธ (Rejected)
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                            ปฏิเสธ
-                                        </span>
-                                    ) : po.approved_by ? (
-                                        // Green - อนุมัติเสร็จสิ้น
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            อนุมัติเสร็จสิ้น
-                                        </span>
-                                    ) : po.issued_by ? (
-                                        // Yellow - รอดำเนินการ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                            </svg>
-                                            รอดำเนินการ
-                                        </span>
-                                    ) : null}
-                                </div>
-                                {/* Middle: Table info */}
-                                <div className="w-full px-6 pt-2">
-                                    <table className="w-full text-sm mb-2">
-                                        <tbody>
-                                            <tr>
-                                                <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PO</td>
-                                                <td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{po.po_no}</td>
-                                            </tr>
-                                            {/* <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{po.dept_name}</td></tr> */}
-                                            <tr>
-                                                <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ออกโดย</td>
-                                                <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
-                                                    style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                                    title={poCards.find(doc => doc.po.po_no === po.po_no)?.issued_by ?? '-'}
-                                                >
-                                                    {(() => {
-                                                        const name = poCards.find(doc => doc.po.po_no === po.po_no)?.issued_by ?? '-';
-                                                        return name && name.length > 18 ? name.slice(0, 16) + '...' : name;
-                                                    })()}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>อนุมัติโดย</td>
-                                                <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
-                                                    style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                                    title={poCards.find(doc => doc.po.po_no === po.po_no)?.approved_by ?? '-'}
-                                                >
-                                                    {(() => {
-                                                        const name = poCards.find(doc => doc.po.po_no === po.po_no)?.approved_by ?? '-';
-                                                        return name && name.length > 18 ? name.slice(0, 16) + '...' : name;
-                                                    })()}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {/* Bottom: Actions */}
-                                <div className="w-full px-6 pb-5 flex flex-col gap-2 items-center">
-                                    <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(po.po_date)}</span>
-                                    <div className="flex w-full justify-center">
-                                        <button
-                                            className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                // ทดสอบเปิดไฟล์ PDF เฉพาะ PO_D2510035.pdf
-                                                const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
-                                                window.open(pdfPath, '_blank', 'noopener');
-                                            }}
-                                        >
-                                            <MdOutlineRemoveRedEye className="w-7 h-7" />
-                                        </button>
-                                        <button
-                                            className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                // ดาวน์โหลด PDF จาก public/generated-pdf/PO_{po.po_no}.pdf
-                                                const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
-                                                const a = document.createElement('a');
-                                                a.href = pdfPath;
-                                                a.download = `PO_${po.po_no}.pdf`;
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                a.remove();
-                                            }}
-                                        >
-                                            <GoDownload className="w-7 h-7" />
-                                        </button>
+                    {/* Content Display - Cards or List View */}
+                    {isListView ? (
+                        /* Card View (เดิม) */
+                        <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
+                            {paginatedPoCards.map((po) => (
+                                <div
+                                    key={po.po_no}
+                                    className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
+                                    onClick={() => router.push(`/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`)}
+                                >
+                                    {/* Top: Department Icon */}
+                                    <div className="w-full flex justify-center pt-12 pb-2">
+                                        <HiDocumentText className={`h-14 w-14 ${departmentColors[po.po_no] || 'text-emerald-400'}`} />
                                     </div>
-                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                                        {(() => {
-                                            const doc = poCards.find(doc => doc.po.po_no === po.po_no);
-                                            const countList = doc?.count_list ?? 0;
-                                            if (po.rejected_by) {
-                                                return <>
-                                                    ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{countList} รายการ</span>
-                                                </>;
-                                            } else if (po.approved_by) {
-                                                return <>
-                                                    ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
-                                                </>;
-                                            } else {
-                                                return <>
-                                                    รอดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
-                                                </>;
-                                            }
-                                        })()}
-                                    </span>
+                                    {/* Status badge top right */}
+                                    <div className="absolute top-2 right-2 z-10">
+                                        {!po.rejected_by && !po.issued_by && !po.approved_by ? (
+                                            // ไม่มีข้อมูลอะไรเลย
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-gray-900/30 border-gray-700/60 text-gray-200' : 'bg-gray-50 border-gray-300 text-gray-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                </svg>
+                                                รอการตรวจสอบ
+                                            </span>
+                                        ) : po.rejected_by ? (
+                                            // Red - ปฏิเสธ (Rejected)
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                ปฏิเสธ
+                                            </span>
+                                        ) : po.approved_by ? (
+                                            // Green - อนุมัติเสร็จสิ้น
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                อนุมัติเสร็จสิ้น
+                                            </span>
+                                        ) : po.issued_by ? (
+                                            // Yellow - รอดำเนินการ
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                </svg>
+                                                รอดำเนินการ
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    {/* Middle: Table info */}
+                                    <div className="w-full px-6 pt-2">
+                                        <table className="w-full text-sm mb-2">
+                                            <tbody>
+                                                <tr>
+                                                    <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PO</td>
+                                                    <td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{po.po_no}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ออกโดย</td>
+                                                    <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
+                                                        style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                        title={poCards.find(doc => doc.po.po_no === po.po_no)?.issued_by ?? '-'}
+                                                    >
+                                                        {(() => {
+                                                            const name = poCards.find(doc => doc.po.po_no === po.po_no)?.issued_by ?? '-';
+                                                            return name && name.length > 18 ? name.slice(0, 16) + '...' : name;
+                                                        })()}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>อนุมัติโดย</td>
+                                                    <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
+                                                        style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                        title={poCards.find(doc => doc.po.po_no === po.po_no)?.approved_by ?? '-'}
+                                                    >
+                                                        {(() => {
+                                                            const name = poCards.find(doc => doc.po.po_no === po.po_no)?.approved_by ?? '-';
+                                                            return name && name.length > 18 ? name.slice(0, 16) + '...' : name;
+                                                        })()}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* Bottom: Actions */}
+                                    <div className="w-full px-6 pb-5 flex flex-col gap-2 items-center">
+                                        <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(po.po_date)}</span>
+                                        <div className="flex w-full justify-center">
+                                            <button
+                                                className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // ทดสอบเปิดไฟล์ PDF เฉพาะ PO_D2510035.pdf
+                                                    const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
+                                                    window.open(pdfPath, '_blank', 'noopener');
+                                                }}
+                                            >
+                                                <MdOutlineRemoveRedEye className="w-7 h-7" />
+                                            </button>
+                                            <button
+                                                className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    // ดาวน์โหลด PDF จาก public/generated-pdf/PO_{po.po_no}.pdf
+                                                    const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
+                                                    const a = document.createElement('a');
+                                                    a.href = pdfPath;
+                                                    a.download = `PO_${po.po_no}.pdf`;
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    a.remove();
+                                                }}
+                                            >
+                                                <GoDownload className="w-7 h-7" />
+                                            </button>
+                                        </div>
+                                        <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                            {(() => {
+                                                const doc = poCards.find(doc => doc.po.po_no === po.po_no);
+                                                const countList = doc?.count_list ?? 0;
+                                                if (po.rejected_by) {
+                                                    return <>
+                                                        ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{countList} รายการ</span>
+                                                    </>;
+                                                } else if (po.approved_by) {
+                                                    return <>
+                                                        ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
+                                                    </>;
+                                                } else {
+                                                    return <>
+                                                        รอดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
+                                                    </>;
+                                                }
+                                            })()}
+                                        </span>
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+                    ) : (
+                        /* List View (แบบตาราง) */
+                        <div className="mt-2 mb-4">
+                            {/* Table Header */}
+                            <div className={`overflow-x-auto rounded-xl border ${isDarkMode ? 'border-slate-700' : 'border-gray-200'} shadow-sm`}>
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className={`${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                                        <tr>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                หมายเลข PO
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                ออกโดย
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                อนุมัติโดย
+                                            </th>
+                                            <th className={`px-6 py-3 text-center text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                วันที่
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                สถานะ
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                การดำเนินการ
+                                            </th>
+                                            <th className={`px-6 py-3 text-center text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                PDF
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700 bg-slate-900' : 'divide-gray-200 bg-white'}`}>
+                                        {paginatedPoCards.map((po) => (
+                                            <tr
+                                                key={po.po_no}
+                                                className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-emerald-900/20' : 'hover:bg-emerald-50'} focus-within:bg-emerald-100`}
+                                                style={{ transition: 'background 0.15s' }}
+                                                onClick={() => router.push(`/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`)}
+                                            >
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <HiDocumentText className={`h-8 w-8 mr-3 ${departmentColors[po.po_no] || 'text-emerald-400'}`} />
+                                                        <div className={`text-sm font-medium ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>
+                                                            {po.po_no}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'} max-w-[150px] truncate`}
+                                                        title={poCards.find(doc => doc.po.po_no === po.po_no)?.issued_by ?? '-'}>
+                                                        {poCards.find(doc => doc.po.po_no === po.po_no)?.issued_by ?? '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'} max-w-[150px] truncate`}
+                                                        title={poCards.find(doc => doc.po.po_no === po.po_no)?.approved_by ?? '-'}>
+                                                        {poCards.find(doc => doc.po.po_no === po.po_no)?.approved_by ?? '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm text-center ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                        {formatDate(po.po_date)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {!po.rejected_by && !po.issued_by && !po.approved_by ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-gray-900/30 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#9ca3af' : '#6b7280' }}></span>
+                                                            รอการตรวจสอบ
+                                                        </span>
+                                                    ) : po.rejected_by ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-100 text-red-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#f87171' : '#dc2626' }}></span>
+                                                            ปฏิเสธ
+                                                        </span>
+                                                    ) : po.approved_by ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-100 text-green-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#6ee7b7' : '#059669' }}></span>
+                                                            อนุมัติเสร็จสิ้น
+                                                        </span>
+                                                    ) : po.issued_by ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#fde68a' : '#fbbf24' }}></span>
+                                                            รอดำเนินการ
+                                                        </span>
+                                                    ) : null}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                        {(() => {
+                                                            const doc = poCards.find(doc => doc.po.po_no === po.po_no);
+                                                            const countList = doc?.count_list ?? 0;
+                                                            if (po.rejected_by) {
+                                                                return <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{countList}</span> รายการ</>;
+                                                            } else if (po.approved_by) {
+                                                                return <>ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList}</span> รายการ</>;
+                                                            } else {
+                                                                return <>รอดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList}</span> รายการ</>;
+                                                            }
+                                                        })()}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <div className="flex justify-center space-x-2">
+                                                        <button
+                                                            className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md transition-colors ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'}`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
+                                                                window.open(pdfPath, '_blank', 'noopener');
+                                                            }}
+                                                        >
+                                                            <MdOutlineRemoveRedEye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md transition-colors ${isDarkMode ? 'text-red-400 bg-red-900/20 border-red-800/50 hover:bg-red-800/30' : 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100'}`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
+                                                                const a = document.createElement('a');
+                                                                a.href = pdfPath;
+                                                                a.download = `PO_${po.po_no}.pdf`;
+                                                                document.body.appendChild(a);
+                                                                a.click();
+                                                                a.remove();
+                                                            }}
+                                                        >
+                                                            <GoDownload className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>

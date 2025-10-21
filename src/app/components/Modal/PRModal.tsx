@@ -1,4 +1,5 @@
 'use client';
+import '@/app/styles/react-datepicker-dark.css';
 import React, { JSX } from "react";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from 'next/navigation';
@@ -628,10 +629,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
 
     // เตรียม payload โดยใช้ pcl_id จาก compareData ถ้ามี ไม่เช่นนั้นใช้ pr_list_id จาก props
+    const reasonToSend = selectedReason === '11' ? customReason : selectedReason;
     const payload = {
       pcl_id: compareData?.pcl_id,
       vendor_selected: selectedRowData?.selectedVendor?.vendor_id || null,
-      reason_choose: selectedReason,
+      reason_choose: reasonToSend,
       new_qty: qty,
     };
 
@@ -2617,7 +2619,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '200px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
-                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '90px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '50px' }} />
@@ -2646,7 +2648,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '200px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
-                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '90px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '50px' }} />
@@ -2733,9 +2735,42 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </td>
                                 {/* DISCOUNT EDIT */}
                                 <td className={`px-2 py-2 text-sm font-bold text-center ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                                  <div className="flex flex-col items-center w-[140px] mx-auto space-y-1" style={{ height: 'auto' }}>
+                                  <div className="flex flex-col items-center w-[140px] mx-auto min-h-[48px] justify-center">
                                     {(() => {
-                                      const currentDiscounts = editedPrices.find(p => p.compare_id === vendor.compare_id)?.discounts || vendor.discount || [0];
+                                      const currentDiscounts = editedPrices.find(p => p.compare_id === vendor.compare_id)?.discounts || vendor.discount || [];
+
+                                      // ถ้ายังไม่มี discount ให้ปุ่มเพิ่มอยู่ตรงกลาง
+                                      if (currentDiscounts.length === 0) {
+                                        return (
+                                          <div className="flex justify-center items-center min-h-[48px]">
+                                            {!isDisabled && (
+                                              <button
+                                                type="button"
+                                                className={`w-7 h-7 rounded-full text-base leading-none opacity-70 hover:opacity-100 transition-all ${isDarkMode
+                                                  ? 'bg-emerald-600/50 text-emerald-300 hover:bg-emerald-500'
+                                                  : 'bg-emerald-300 text-emerald-700 hover:bg-emerald-400'
+                                                  }`}
+                                                onClick={e => {
+                                                  e.stopPropagation();
+                                                  e.preventDefault();
+                                                  setEditedPrices(prev => {
+                                                    const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                                    if (exists) {
+                                                      return prev.map(p => p.compare_id === vendor.compare_id
+                                                        ? { ...p, discounts: [0] }
+                                                        : p
+                                                      );
+                                                    } else {
+                                                      return [...prev, { compare_id: vendor.compare_id, discounts: [0] }];
+                                                    }
+                                                  });
+                                                }}
+                                                title="เพิ่มส่วนลด"
+                                              >+</button>
+                                            )}
+                                          </div>
+                                        );
+                                      }
 
                                       // จัดกลุ่มส่วนลดเป็นบรรทัดละ 2 รายการ
                                       const discountRows = [];
@@ -3134,7 +3169,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               </label>
                               <select
                                 value={selectedReason}
-                                onChange={(e) => setSelectedReason(e.target.value)}
+                                onChange={(e) => {
+                                  setSelectedReason(e.target.value);
+                                  if (e.target.value !== '11') setCustomReason("");
+                                }}
                                 className={`w-full p-4 border-2 rounded-xl focus:outline-none focus:ring-4 text-sm font-medium transition-all duration-200 appearance-none cursor-pointer ${isDarkMode ? 'border-indigo-600 bg-slate-800 text-slate-200 focus:border-indigo-400 focus:ring-indigo-900/30' : 'border-indigo-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-indigo-100'}`}
                                 style={{
                                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
@@ -3154,7 +3192,22 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 <option value="8">8. ราคาแพงกว่า แต่เป็นชุดเดียวกัน แยกสั่งไม่ได้</option>
                                 <option value="9">9. ราคาเท่ากัน แบ่งสั่ง</option>
                                 <option value="10">10. ต้องการด่วน รอเทียบราคาไม่ได้</option>
+                                <option value="11">11. อื่นๆ</option>
                               </select>
+                              {selectedReason === '11' && (
+                                <div className="mt-4">
+                                  <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>
+                                    โปรดระบุเหตุผลเพิ่มเติม
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={customReason}
+                                    onChange={e => setCustomReason(e.target.value)}
+                                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-4 text-sm font-medium transition-all duration-200 ${isDarkMode ? 'border-indigo-600 bg-slate-800 text-slate-200 focus:border-indigo-400 focus:ring-indigo-900/30' : 'border-indigo-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-indigo-100'}`}
+                                    placeholder="กรุณาระบุเหตุผลของคุณ"
+                                  />
+                                </div>
+                              )}
                             </div>
                             {/* Action buttons */}
                             <div className={`flex justify-end space-x-3 mt-6 pt-4 border-t ${isDarkMode ? 'border-indigo-700/50' : 'border-indigo-200'}`}>
@@ -3258,6 +3311,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <label className={`block text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
                                   <div className="relative w-full">
                                     <DatePicker
+  
                                       selected={deliveryDate ? new Date(deliveryDate) : (
                                         compareData?.compare_vendors && compareData.compare_vendors.length > 0 && compareData.compare_vendors[0].date_shipped
                                           ? new Date(compareData.compare_vendors[0].date_shipped)
@@ -3267,7 +3321,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       dateFormat="dd/MM/yyyy"
                                       placeholderText="เลือกวันที่"
                                       className={`px-3 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-slate-300 bg-white text-slate-800 focus:ring-orange-500 focus:border-orange-500'}`}
-                                      calendarClassName="!bg-white !border-2 !border-orange-200 !shadow-2xl !rounded-2xl"
+                                      calendarClassName={isDarkMode ? 'react-datepicker-dark' : '!bg-white !border-2 !border-green-200 !shadow-2xl !rounded-2xl absolute'}
                                       popperClassName="z-[9999]"
                                       popperPlacement="bottom-start"
                                     />

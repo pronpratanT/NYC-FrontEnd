@@ -80,12 +80,26 @@ const departmentColors: { [key: string]: string } = {
 };
 
 export default function PurchasePage() {
-    const [isListView, setIsListView] = useState(true);
     // Theme context
     const { isDarkMode } = useTheme();
+    // อ่านค่าจาก localStorage ตอน mount
+    const [isListView, setIsListView] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('purchaseLayout');
+            return saved === 'list' ? false : true;
+        }
+        return true;
+    });
 
     // Router
     const router = useRouter();
+
+    // Sync ค่า layout กับ localStorage ทุกครั้งที่เปลี่ยน
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('purchaseLayout', isListView ? 'card' : 'list');
+        }
+    }, [isListView]);
     // Helper to get search param from URL (client only)
     function getSearchParam(key: string) {
         if (typeof window === 'undefined') return null;
@@ -607,23 +621,43 @@ export default function PurchasePage() {
                     {/* <h1 className="text-2xl font-bold text-green-700 mb-4">รายการ PR สำหรับเปรียบเทียบราคา</h1> */}
                     <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
                         <form className="max-w-2xl w-full flex items-center gap-3">
+                            {/* NOTE: Card | List View Toggle */}
                             <button
                                 type="button"
-                                className="ml-2 flex items-center justify-center rounded-lg border px-2 py-2 transition-colors hover:bg-emerald-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300/40 active:scale-95 transform-gpu duration-200"
-                                aria-label="Toggle view mode"
+                                className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-500 overflow-hidden ${isListView 
+                                    ? (isDarkMode 
+                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:shadow-emerald-500/30 hover:scale-105' 
+                                        : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-600/30 hover:scale-105')
+                                    : (isDarkMode 
+                                        ? 'bg-slate-800/60 text-emerald-400 border border-slate-600/50 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-slate-700/60' 
+                                        : 'bg-white text-emerald-600 border border-gray-300 hover:text-emerald-600 hover:border-emerald-400 shadow-sm hover:shadow-md')
+                                }`}
                                 onClick={() => setIsListView(v => !v)}
-                                style={{ transition: 'box-shadow 0.2s, transform 0.2s' }}
+                                aria-label="Toggle view mode"
                             >
-                                <span
-                                    className={
-                                        `inline-flex items-center transition-transform duration-300 ease-in-out will-change-transform ${isListView ? 'scale-100' : 'scale-110'}`
-                                    }
-                                >
-                                    {isListView
-                                        ? <TbLayoutList className="w-6 h-6 text-emerald-500 transition-transform duration-300" />
-                                        : <TbLayoutCards className="w-6 h-6 text-emerald-500 transition-transform duration-300" />}
-                                </span>
+                                <div className="relative w-6 h-6">
+                                    {/* Card View Icon */}
+                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${
+                                        isListView 
+                                            ? 'opacity-100 scale-100 rotate-0' 
+                                            : 'opacity-0 scale-75 rotate-180'
+                                    }`}>
+                                        <TbLayoutCards className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+                                    </div>
+                                    
+                                    {/* List View Icon */}
+                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${
+                                        !isListView 
+                                            ? 'opacity-100 scale-100 rotate-0' 
+                                            : 'opacity-0 scale-75 rotate-180'
+                                    }`}>
+                                        <TbLayoutList className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+                                    </div>
+                                </div>
+                                {/* Ripple effect */}
+                                <div className={`absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity duration-200 ${isDarkMode ? 'bg-white/10' : 'bg-black/5'} rounded-xl`} />
                             </button>
+
                             <div className={`flex w-full group focus-within:ring-2 focus-within:ring-emerald-500/30 border rounded-xl ${isDarkMode ? 'border-slate-700/50 bg-slate-900/50' : 'border-gray-300 bg-white'}`}>
                                 {/* Custom Dropdown */}
                                 <div className="relative" style={{ minWidth: '180px' }}>
@@ -719,7 +753,7 @@ export default function PurchasePage() {
                                     <div className="relative">
                                         <button
                                             type="button"
-                                            className="p-3 text-base font-medium h-[48px] text-white bg-green-600 rounded-r-xl hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center"
+                                            className={`p-3 text-base font-medium h-[48px] text-white rounded-r-xl focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                                             style={{ marginLeft: '-1px' }}
                                             onClick={e => {
                                                 e.preventDefault();
@@ -729,7 +763,7 @@ export default function PurchasePage() {
                                                 }, 0);
                                             }}
                                         >
-                                            <LuCalendarFold className="w-6 h-6 text-white" aria-hidden="true" />
+                                            <LuCalendarFold className="w-6 h-6 text-white transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />
                                             <span className="sr-only">Search</span>
                                         </button>
                                         {calendarOpen && (
@@ -963,147 +997,306 @@ export default function PurchasePage() {
                             </div>
                         )}
                     </div>
-                    <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
-                        {/* Add New PR Card - Show only on first page */}
-                        {showCreateCard && (
-                            <div
-                                className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
-                                onClick={() => router.push('/services/purchase/createPR')}
-                            >
-                                {/* Plus Icon */}
-                                <div className="flex flex-col items-center justify-center h-full">
-                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-colors duration-200 ${isDarkMode ? 'bg-emerald-900/40 group-hover:bg-emerald-800/50' : 'bg-green-200 group-hover:bg-green-300'}`}>
-                                        <svg className={`w-12 h-12 ${isDarkMode ? 'text-emerald-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                        </svg>
+                    
+                    {/* Content Display - Cards or List View */}
+                    {isListView ? (
+                        /* Card View (เดิม) */
+                        <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
+                            {/* Add New PR Card - Show only on first page */}
+                            {showCreateCard && (
+                                <div
+                                    className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
+                                    onClick={() => router.push('/services/purchase/createPR')}
+                                >
+                                    {/* Plus Icon */}
+                                    <div className="flex flex-col items-center justify-center h-full">
+                                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-colors duration-200 ${isDarkMode ? 'bg-emerald-900/40 group-hover:bg-emerald-800/50' : 'bg-green-200 group-hover:bg-green-300'}`}>
+                                            <svg className={`w-12 h-12 ${isDarkMode ? 'text-emerald-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                        </div>
+                                        <h3 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>สร้าง PR ใหม่</h3>
+                                        <p className={`text-sm text-center px-4 ${isDarkMode ? 'text-slate-400' : 'text-green-600'}`}>คลิกเพื่อสร้างใบขอซื้อใหม่</p>
                                     </div>
-                                    <h3 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>สร้าง PR ใหม่</h3>
-                                    <p className={`text-sm text-center px-4 ${isDarkMode ? 'text-slate-400' : 'text-green-600'}`}>คลิกเพื่อสร้างใบขอซื้อใหม่</p>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {paginatedPrCards.map((pr) => (
-                            <div
-                                key={pr.pr_no}
-                                className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
-                                onClick={() => router.push(`/services/purchase/comparePrice?${pr.id ? `id=${pr.id}` : ''}`)}
-                            >
-                                {/* Top: Department Icon */}
-                                <div className="w-full flex justify-center pt-12 pb-2">
-                                    <HiDocumentText className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
-                                </div>
-                                {/* Status badge top right */}
-                                <div className="absolute top-2 right-2 z-10">
-                                    {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
-                                        // Red - ปฏิเสธ (Rejected)
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                            {pr.supervisor_reject_at ? 'หัวหน้าแผนกปฏิเสธ' : pr.manager_reject_at ? 'ผู้จัดการแผนกปฏิเสธ' : pr.pu_operator_reject_at ? 'แผนกจัดซื้อปฏิเสธ' : 'ปฏิเสธ'}
-                                        </span>
-                                    ) : !pr.supervisor_approved ? (
-                                        // Blue - รอหัวหน้าแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            รอหัวหน้าแผนกอนุมัติ
-                                        </span>
-                                    ) : !pr.manager_approved ? (
-                                        // Purple - รอผู้จัดการแผนกอนุมัติ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-200' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            รอผู้จัดการแผนกอนุมัติ
-                                        </span>
-                                    ) : !pr.pu_operator_approved ? (
-                                        // Orange - รอแผนกจัดซื้ออนุมัติ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            รอแผนกจัดซื้ออนุมัติ
-                                        </span>
-                                    ) : pr.waiting === 0 ? (
-                                        // Green - Complete (เสร็จสมบูรณ์)
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            เสร็จสมบูรณ์
-                                        </span>
-                                    ) : (
-                                        // Yellow/Amber - รอดำเนินการ
-                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
-                                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            รอดำเนินการ
-                                        </span>
-                                    )}
-                                </div>
-                                {/* Middle: Table info */}
-                                <div className="w-full px-6 pt-2">
-                                    <table className="w-full text-sm mb-2">
-                                        <tbody>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>{pr.pr_no}</td></tr>
-                                            <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.dept_name}</td></tr>
-                                            <tr>
-                                                <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td>
-                                                <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
-                                                    style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                                    title={pr.requester_name}
-                                                >
-                                                    {pr.requester_name && pr.requester_name.length > 18
-                                                        ? pr.requester_name.slice(0, 16) + '...'
-                                                        : pr.requester_name}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td>
-                                                <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
-                                                    style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                                    title={pr.pu_responsible}
-                                                >
-                                                    {pr.pu_responsible && pr.pu_responsible.length > 18
-                                                        ? pr.pu_responsible.slice(0, 16) + '...'
-                                                        : pr.pu_responsible}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {/* Bottom: Actions */}
-                                <div className="w-full px-6 pb-5 flex flex-col gap-2 items-center">
-                                    <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(pr.pr_date)}</span>
-                                    <div className="flex w-full justify-center">
-                                        <button
-                                            className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
-                                            onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
-                                        >
-                                            <MdOutlineRemoveRedEye className="w-7 h-7" />
-                                        </button>
-                                        <button
-                                            className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
-                                            onClick={e => { e.stopPropagation(); }}
-                                        >
-                                            <GoDownload className="w-7 h-7" />
-                                        </button>
+                            {paginatedPrCards.map((pr) => (
+                                <div
+                                    key={pr.pr_no}
+                                    className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
+                                    onClick={() => router.push(`/services/purchase/comparePrice?${pr.id ? `id=${pr.id}` : ''}`)}
+                                >
+                                    {/* Top: Department Icon */}
+                                    <div className="w-full flex justify-center pt-12 pb-2">
+                                        <HiDocumentText className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
                                     </div>
-                                    <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                    {/* Status badge top right */}
+                                    <div className="absolute top-2 right-2 z-10">
                                         {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
-                                            <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list} รายการ</span></>
+                                            // Red - ปฏิเสธ (Rejected)
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                {pr.supervisor_reject_at ? 'หัวหน้าแผนกปฏิเสธ' : pr.manager_reject_at ? 'ผู้จัดการแผนกปฏิเสธ' : pr.pu_operator_reject_at ? 'แผนกจัดซื้อปฏิเสธ' : 'ปฏิเสธ'}
+                                            </span>
+                                        ) : !pr.supervisor_approved ? (
+                                            // Blue - รอหัวหน้าแผนกอนุมัติ
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                รอหัวหน้าแผนกอนุมัติ
+                                            </span>
+                                        ) : !pr.manager_approved ? (
+                                            // Purple - รอผู้จัดการแผนกอนุมัติ
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-200' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                รอผู้จัดการแผนกอนุมัติ
+                                            </span>
+                                        ) : !pr.pu_operator_approved ? (
+                                            // Orange - รอแผนกจัดซื้ออนุมัติ
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                รอแผนกจัดซื้ออนุมัติ
+                                            </span>
+                                        ) : pr.waiting === 0 ? (
+                                            // Green - Complete (เสร็จสมบูรณ์)
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                เสร็จสมบูรณ์
+                                            </span>
                                         ) : (
-                                            <>ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>{pr.count_list - pr.waiting}</span> | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></>
+                                            // Yellow/Amber - รอดำเนินการ
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
+                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                รอดำเนินการ
+                                            </span>
                                         )}
-                                    </span>
+                                    </div>
+                                    {/* Middle: Table info */}
+                                    <div className="w-full px-6 pt-2">
+                                        <table className="w-full text-sm mb-2">
+                                            <tbody>
+                                                <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>{pr.pr_no}</td></tr>
+                                                <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.dept_name}</td></tr>
+                                                <tr>
+                                                    <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td>
+                                                    <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
+                                                        style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                        title={pr.requester_name}
+                                                    >
+                                                        {pr.requester_name && pr.requester_name.length > 18
+                                                            ? pr.requester_name.slice(0, 16) + '...'
+                                                            : pr.requester_name}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้จัดทำ</td>
+                                                    <td className={`text-right py-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}
+                                                        style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                        title={pr.pu_responsible}
+                                                    >
+                                                        {pr.pu_responsible && pr.pu_responsible.length > 18
+                                                            ? pr.pu_responsible.slice(0, 16) + '...'
+                                                            : pr.pu_responsible}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* Bottom: Actions */}
+                                    <div className="w-full px-6 pb-5 flex flex-col gap-2 items-center">
+                                        <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(pr.pr_date)}</span>
+                                        <div className="flex w-full justify-center">
+                                            <button
+                                                className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
+                                                onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
+                                            >
+                                                <MdOutlineRemoveRedEye className="w-7 h-7" />
+                                            </button>
+                                            <button
+                                                className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
+                                                onClick={e => { e.stopPropagation(); }}
+                                            >
+                                                <GoDownload className="w-7 h-7" />
+                                            </button>
+                                        </div>
+                                        <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                            {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                                <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list} รายการ</span></>
+                                            ) : (
+                                                <>ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>{pr.count_list - pr.waiting}</span> | <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list} รายการ</span></>
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+                    ) : (
+                        /* List View (แบบตาราง) */
+                        <div className="mt-2 mb-4">
+                            {/* Add New PR Button for List View */}
+                            {showCreateCard && (
+                                <div
+                                    className={`mb-4 p-4 rounded-xl border-2 border-dashed transition-all duration-200 hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100'}`}
+                                    onClick={() => router.push('/services/purchase/createPR')}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/40' : 'bg-green-200'}`}>
+                                            <svg className={`w-6 h-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>สร้าง PR ใหม่</h3>
+                                            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-green-600'}`}>คลิกเพื่อสร้างใบขอซื้อใหม่</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Table Header */}
+                            <div className={`overflow-x-auto rounded-xl border ${isDarkMode ? 'border-slate-700' : 'border-gray-200'} shadow-sm`}>
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className={`${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                                        <tr>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                หมายเลข PR
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                แผนก
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                ผู้ร้องขอ
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                ผู้จัดทำ
+                                            </th>
+                                            <th className={`px-6 py-3 text-center text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                วันที่
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                สถานะ
+                                            </th>
+                                            <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                การดำเนินการ
+                                            </th>
+                                            <th className={`px-6 py-3 text-center text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
+                                                PDF
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700 bg-slate-900' : 'divide-gray-200 bg-white'}`}>
+                                        {paginatedPrCards.map((pr) => (
+                                            <tr
+                                                key={pr.pr_no}
+                                                className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-emerald-900/20' : 'hover:bg-emerald-50'} focus-within:bg-emerald-100`}
+                                                style={{ transition: 'background 0.15s' }}
+                                                onClick={() => router.push(`/services/purchase/comparePrice?${pr.id ? `id=${pr.id}` : ''}`)}
+                                            >
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <HiDocumentText className={`h-8 w-8 mr-3 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                                        <div className={`text-sm font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>
+                                                            {pr.pr_no}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>
+                                                        {pr.dept_name}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'} max-w-[150px] truncate`} title={pr.requester_name}>
+                                                        {pr.requester_name}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'} max-w-[150px] truncate`} title={pr.pu_responsible}>
+                                                        {pr.pu_responsible}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm text-center ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                        {formatDate(pr.pr_date)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-100 text-red-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#f87171' : '#dc2626' }}></span>
+                                                            ปฏิเสธ
+                                                        </span>
+                                                    ) : !pr.supervisor_approved ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#60a5fa' : '#2563eb' }}></span>
+                                                            รอหัวหน้าแผนกอนุมัติ
+                                                        </span>
+                                                    ) : !pr.manager_approved ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-100 text-purple-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#c4b5fd' : '#7c3aed' }}></span>
+                                                            รอผู้จัดการแผนกอนุมัติ
+                                                        </span>
+                                                    ) : !pr.pu_operator_approved ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-100 text-orange-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#fdba74' : '#f59e42' }}></span>
+                                                            รอแผนกจัดซื้ออนุมัติ
+                                                        </span>
+                                                    ) : pr.waiting === 0 ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-100 text-green-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#6ee7b7' : '#059669' }}></span>
+                                                            เสร็จสมบูรณ์
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#fde68a' : '#fbbf24' }}></span>
+                                                            รอดำเนินการ
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                        {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                                            <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list}</span> รายการ</>
+                                                        ) : (
+                                                            <>ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>{pr.count_list - pr.waiting}</span>/<span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list}</span></>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <div className="flex justify-center space-x-2">
+                                                        <button
+                                                            className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md transition-colors ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'}`}
+                                                            onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
+                                                        >
+                                                            <MdOutlineRemoveRedEye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md transition-colors ${isDarkMode ? 'text-red-400 bg-red-900/20 border-red-800/50 hover:bg-red-800/30' : 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100'}`}
+                                                            onClick={(e) => { e.stopPropagation(); }}
+                                                        >
+                                                            <GoDownload className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>

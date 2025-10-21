@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import "@/app/styles/react-datepicker-dark.css";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import { useTheme } from '../../../components/ThemeProvider';
@@ -586,7 +587,8 @@ export default function TestPage() {
                                   onChange={date => handleRowDueDateChange((page - 1) * rowsPerPage + idx, date)}
                                   dateFormat="dd/MM/yyyy" placeholderText="เลือกวันที่"
                                   className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
-                                  calendarClassName="!bg-white !border-2 !border-green-200 !shadow-2xl !rounded-2xl absolute" popperClassName="z-[9999]" popperPlacement="bottom-start" />
+                                  calendarClassName={`${isDarkMode ? 'react-datepicker-dark' : '!bg-white !border-2 !border-green-200 !shadow-2xl !rounded-2xl absolute'}`}
+                                  popperClassName="z-[9999]" popperPlacement="bottom-start" />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                   <FaRegCalendarAlt className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                                 </span>
@@ -683,7 +685,7 @@ export default function TestPage() {
                                   dateFormat="dd/MM/yyyy"
                                   placeholderText="เลือกวันที่"
                                   className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
-                                  calendarClassName="!bg-white !border-2 !border-orange-200 !shadow-2xl !rounded-2xl absolute"
+                                  calendarClassName={`${isDarkMode ? 'react-datepicker-dark' : '!bg-white !border-2 !border-orange-200 !shadow-2xl !rounded-2xl absolute'}`}
                                   popperClassName="z-[9999]"
                                   popperPlacement="bottom-start"
                                 />

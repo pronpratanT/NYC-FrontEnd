@@ -34,7 +34,7 @@ const RejectPRModal: React.FC<RejectPRModalProps> = ({ open, onClose, onConfirm,
 
     return (
         <div
-            className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ${isDarkMode ? 'bg-black/80' : 'bg-black/40'}`}
+            className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ${isDarkMode ? 'bg-black/40' : 'bg-black/10'}`}
             onClick={handleBackgroundClick}
         >
             <div className={`rounded-3xl shadow-2xl p-8 w-full max-w-lg relative border transition-all duration-300 animate-in fade-in-0 zoom-in-95 ${isDarkMode ? 'bg-gradient-to-br from-slate-900 to-slate-800 shadow-rose-900/40 border-rose-600' : 'bg-white border-gray-100'}`}>
