@@ -20,7 +20,7 @@ import { useUser } from "../../../context/UserContext";
 import { LuCalendarFold } from "react-icons/lu";
 import { MdOutlineSort, MdOutlineRemoveRedEye } from "react-icons/md";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
-import { GoDownload } from "react-icons/go";
+import { GoDownload, GoSearch } from "react-icons/go";
 import { HiDocumentText } from "react-icons/hi2";
 
 // Types
@@ -162,7 +162,7 @@ export default function PurchaseOrderPage() {
             if (statusFilter === 'rejected') {
                 return po.rejected_by;
             } else if (statusFilter === 'processing') {
-                return po.issued_by && !po.approved_by;
+                return po.issued_by && !po.approved_by && !po.rejected_by;
             } else if (statusFilter === 'complete') {
                 return po.issued_by && po.approved_by;
             }
@@ -673,11 +673,14 @@ export default function PurchaseOrderPage() {
                                 </div>
                                 {/* Search Input */}
                                 <div className="relative w-full flex">
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                        <GoSearch className={`w-5 h-5 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`} />
+                                    </div>
                                     <input
                                         type="search"
                                         id="search-dropdown"
-                                        className={`block p-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
-                                        placeholder="ค้นหา PO, ผู้จัดทำ..."
+                                        className={`block pl-10 pr-3 py-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
+                                        placeholder="PO, ออกโดย"
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                     />
@@ -832,8 +835,7 @@ export default function PurchaseOrderPage() {
                         {totalItems > 0 && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                                 {/* Items per page dropdown */}
-                                <div className="flex items-center space-x-2">
-                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
+                                {/* <div className="flex items-center space-x-2">
                                     <select
                                         value={itemsPerPage}
                                         onChange={(e) => {
@@ -847,13 +849,31 @@ export default function PurchaseOrderPage() {
                                         <option value={10}>10 per page</option>
                                         <option value={25}>25 per page</option>
                                         <option value={50}>50 per page</option>
-                                        {/* <option value={100}>100 per page</option> */}
                                     </select>
-                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
-                                </div>
+                                </div> */}
 
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
+                                    <div className="flex items-center space-x-2">
+                                        {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
+                                        <select
+                                            value={itemsPerPage}
+                                            onChange={(e) => {
+                                                const newPerPage = Number(e.target.value);
+                                                setItemsPerPage(newPerPage);
+                                                setCurrentPage(1);
+                                                updateUrlParams(1, newPerPage);
+                                            }}
+                                            className={`border-r px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
+                                        >
+                                            <option value={10}>10 per page</option>
+                                            <option value={25}>25 per page</option>
+                                            <option value={50}>50 per page</option>
+                                            {/* <option value={100}>100 per page</option> */}
+                                        </select>
+                                        {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
+                                    </div>
+
                                     <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
                                             const startItem = totalItems === 0 ? 0 : startIndex + 1;

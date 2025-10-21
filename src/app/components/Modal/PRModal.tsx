@@ -348,7 +348,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const partNoToUse = fetchPartNo ?? partNo;
       const prListIdToUse = fetchPrListId ?? pr_list_id;
       if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-      const response = await fetch(`/api/purchase/pc/compare/list?part_no=${partNoToUse}&pr_list_id=${prListIdToUse}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/list?part_no=${partNoToUse}&pr_list_id=${prListIdToUse}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) throw new Error("โหลดข้อมูลเปรียบเทียบราคาไม่สำเร็จ");

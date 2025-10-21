@@ -129,7 +129,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
 
         try {
             setError("");
-            const response = await fetch(`/api/purchase/pr/request/list?pr_id=${prId}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
@@ -159,7 +159,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                 setLoading(true);
                 if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
                 // fetch ข้อมูล PR พร้อม header Authorization
-                const response = await fetch(`/api/purchase/pr/request/list?pr_id=${prId}`, {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 console.log("PRID: ", prId);

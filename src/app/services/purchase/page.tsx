@@ -20,9 +20,10 @@ import { useUser } from "../../context/UserContext";
 import { LuCalendarFold } from "react-icons/lu";
 import { MdOutlineSort, MdOutlineRemoveRedEye } from "react-icons/md";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
-import { GoDownload } from "react-icons/go";
+import { GoDownload, GoSearch } from "react-icons/go";
 import { FaRegClock } from "react-icons/fa6";
 import { HiDocumentText } from "react-icons/hi2";
+import { TbLayoutList, TbLayoutCards } from "react-icons/tb";
 
 type PRCard = {
     id: number;
@@ -79,6 +80,7 @@ const departmentColors: { [key: string]: string } = {
 };
 
 export default function PurchasePage() {
+    const [isListView, setIsListView] = useState(true);
     // Theme context
     const { isDarkMode } = useTheme();
 
@@ -132,9 +134,9 @@ export default function PurchasePage() {
             } else if (statusFilter === 'pu') {
                 return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             } else if (statusFilter === 'processing') {
-                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== 0 && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             } else if (statusFilter === 'complete') {
-                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === pr.count_list && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === 0 && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             }
             return true;
         });
@@ -149,30 +151,25 @@ export default function PurchasePage() {
         );
     }
     // NEWEST or OLDEST sort
-    if (sortBy === 'newest') {
+    if (sortBy === 'newest' || sortBy === 'oldest') {
+        // Sort by PR number, format: PR{YY}{Alpha}{NNN}
+        // Example: PR25A001, PR25A999, PR25B001, ...
+        const extract = (pr_no: string) => {
+            const match = pr_no.match(/^PR(\d{2})([A-Z])(\d{3})$/i);
+            if (match) {
+                const year = parseInt(match[1]);
+                const alpha = match[2].toUpperCase();
+                const alphaNum = alpha.charCodeAt(0) - 65; // 'A' = 0, 'B' = 1, ...
+                const num = parseInt(match[3]);
+                // Combine for sorting: year * 10000 + alphaNum * 1000 + num
+                return year * 10000 + alphaNum * 1000 + num;
+            }
+            return 0;
+        };
         displayedPrCards = [...displayedPrCards].sort((a, b) => {
-            // Sort by PR number descending (newest first) for format PR25A###
-            const extract = (pr_no: string) => {
-                const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-                if (match) {
-                    // Combine year and number for sorting, e.g. 25 + 001 => 25001
-                    return parseInt(match[1] + match[2]);
-                }
-                return 0;
-            };
-            return extract(b.pr_no) - extract(a.pr_no);
-        });
-    } else if (sortBy === 'oldest') {
-        displayedPrCards = [...displayedPrCards].sort((a, b) => {
-            // Sort by PR number ascending (oldest first) for format PR25A###
-            const extract = (pr_no: string) => {
-                const match = pr_no.match(/^PR(\d{2})A(\d{3})$/i);
-                if (match) {
-                    return parseInt(match[1] + match[2]);
-                }
-                return 0;
-            };
-            return extract(a.pr_no) - extract(b.pr_no);
+            const va = extract(a.pr_no);
+            const vb = extract(b.pr_no);
+            return sortBy === 'newest' ? vb - va : va - vb;
         });
     }
 
@@ -610,6 +607,23 @@ export default function PurchasePage() {
                     {/* <h1 className="text-2xl font-bold text-green-700 mb-4">รายการ PR สำหรับเปรียบเทียบราคา</h1> */}
                     <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
                         <form className="max-w-2xl w-full flex items-center gap-3">
+                            <button
+                                type="button"
+                                className="ml-2 flex items-center justify-center rounded-lg border px-2 py-2 transition-colors hover:bg-emerald-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300/40 active:scale-95 transform-gpu duration-200"
+                                aria-label="Toggle view mode"
+                                onClick={() => setIsListView(v => !v)}
+                                style={{ transition: 'box-shadow 0.2s, transform 0.2s' }}
+                            >
+                                <span
+                                    className={
+                                        `inline-flex items-center transition-transform duration-300 ease-in-out will-change-transform ${isListView ? 'scale-100' : 'scale-110'}`
+                                    }
+                                >
+                                    {isListView
+                                        ? <TbLayoutList className="w-6 h-6 text-emerald-500 transition-transform duration-300" />
+                                        : <TbLayoutCards className="w-6 h-6 text-emerald-500 transition-transform duration-300" />}
+                                </span>
+                            </button>
                             <div className={`flex w-full group focus-within:ring-2 focus-within:ring-emerald-500/30 border rounded-xl ${isDarkMode ? 'border-slate-700/50 bg-slate-900/50' : 'border-gray-300 bg-white'}`}>
                                 {/* Custom Dropdown */}
                                 <div className="relative" style={{ minWidth: '180px' }}>
@@ -691,11 +705,14 @@ export default function PurchasePage() {
                                 </div>
                                 {/* Search Input */}
                                 <div className="relative w-full flex">
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                        <GoSearch className={`w-5 h-5 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`} />
+                                    </div>
                                     <input
                                         type="search"
                                         id="search-dropdown"
-                                        className={`block p-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
-                                        placeholder="ค้นหา PR, ผู้จัดทำ..."
+                                        className={`block pl-10 pr-3 py-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
+                                        placeholder="PR, ผู้จัดทำ"
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                     />
@@ -873,29 +890,28 @@ export default function PurchasePage() {
                         {/* Pagination Controls - Top */}
                         {totalItems > 0 && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                {/* Items per page dropdown */}
-                                <div className="flex items-center space-x-2">
-                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
-                                    <select
-                                        value={itemsPerPage}
-                                        onChange={(e) => {
-                                            const newPerPage = Number(e.target.value);
-                                            setItemsPerPage(newPerPage);
-                                            setCurrentPage(1);
-                                            updateUrlParams(1, newPerPage);
-                                        }}
-                                        className={`border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
-                                    >
-                                        <option value={10}>10 per page</option>
-                                        <option value={25}>25 per page</option>
-                                        <option value={50}>50 per page</option>
-                                        {/* <option value={100}>100 per page</option> */}
-                                    </select>
-                                    {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
-                                </div>
-
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
+                                    <div className="flex items-center space-x-2">
+                                        {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
+                                        <select
+                                            value={itemsPerPage}
+                                            onChange={(e) => {
+                                                const newPerPage = Number(e.target.value);
+                                                setItemsPerPage(newPerPage);
+                                                setCurrentPage(1);
+                                                updateUrlParams(1, newPerPage);
+                                            }}
+                                            className={`border-r px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
+                                        >
+                                            <option value={10}>10 per page</option>
+                                            <option value={25}>25 per page</option>
+                                            <option value={50}>50 per page</option>
+                                            {/* <option value={100}>100 per page</option> */}
+                                        </select>
+                                        {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
+                                    </div>
+
                                     <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
                                             const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
@@ -904,7 +920,7 @@ export default function PurchasePage() {
                                             return (
                                                 <>
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
-                                                    {' '}จาก{' '}
+                                                    {' '}of{' '}
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItemsWithCreate}</span>
                                                 </>
                                             );
