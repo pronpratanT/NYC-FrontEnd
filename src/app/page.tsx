@@ -14,7 +14,7 @@ export default function Page() {
   useEffect(() => {
     if (!token) {
       // ถ้าไม่มี token ให้ redirect ไปหน้า login
-      router.replace("/login");
+      router.replace(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
     }
   }, [token, router]);
 

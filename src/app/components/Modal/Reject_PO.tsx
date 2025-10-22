@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import { HiExclamationTriangle, HiXMark } from "react-icons/hi2";
 import { useTheme } from "../ThemeProvider";

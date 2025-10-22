@@ -16,8 +16,8 @@ import { useTheme } from './ThemeProvider';
 
 
 const menu = [
-  { label: 'Dashboard', icon: RiDashboardFill, href: '/' },
-  { label: 'คู่มือการใช้งาน', icon: FaBook, href: '/manual' },
+  { label: 'Dashboard', icon: RiDashboardFill, href: process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || '/nycsystem' },
+  { label: 'คู่มือการใช้งาน', icon: FaBook, href: process.env.NEXT_PUBLIC_MANUAL_REDIRECT || '/manual' },
 ];
 
 const system = [
@@ -37,8 +37,8 @@ const programs = [
     label: 'ระบบจัดซื้อ',
     icon: FaShoppingCart,
     subItems: [
-      { label: 'Purchase Request (PR)', icon: FaClipboardList, href: '/services/purchase' },
-      { label: 'Purchase Order (PO)', icon: FaFileInvoice, href: '/services/purchase/PO' },
+      { label: 'Purchase Request (PR)', icon: FaClipboardList, href: process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase' },
+      { label: 'Purchase Order (PO)', icon: FaFileInvoice, href: process.env.NEXT_PUBLIC_PURCHASE_PO_REDIRECT || '/nycsystem/services/purchase/PO' },
     ]
   },
   { label: 'เชื่อมโยงแอปฯ', icon: FaLink },
@@ -61,19 +61,25 @@ const admin = [
 export default function Sidebar() {
   const { isDarkMode } = useTheme();
   const pathname = usePathname();
-  const [showPurchaseMenu, setShowPurchaseMenu] = useState(pathname.startsWith('/services/purchase'));
+  const purchaseMenuPath = process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase';
+  const [showPurchaseMenu, setShowPurchaseMenu] = useState(pathname.startsWith(purchaseMenuPath));
 
   // Helper function to check if current path matches the item
   const isPathActive = (item: { href?: string; label: string }) => {
     if (!item.href) return false;
-    if (item.href === '/' && pathname === '/') return true;
+    // Use env for dashboard root path if provided
+    const dashboardRootPath = process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || '/nycsystem/';
+    if (item.href === dashboardRootPath && pathname === dashboardRootPath) return true;
 
-    // Special handling for purchase system paths
-    if (item.href === '/services/purchase' && pathname === '/services/purchase') return true;
-    if (item.href === '/services/purchase/PO' && pathname.startsWith('/services/purchase/PO')) return true;
+
+    // Special handling for purchase system paths using env
+    const purchaseMenuPath = process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase';
+    const purchasePOPath = process.env.NEXT_PUBLIC_PURCHASE_PO_REDIRECT || '/nycsystem/services/purchase/PO';
+    if (item.href === purchaseMenuPath && pathname === purchaseMenuPath) return true;
+    if (item.href === purchasePOPath && pathname.startsWith(purchasePOPath)) return true;
 
     // For other paths, use exact match or startsWith with additional path segment
-    if (item.href !== '/' && item.href !== '/services/purchase' && pathname.startsWith(item.href)) return true;
+    if (item.href !== dashboardRootPath && item.href !== purchaseMenuPath && pathname.startsWith(item.href)) return true;
 
     return false;
   };

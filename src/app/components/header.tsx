@@ -29,7 +29,7 @@ export default function Header() {
     setShowUserMenu(false);
     
     // Redirect ไปหน้า login
-    router.push('/login');
+    router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
   };
   // Mock notifications data
   const notifications = [

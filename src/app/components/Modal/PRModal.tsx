@@ -1197,7 +1197,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           <div className={`bg-gradient-to-r px-8 py-2 border-b ${isDarkMode ? 'from-slate-800/60 via-slate-900/60 to-slate-800/60 border-slate-700/60' : 'from-slate-50 via-white to-slate-50 border-slate-200/60'}`}>
             <nav className="flex space-x-1">
               <button type="button" onClick={() => setActiveTab('purchase')}
-                className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'purchase'
+                className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'purchase'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200/50 transform scale-105'
                   : isDarkMode
                     ? 'text-slate-300 hover:text-emerald-400 hover:bg-emerald-900/30 hover:shadow-md'
@@ -1211,7 +1211,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               </button>
 
               <button type="button" onClick={() => setActiveTab('compare')}
-                className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
+                className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
                   ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md shadow-purple-200/50 transform scale-105'
                   : isDarkMode
                     ? 'text-slate-300 hover:text-purple-400 hover:bg-purple-900/30 hover:shadow-md'
@@ -1227,7 +1227,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               {/* Tab รายละเอียดการขอซื้อหลายรายการ */}
               {multipleOrderDetails.length > 0 && (
                 <button type="button" onClick={() => setActiveTab('multiple-order')}
-                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'multiple-order'
+                  className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'multiple-order'
                     ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-md shadow-orange-200/50 transform scale-105'
                     : isDarkMode
                       ? 'text-slate-300 hover:text-orange-400 hover:bg-orange-900/30 hover:shadow-md'
@@ -1250,7 +1250,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   if (loading || error || !compareData) return null;
                   return (
                     <button type="button" onClick={() => setActiveTab('summary')}
-                      className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
+                      className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
                         ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200/50 transform scale-105'
                         : isDarkMode
                           ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
@@ -1268,7 +1268,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   case 'Pending Approval':
                     return (
                       <button type="button" onClick={() => setActiveTab('approve')}
-                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
+                        className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
                           ? 'bg-gradient-to-r from-green-500 to-lime-600 text-white shadow-md shadow-green-200/50 transform scale-105'
                           : isDarkMode
                             ? 'text-slate-300 hover:text-green-400 hover:bg-green-900/30 hover:shadow-md'
@@ -1284,7 +1284,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   case 'Approved':
                     return (
                       <button type="button" onClick={() => setActiveTab('completed-summary')}
-                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                        className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
                           ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
                           : isDarkMode
                             ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
@@ -1300,7 +1300,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   case 'Po Created':
                     return (
                       <button type="button" onClick={() => setActiveTab('completed-summary')}
-                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                        className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
                           ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
                           : isDarkMode
                             ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
@@ -1317,7 +1317,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     // สำหรับ status อื่นๆ ที่ไม่อยู่ใน case ให้แสดง summary
                     return (
                       <button type="button" onClick={() => setActiveTab('summary')}
-                        className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
+                        className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
                           ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200/50 transform scale-105'
                           : isDarkMode
                             ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
@@ -1460,10 +1460,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         '9': '9. ราคาเท่ากัน แบ่งสั่ง',
                                         '10': '10. ต้องการด่วน รอเทียบราคาไม่ได้'
                                       };
-
                                       const reasonChoose = prWithPO?.reason_choose;
                                       if (reasonChoose && reasonMap[reasonChoose]) {
                                         return reasonMap[reasonChoose];
+                                      }
+                                      // ถ้าไม่ใช่ 1-10 ให้แสดง 11. อื่นๆ: <เหตุผล>
+                                      if (reasonChoose && reasonChoose.trim() !== "") {
+                                        return `11. อื่นๆ : ${reasonChoose}`;
                                       }
                                       return 'ไม่ระบุเหตุผล';
                                     })()}
@@ -2697,7 +2700,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{startIdx + index + 1}</td>
                                 <td className={`px-4 py-3 text-sm text-center font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{vendor.vendor_code}</td>
                                 <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendor.vendor_name}</td>
-                                <td className={`px-4 py-3 text-sm text-left ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.tel}</td>
+                                <td className={`px-4 py-3 text-sm text-left ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                  {typeof vendor.tel === 'string' && vendor.tel.includes(',')
+                                    ? vendor.tel.split(',').map((tel, idx) => (
+                                        <div key={idx}>{tel.trim()}</div>
+                                      ))
+                                    : vendor.tel}
+                                </td>
                                 <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.credit_term}</td>
                                 {/* PRICE EDIT */}
                                 <td className={`px-4 py-3 text-sm font-bold text-right pr-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
@@ -2729,6 +2738,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           }
                                         });
                                       }}
+                                      disabled={isDisabled}
                                     />
                                     <span>฿</span>
                                   </span>
@@ -2766,6 +2776,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                   });
                                                 }}
                                                 title="เพิ่มส่วนลด"
+                                                disabled={isDisabled}
                                               >+</button>
                                             )}
                                           </div>
@@ -2833,9 +2844,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                             }
                                                           });
                                                         }}
+                                                        disabled={isDisabled}
                                                       />
                                                       {/* <span className="text-xs opacity-60">%</span> */}
-                                                      {currentDiscounts.length > 1 && (
+                                                      {currentDiscounts.length > 1 && !isDisabled && (
                                                         <button
                                                           type="button"
                                                           className={`w-3 h-3 rounded-full flex items-center justify-center text-xs leading-none opacity-40 hover:opacity-100 transition-opacity ${isDarkMode
@@ -2890,6 +2902,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                   });
                                                 }}
                                                 title="เพิ่มส่วนลด"
+                                                disabled={isDisabled}
                                               >+</button>
                                             </div>
                                           )}
@@ -2910,8 +2923,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <div className="flex items-center justify-center gap-2">
                                     <button
                                       type="button"
-                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'}`}
+                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                                       onClick={e => {
+                                        if (isDisabled) return;
                                         e.stopPropagation();
                                         handleEditVendor({
                                           ID: vendor.vendor_id,
@@ -2925,18 +2939,21 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           email: vendor.email ?? '',
                                         });
                                       }}
+                                      disabled={isDisabled}
                                     >
                                       <CiEdit size={24} className="inline align-middle" />
                                     </button>
                                     <button
                                       type="button"
-                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-300 hover:text-white hover:bg-red-700/30' : 'text-red-600 hover:text-white hover:bg-red-500/80'}`}
+                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-300 hover:text-white hover:bg-red-700/30' : 'text-red-600 hover:text-white hover:bg-red-500/80'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                                       onClick={e => {
+                                        if (isDisabled) return;
                                         e.stopPropagation();
                                         if (window.confirm(`ต้องการลบ ${vendor.vendor_name} ออกจากรายการเปรียบเทียบ?`)) {
                                           handleDeleteVendor(vendor);
                                         }
                                       }}
+                                      disabled={isDisabled}
                                     >
                                       <IoTrashBinOutline size={20} className="inline align-middle" />
                                     </button>
@@ -3063,11 +3080,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <div className={`flex items-center border rounded shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                         <div className={`px-3 py-1.5 text-sm border-r ${isDarkMode ? 'text-slate-300 bg-slate-700 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                           {(() => {
-                            const startRow = totalPurchaseRows === 0 ? 0 : ((purchasePage - 1) * rowsPerPage + 1);
-                            const endRow = Math.min(purchasePage * rowsPerPage, totalPurchaseRows);
+                            // เปลี่ยนมานับจากจำนวนผู้ขาย (compareData.compare_vendors)
+                            const vendorCount = Array.isArray(compareData?.compare_vendors) ? compareData.compare_vendors.length : 0;
+                            const startRow = vendorCount === 0 ? 0 : ((purchasePage - 1) * rowsPerPage + 1);
+                            const endRow = Math.min(purchasePage * rowsPerPage, vendorCount);
                             return (
                               <>
-                                <span className="font-bold">{startRow}-{endRow}</span> of {totalPurchaseRows}
+                                <span className={`font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>{startRow}-{endRow}</span> of {vendorCount}
                               </>
                             );
                           })()}
@@ -3084,7 +3103,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <button
                             type="button"
                             className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                            disabled={compareData?.part_inventory_and_pr && ((purchasePage * rowsPerPage) >= totalPurchaseRows)}
+                            disabled={(() => {
+                              const vendorCount = Array.isArray(compareData?.compare_vendors) ? compareData.compare_vendors.length : 0;
+                              const lastPage = Math.ceil(vendorCount / rowsPerPage) || 1;
+                              return purchasePage >= lastPage;
+                            })()}
                             onClick={() => setPurchasePage(p => p + 1)}
                           >
                             <IoIosArrowForward className="w-4 h-4" />

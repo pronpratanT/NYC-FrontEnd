@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import { useToken } from "../../context/TokenContext";
 import { useTheme } from "../ThemeProvider";

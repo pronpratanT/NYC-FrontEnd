@@ -373,30 +373,27 @@ export default function Home() {
         });
         const data = await response.json();
         if (!response.ok) {
-          throw new Error(data.message || "เข้าสู่ระบบไม่สำเร็จ");
+          // กรณี login ผิด ให้แสดงข้อความแบบเดียวกันเสมอ
+          setError("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+          setIsLoading(false);
+          return;
         }
         // เก็บ token ถ้ามี
         if (data.token) {
           // เก็บ token ลง cookies (expired ใน 7 วัน)
           setCookie("authToken", data.token, 7);
           console.log("Token saved to cookies:", data.token);
-          
           // Trigger custom event เพื่อให้ TokenContext รับรู้การเปลี่ยนแปลง
           window.dispatchEvent(new CustomEvent('tokenUpdated'));
-          
           // รอสักครู่ให้ context อัพเดตก่อน redirect
           setTimeout(() => {
-            router.push("/");
+            router.push(process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || "/");
           }, 100);
         } else {
-          router.push("/");
+          router.push(process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || "/");
         }
       } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message || "เกิดข้อผิดพลาด");
-        } else {
-          setError("เกิดข้อผิดพลาด");
-        }
+        setError("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
       } finally {
         setIsLoading(false);
       }

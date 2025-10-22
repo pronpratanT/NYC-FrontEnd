@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,6 +25,7 @@ import { FaRegEdit } from "react-icons/fa";
 import { LuMail } from "react-icons/lu";
 import { SiMinutemailer } from "react-icons/si";
 import { RiMailSendLine } from "react-icons/ri";
+import { MdOutlineEdit } from "react-icons/md";
 
 type ReviewedPO = {
     po_id: number;
@@ -328,14 +331,14 @@ export default function ReviewedPOPage() {
                                             <>
                                                 <button
                                                     type="button"
-                                                    className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-green-400 hover:from-emerald-600 hover:to-green-600 text-white'}`}
+                                                    className={`px-6 py-2.5 rounded-lg cursor-pointer font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-green-400 hover:from-emerald-600 hover:to-green-600 text-white'}`}
                                                     onClick={() => setShowApproveModal(true)}
                                                 >
                                                     ✔ อนุมัติ
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ml-2 ${isDarkMode ? 'bg-gradient-to-r from-red-700 to-red-500 hover:from-red-600 hover:to-red-400 text-white' : 'bg-gradient-to-r from-red-500 to-red-400 hover:from-red-600 hover:to-red-600 text-white'}`}
+                                                    className={`px-6 py-2.5 rounded-lg cursor-pointer font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ml-2 ${isDarkMode ? 'bg-gradient-to-r from-red-700 to-red-500 hover:from-red-600 hover:to-red-400 text-white' : 'bg-gradient-to-r from-red-500 to-red-400 hover:from-red-600 hover:to-red-600 text-white'}`}
                                                     onClick={() => setShowRejectModal(true)}
                                                 >
                                                     ✖ ปฏิเสธ
@@ -360,7 +363,7 @@ export default function ReviewedPOPage() {
                                             <div className="relative ml-2">
                                                 <button
                                                     type="button"
-                                                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 font-semibold group relative overflow-hidden
+                                                    className={`w-12 h-12 rounded-full cursor-pointer flex items-center justify-center transition-all duration-300 font-semibold group relative overflow-hidden
                                                         ${isDarkMode
                                                             ? 'bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 text-white hover:scale-110 hover:rotate-3 shadow-lg hover:shadow-emerald-500/40'
                                                             : 'bg-gradient-to-br from-emerald-400 via-green-400 to-teal-400 text-white hover:scale-110 hover:rotate-3 shadow-lg hover:shadow-emerald-400/40'}
@@ -442,7 +445,7 @@ export default function ReviewedPOPage() {
                                             {!(poData.approved_by || poData.rejected_by) && (
                                                 <button
                                                     type="button"
-                                                    className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 border font-semibold ${isDarkMode ? 'bg-blue-500/10 border-blue-700 text-blue-400 hover:bg-blue-700/30 hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white'}`}
+                                                    className={`w-10 h-10 rounded-lg cursor-pointer flex items-center justify-center transition-all duration-150 shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 border font-semibold ${isDarkMode ? 'bg-blue-500/10 border-blue-700 text-blue-400 hover:bg-blue-700/30 hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white'}`}
                                                     title="แก้ไขข้อมูลผู้ขาย"
                                                     onClick={e => {
                                                         e.stopPropagation();
@@ -460,7 +463,7 @@ export default function ReviewedPOPage() {
                                                         setShowEditVendor(true);
                                                     }}
                                                 >
-                                                    <FaRegEdit className="h-5 w-5" />
+                                                    <MdOutlineEdit className="h-5 w-5" />
                                                     <span className="sr-only">Edit Vendor Information</span>
                                                 </button>
                                             )}
@@ -486,7 +489,7 @@ export default function ReviewedPOPage() {
                                                     <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{
                                                         poData.tel_no && typeof poData.tel_no === 'string' && poData.tel_no.includes(',')
                                                             ? poData.tel_no.split(',').map((item, idx) => (
-                                                                <span key={idx} className="block">{item.trim()}</span>
+                                                                <span key={`tel-${idx}`} className="block">{item.trim()}</span>
                                                             ))
                                                             : poData.tel_no
                                                     }</span>
@@ -496,7 +499,7 @@ export default function ReviewedPOPage() {
                                                     <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{
                                                         poData.fax_no && typeof poData.fax_no === 'string' && poData.fax_no.includes(',')
                                                             ? poData.fax_no.split(',').map((item, idx) => (
-                                                                <span key={idx} className="block">{item.trim()}</span>
+                                                                <span key={`fax-${idx}`} className="block">{item.trim()}</span>
                                                             ))
                                                             : (poData.fax_no || '-')
                                                     }</span>
@@ -521,7 +524,7 @@ export default function ReviewedPOPage() {
                                                 <span className={`text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>{
                                                     poData.email && typeof poData.email === 'string' && poData.email.includes(',')
                                                         ? poData.email.split(',').map((item, idx) => (
-                                                            <span key={idx} className="block">{item.trim()}</span>
+                                                            <span key={`email-${idx}`} className="block">{item.trim()}</span>
                                                         ))
                                                         : poData.email
                                                 }</span>
@@ -664,8 +667,8 @@ export default function ReviewedPOPage() {
                                     </div>
                                     <button
                                         type="button"
-                                        className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white' : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'}`}
-                                        onClick={() => router.push("/services/purchase/PO")}
+                                        className={`px-6 py-2.5 rounded-lg cursor-pointer font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white' : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'}`}
+                                        onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PO_LIST_REDIRECT || "/services/purchase/PO")}
                                     >
                                         ← กลับไป PO List
                                     </button>
@@ -703,7 +706,7 @@ export default function ReviewedPOPage() {
                                     </thead>
                                     <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-gray-200'}`}>
                                         {pagedParts.map((part, idx) => (
-                                            <>
+                                            <React.Fragment key={part.part_no + '-frag-' + ((page - 1) * rowsPerPage + idx)}>
                                                 <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
                                                     className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400' : 'bg-white border-l-orange-400/70'}
                                                         ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-pointer hover:bg-amber-100 hover:shadow-xl hover:shadow-orange-200/30') : 'cursor-not-allowed opacity-60'}
@@ -747,10 +750,10 @@ export default function ReviewedPOPage() {
                                                             >
                                                                 <div className="flex flex-col gap-1 justify-center items-center w-full">
                                                                     {Array.from({ length: Math.ceil(part.discount.length / 3) }, (_, rowIdx) => (
-                                                                        <div key={rowIdx} className="flex flex-row gap-1 justify-center items-center w-full">
+                                                                        <div key={`discount-row-${rowIdx}`} className="flex flex-row gap-1 justify-center items-center w-full">
                                                                             {part.discount.slice(rowIdx * 3, rowIdx * 3 + 3).map((d, i) => (
                                                                                 <span
-                                                                                    key={i}
+                                                                                    key={`discount-${rowIdx}-${i}`}
                                                                                     className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shadow-sm flex-shrink-0 ${isDarkMode ? 'bg-yellow-900/80 text-yellow-300' : 'bg-yellow-100 text-yellow-700'}`}
                                                                                     style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
                                                                                 >
@@ -776,7 +779,7 @@ export default function ReviewedPOPage() {
                                                 {/* Freebie items rows */}
                                                 {Array.isArray(part.free_item) && part.free_item.length > 0 && (
                                                     part.free_item.map((item, i) => (
-                                                        <tr key={`${part.part_no}-freebie-${item.part_no}-${i}-${idx}`} className={`${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-50/80'}`}>
+                                                        <tr key={`${part.part_no}-freebie-${item.part_no || ''}-${i}-${idx}`} className={`${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-50/80'}`}>
                                                             <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
                                                                     ของแถม
@@ -841,7 +844,7 @@ export default function ReviewedPOPage() {
                                                         </tr>
                                                     ))
                                                 )}
-                                            </>
+                                            </React.Fragment>
                                         ))}
                                     </tbody>
                                 </table>
@@ -888,7 +891,7 @@ export default function ReviewedPOPage() {
                         <button
                             type="button"
                             className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
-                            onClick={() => router.push("/services/purchase/PO2")}
+                            onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PO_LIST_REDIRECT || "/services/purchase/PO")}
                         >
                             กลับไปยัง PO List
                         </button>

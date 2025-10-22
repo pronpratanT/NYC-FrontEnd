@@ -384,7 +384,7 @@ export default function TestPage() {
       setUnitData([]);
       setIsSaving(false);
       // Redirect to /services/purchase only after success
-      router.push('/services/purchase');
+      router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
       console.error(err);
@@ -651,7 +651,7 @@ export default function TestPage() {
                               const parts = part.split(' | ');
                               return parts.length > 1 ? parts[1] : '';
                             })()}</td>
-                            
+
                             <td className="px-2 py-3 w-20">
                               <input
                                 type="number"
@@ -749,14 +749,14 @@ export default function TestPage() {
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
-                            className={`px-3 py-1 rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`px-3 py-1 cursor-pointer rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
                             onClick={() => page > 1 && setPage(page - 1)}
                             disabled={page === 1}
                           >ย้อนกลับ</button>
                           <span className={`mx-2 font-medium ${isDarkMode ? 'text-slate-200' : 'text-green-700'}`}>หน้า {page} / {totalPages}</span>
                           <button
                             type="button"
-                            className={`px-3 py-1 rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`px-3 py-1 cursor-pointer rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
                             onClick={() => page < totalPages && setPage(page + 1)}
                             disabled={page === totalPages}
                           >ถัดไป</button>
@@ -770,7 +770,7 @@ export default function TestPage() {
             <div className={`w-full flex justify-center py-8 rounded-b-3xl ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
               <button
                 type="button"
-                className={`px-8 py-3 rounded-xl font-bold text-lg shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${isDarkMode ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white focus:ring-emerald-300/50' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-500 hover:to-green-700 text-white focus:ring-green-300'} ${(isSaving || selectedParts.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-8 py-3 rounded-xl cursor-pointer font-bold text-lg shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${isDarkMode ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white focus:ring-emerald-300/50' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-500 hover:to-green-700 text-white focus:ring-green-300'} ${(isSaving || selectedParts.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={() => { if (!isSaving && selectedParts.length > 0) handleCreatePR(); }}
                 disabled={isSaving || selectedParts.length === 0}
               >

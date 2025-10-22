@@ -128,7 +128,7 @@ export default function PurchaseOrderPage() {
     useEffect(() => {
         if (departmentId !== undefined && departmentId !== 10086) {
             alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
-            router.replace('/services/purchase');
+                router.replace(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase");
         }
     }, [departmentId, router]);
 
@@ -322,7 +322,7 @@ export default function PurchaseOrderPage() {
                 if (responsePO.status === 401) {
                     setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
                     document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    router.push("/login");
+                    router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
                     return;
                 }
                 if (!responsePO.ok) {
@@ -618,7 +618,7 @@ export default function PurchaseOrderPage() {
                             {/* NOTE: Card | List View Toggle */}
                             <button
                                 type="button"
-                                className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-500 overflow-hidden ${isListView
+                                className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all cursor-pointer duration-500 overflow-hidden ${isListView
                                     ? (isDarkMode
                                         ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:shadow-emerald-500/30 hover:scale-105'
                                         : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-600/30 hover:scale-105')
@@ -739,7 +739,7 @@ export default function PurchaseOrderPage() {
                                     <div className="relative">
                                         <button
                                             type="button"
-                                            className={`p-3 text-base font-medium h-[48px] text-white rounded-r-xl focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                            className={`p-3 text-base cursor-pointer font-medium h-[48px] text-white rounded-r-xl focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                                             style={{ marginLeft: '-1px' }}
                                             onClick={e => {
                                                 e.preventDefault();
@@ -796,7 +796,7 @@ export default function PurchaseOrderPage() {
                             <div className="relative">
                                 <button
                                     type="button"
-                                    className={`group flex items-center justify-center h-[48px] w-[48px] rounded-xl transition-all duration-300 cursor-pointer border-2 shadow-sm hover:shadow-md ${statusSortDropdownOpen
+                                    className={`group flex items-center cursor-pointer justify-center h-[48px] w-[48px] rounded-xl transition-all duration-300 cursor-pointer border-2 shadow-sm hover:shadow-md ${statusSortDropdownOpen
                                         ? (isDarkMode
                                             ? 'bg-emerald-900/40 border-emerald-600/60 text-emerald-400 shadow-emerald-500/20'
                                             : 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-emerald-200/50')
@@ -932,7 +932,7 @@ export default function PurchaseOrderPage() {
                                     <div className="flex items-center">
                                         <button
                                             type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
                                             disabled={currentPage === 1}
                                             onClick={() => {
                                                 const newPage = Math.max(1, currentPage - 1);
@@ -944,7 +944,7 @@ export default function PurchaseOrderPage() {
                                         </button>
                                         <button
                                             type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                                             disabled={currentPage >= totalPages}
                                             onClick={() => {
                                                 const newPage = Math.min(totalPages, currentPage + 1);
@@ -973,7 +973,12 @@ export default function PurchaseOrderPage() {
                                 <div
                                     key={po.po_no}
                                     className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
-                                    onClick={() => router.push(`/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`)}
+                                    onClick={() => {
+                                        const reviewedPath = process.env.NEXT_PUBLIC_PURCHASE_PO_REVIEWED_REDIRECT
+                                            ? process.env.NEXT_PUBLIC_PURCHASE_PO_REVIEWED_REDIRECT.replace(':poNo', po.po_no)
+                                            : `/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`;
+                                        router.push(reviewedPath);
+                                    }}
                                 >
                                     {/* Top: Department Icon */}
                                     <div className="w-full flex justify-center pt-12 pb-2">
@@ -1144,7 +1149,12 @@ export default function PurchaseOrderPage() {
                                                 key={po.po_no}
                                                 className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-emerald-900/20' : 'hover:bg-emerald-50'} focus-within:bg-emerald-100`}
                                                 style={{ transition: 'background 0.15s' }}
-                                                onClick={() => router.push(`/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`)}
+                                                onClick={() => {
+                                                    const reviewedPath = process.env.NEXT_PUBLIC_PURCHASE_PO_REVIEWED_REDIRECT
+                                                        ? process.env.NEXT_PUBLIC_PURCHASE_PO_REVIEWED_REDIRECT.replace(':poNo', po.po_no)
+                                                        : `/services/purchase/PO/ReviewedPO?poNo=${po.po_no}`;
+                                                    router.push(reviewedPath);
+                                                }}
                                             >
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">

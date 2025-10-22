@@ -201,7 +201,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
             }
             setError("");
             window.alert("อนุมัติสำเร็จ");
-            router.push("/services/purchase");
+            router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase");
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message || "เกิดข้อผิดพลาด");
@@ -244,7 +244,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
             }
             setError("");
             window.alert("ปฏิเสธสำเร็จ");
-            router.push("/services/purchase");
+            router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase");
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message || "เกิดข้อผิดพลาด");
@@ -487,7 +487,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <button
                                                 type="button"
                                                 className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
-                                                onClick={() => router.push("/services/purchase")}
+                                                onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase")}
                                             >
                                                 เลือก PR ใหม่
                                             </button>

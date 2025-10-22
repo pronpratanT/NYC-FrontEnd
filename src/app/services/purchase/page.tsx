@@ -327,7 +327,7 @@ export default function PurchasePage() {
                 if (response.status === 401) {
                     setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
                     document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    router.push("/login");
+                    router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
                     return;
                 }
                 if (!response.ok) {
@@ -624,7 +624,7 @@ export default function PurchasePage() {
                             {/* NOTE: Card | List View Toggle */}
                             <button
                                 type="button"
-                                className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-500 overflow-hidden ${isListView 
+                                className={`group relative flex items-center cursor-pointer justify-center w-12 h-12 rounded-xl transition-all duration-500 overflow-hidden ${isListView 
                                     ? (isDarkMode 
                                         ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:shadow-emerald-500/30 hover:scale-105' 
                                         : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-600/30 hover:scale-105')
@@ -753,7 +753,7 @@ export default function PurchasePage() {
                                     <div className="relative">
                                         <button
                                             type="button"
-                                            className={`p-3 text-base font-medium h-[48px] text-white rounded-r-xl focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                            className={`p-3 text-base font-medium h-[48px] text-white rounded-r-xl cursor-pointer focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                                             style={{ marginLeft: '-1px' }}
                                             onClick={e => {
                                                 e.preventDefault();
@@ -965,7 +965,7 @@ export default function PurchasePage() {
                                     <div className="flex items-center">
                                         <button
                                             type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
                                             disabled={currentPage === 1}
                                             onClick={() => {
                                                 const newPage = Math.max(1, currentPage - 1);
@@ -977,7 +977,7 @@ export default function PurchasePage() {
                                         </button>
                                         <button
                                             type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                                             disabled={currentPage >= totalPages}
                                             onClick={() => {
                                                 const newPage = Math.min(totalPages, currentPage + 1);
@@ -1006,7 +1006,7 @@ export default function PurchasePage() {
                             {showCreateCard && (
                                 <div
                                     className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
-                                    onClick={() => router.push('/services/purchase/createPR')}
+                                    onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_CREATE_REDIRECT || "/services/purchase/createPR")}
                                 >
                                     {/* Plus Icon */}
                                     <div className="flex flex-col items-center justify-center h-full">
@@ -1025,7 +1025,10 @@ export default function PurchasePage() {
                                 <div
                                     key={pr.pr_no}
                                     className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
-                                    onClick={() => router.push(`/services/purchase/comparePrice?${pr.id ? `id=${pr.id}` : ''}`)}
+                                    onClick={() => {
+                                        const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
+                                        router.push(`${base}${pr.id ? `?id=${pr.id}` : ''}`);
+                                    }}
                                 >
                                     {/* Top: Department Icon */}
                                     <div className="w-full flex justify-center pt-12 pb-2">
@@ -1120,7 +1123,11 @@ export default function PurchasePage() {
                                         <div className="flex w-full justify-center">
                                             <button
                                                 className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
-                                                onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
+                                                    router.push(`${base}?pr=${pr.id}`);
+                                                }}
                                             >
                                                 <MdOutlineRemoveRedEye className="w-7 h-7" />
                                             </button>
@@ -1149,7 +1156,7 @@ export default function PurchasePage() {
                             {showCreateCard && (
                                 <div
                                     className={`mb-4 p-4 rounded-xl border-2 border-dashed transition-all duration-200 hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100'}`}
-                                    onClick={() => router.push('/services/purchase/createPR')}
+                                    onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_CREATE_REDIRECT || "/services/purchase/createPR")}
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/40' : 'bg-green-200'}`}>
@@ -1202,7 +1209,10 @@ export default function PurchasePage() {
                                                 key={pr.pr_no}
                                                 className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-emerald-900/20' : 'hover:bg-emerald-50'} focus-within:bg-emerald-100`}
                                                 style={{ transition: 'background 0.15s' }}
-                                                onClick={() => router.push(`/services/purchase/comparePrice?${pr.id ? `id=${pr.id}` : ''}`)}
+                                                onClick={() => {
+                                                    const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
+                                                    router.push(`${base}${pr.id ? `?id=${pr.id}` : ''}`);
+                                                }}
                                             >
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
@@ -1278,7 +1288,11 @@ export default function PurchasePage() {
                                                     <div className="flex justify-center space-x-2">
                                                         <button
                                                             className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md transition-colors ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'}`}
-                                                            onClick={(e) => { e.stopPropagation(); router.push(`/services/purchase/comparePrice?pr=${pr.id}`); }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
+                                                                router.push(`${base}?pr=${pr.id}`);
+                                                            }}
                                                         >
                                                             <MdOutlineRemoveRedEye className="w-4 h-4" />
                                                         </button>
