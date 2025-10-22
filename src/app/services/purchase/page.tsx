@@ -1001,11 +1001,11 @@ export default function PurchasePage() {
                     {/* Content Display - Cards or List View */}
                     {isListView ? (
                         /* Card View (เดิม) */
-                        <div className="grid gap-x-6 gap-y-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4">
+                        <div className="grid gap-x-3 gap-y-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center mt-2 mb-4 px-2 sm:px-0">
                             {/* Add New PR Card - Show only on first page */}
                             {showCreateCard && (
                                 <div
-                                    className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
+                                    className={`relative rounded-2xl p-0 flex flex-col items-center justify-center shadow-md border-2 border-dashed w-full max-w-[270px] min-w-[140px] min-h-[220px] sm:min-w-[180px] sm:min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer group ${isDarkMode ? 'bg-slate-900/50 border-slate-600/50 hover:border-emerald-500/50 hover:bg-slate-800/60' : 'bg-white border-green-300 hover:border-green-500 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100'}`}
                                     onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_CREATE_REDIRECT || "/services/purchase/createPR")}
                                 >
                                     {/* Plus Icon */}
@@ -1024,14 +1024,14 @@ export default function PurchasePage() {
                             {paginatedPrCards.map((pr) => (
                                 <div
                                     key={pr.pr_no}
-                                    className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[180px] min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
+                                    className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[140px] min-h-[220px] sm:min-w-[180px] sm:min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
                                     onClick={() => {
                                         const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
                                         router.push(`${base}${pr.id ? `?id=${pr.id}` : ''}`);
                                     }}
                                 >
                                     {/* Top: Department Icon */}
-                                    <div className="w-full flex justify-center pt-12 pb-2">
+                                    <div className="w-full flex justify-center pt-6 pb-2 sm:pt-12">
                                         <HiDocumentText className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
                                     </div>
                                     {/* Status badge top right */}
@@ -1087,8 +1087,8 @@ export default function PurchasePage() {
                                         )}
                                     </div>
                                     {/* Middle: Table info */}
-                                    <div className="w-full px-6 pt-2">
-                                        <table className="w-full text-sm mb-2">
+                                    <div className="w-full px-2 pt-2 sm:px-6">
+                                        <table className="w-full text-xs sm:text-sm mb-2">
                                             <tbody>
                                                 <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>{pr.pr_no}</td></tr>
                                                 <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.dept_name}</td></tr>
@@ -1118,7 +1118,7 @@ export default function PurchasePage() {
                                         </table>
                                     </div>
                                     {/* Bottom: Actions */}
-                                    <div className="w-full px-6 pb-5 flex flex-col gap-2 items-center">
+                                    <div className="w-full px-2 pb-3 sm:px-6 sm:pb-5 flex flex-col gap-2 items-center">
                                         <span className={`text-xs mb-1 ${isDarkMode ? 'text-slate-600' : 'text-gray-400'}`}>{formatDate(pr.pr_date)}</span>
                                         <div className="flex w-full justify-center">
                                             <button
@@ -1151,7 +1151,7 @@ export default function PurchasePage() {
                         </div>
                     ) : (
                         /* List View (แบบตาราง) */
-                        <div className="mt-2 mb-4">
+                        <div className="mt-2 mb-4 px-1 sm:px-0">
                             {/* Add New PR Button for List View */}
                             {showCreateCard && (
                                 <div
@@ -1174,7 +1174,7 @@ export default function PurchasePage() {
 
                             {/* Table Header */}
                             <div className={`overflow-x-auto rounded-xl border ${isDarkMode ? 'border-slate-700' : 'border-gray-200'} shadow-sm`}>
-                                <table className="min-w-full divide-y divide-gray-200">
+                                <table className="min-w-[700px] w-full divide-y divide-gray-200 text-xs sm:text-sm">
                                     <thead className={`${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                                         <tr>
                                             <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-gray-500'}`}>
