@@ -22,7 +22,7 @@ import { MdAttachMoney } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import { LuBriefcaseBusiness } from "react-icons/lu";
 import { HiDocumentText } from "react-icons/hi2";
-import { FaRegEdit } from "react-icons/fa";
+
 import { LuMail } from "react-icons/lu";
 import { SiMinutemailer } from "react-icons/si";
 import { RiMailSendLine } from "react-icons/ri";
@@ -201,9 +201,7 @@ export default function ReviewedPOPage() {
             if (!response.ok) throw new Error("อนุมัติ PO ไม่สำเร็จ");
             await response.json();
             //Step 2: Send PO to vendor
-            const sendPayload = {
-                poId: poData?.po_id,
-            }
+
             // const sendResponse = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/send-to-vendor/${poData?.po_id}`, {
             //     method: 'PUT',
             //     headers: {
@@ -248,7 +246,7 @@ export default function ReviewedPOPage() {
         }
     };
 
-    const handleSendMail = async (sendMail: boolean, documentLanguage?: 'thai' | 'english') => {
+    const handleSendMail = async (sendMail: boolean) => {
         if (!sendMail) {
             // ถ้าเลือกไม่ส่งเมล แค่บันทึกข้อมูล
             alert('บันทึกข้อมูลเรียบร้อย');
@@ -258,7 +256,7 @@ export default function ReviewedPOPage() {
         // try {
         //     const payload = {
         //         po_id: poData?.po_id,
-        //         document_language: documentLanguage || 'thai'
+
         //     };
 
         //     const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/send-mail/${poData?.po_id}`, {
@@ -272,7 +270,7 @@ export default function ReviewedPOPage() {
 
         //     if (!response.ok) throw new Error('ส่งอีเมลไม่สำเร็จ');
 
-        //     alert(`ส่งอีเมล PO เป็น${documentLanguage === 'english' ? 'ภาษาอังกฤษ' : 'ภาษาไทย'}เรียบร้อยแล้ว`);
+
 
         //     // reload PO data
         //     await fetchData();
@@ -282,10 +280,9 @@ export default function ReviewedPOPage() {
         // }
     };
 
+    const { isCollapsed } = useSidebar();
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
     if (error) return <div className="flex items-center justify-center min-h-screen"><div className="text-lg text-red-500">{error}</div></div>;
-
-    const { isCollapsed } = useSidebar();
     return (
         <div className="min-h-screen">
             <Sidebar />

@@ -392,7 +392,7 @@ export default function Home() {
         } else {
           router.push(process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || "/");
         }
-      } catch (err: unknown) {
+      } catch {
         setError("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
       } finally {
         setIsLoading(false);

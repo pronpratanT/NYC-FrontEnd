@@ -50,8 +50,17 @@ export default function ProfilePage() {
                 const data = await response.json();
                 setMe(data.data);
                 console.log("Fetched user data:", data);
-            } catch (err: any) {
-                setError(err.message || "เกิดข้อผิดพลาด");
+            } catch (err: unknown) {
+                if (
+                    err &&
+                    typeof err === 'object' &&
+                    'message' in err &&
+                    typeof (err as { message?: unknown }).message === 'string'
+                ) {
+                    setError((err as { message: string }).message);
+                } else {
+                    setError("เกิดข้อผิดพลาด");
+                }
             } finally {
                 setLoading(false);
             }

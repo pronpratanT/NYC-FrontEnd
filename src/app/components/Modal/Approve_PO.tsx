@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { HiCheckCircle, HiXMark } from "react-icons/hi2";
 import { useTheme } from "../ThemeProvider";
-import { use } from "react";
 
 interface ApprovePOModalProps {
 	open: boolean;

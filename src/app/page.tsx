@@ -9,6 +9,7 @@ import { useSidebar } from "./context/SidebarContext";
 export default function Page() {
   const token = useToken();
   const router = useRouter();
+  const { isCollapsed } = useSidebar();
   console.log("Token in Page component:", token);
 
   // ตรวจสอบ token เมื่อโหลดหน้า
@@ -24,7 +25,6 @@ export default function Page() {
     return null;
   }
 
-  const { isCollapsed } = useSidebar();
   // Sidebar width: 288px (expanded), 80px (collapsed), left-6 (24px)
   const sidebarWidth = isCollapsed ? 80 : 288;
   const marginLeft = sidebarWidth + 24; // px

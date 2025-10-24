@@ -160,16 +160,16 @@ type VendorSelected = {
   email: string;
 }
 
-  // --- Add type for editedPrices to support rawPrice ---
-  type EditedPrice = {
-    compare_id: number;
-    price?: number;
-    discounts?: number[];
-    date_ship?: string | null;
-    rawPrice?: string;
-  };
+// --- Add type for editedPrices to support rawPrice ---
+type EditedPrice = {
+  compare_id: number;
+  price?: number;
+  discounts?: number[];
+  date_ship?: string | null;
+  rawPrice?: string;
+};
 
-  const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, pu_operator_approve, onClose, onSuccess }) => {
+const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
   // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
 
   const router = useRouter();
@@ -319,6 +319,8 @@ type VendorSelected = {
             currentPreviousPurchase = previousItem.recent_purchase[0];
           }
         }
+
+
         // Auto switch to completed summary tab
         // setActiveTab('completed-summary');
       }
@@ -517,17 +519,14 @@ type VendorSelected = {
               await fetchCompareData();
             }
           } catch (e) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             console.error("Error inserting vendor for compare:", e);
           }
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_) {
         setSelectedVendorDetail(null);
       }
     };
     fetchVendorDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVendors]);
 
   // ANCHOR fetch approved compare data
@@ -2712,8 +2711,8 @@ type VendorSelected = {
                                 <td className={`px-4 py-3 text-sm text-left ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                                   {typeof vendor.tel === 'string' && vendor.tel.includes(',')
                                     ? vendor.tel.split(',').map((tel, idx) => (
-                                        <div key={idx}>{tel.trim()}</div>
-                                      ))
+                                      <div key={idx}>{tel.trim()}</div>
+                                    ))
                                     : vendor.tel}
                                 </td>
                                 <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.credit_term}</td>
@@ -2739,8 +2738,8 @@ type VendorSelected = {
                                       onBlur={() => {
                                         // On blur, parse and save as number, remove rawPrice
                                         const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
-                                        let val = found?.rawPrice ?? '';
-                                        let num = Number(val);
+                                        const val = found?.rawPrice ?? '';
+                                        const num = Number(val);
                                         setEditedPrices(prev => {
                                           const exists = prev.find(p => p.compare_id === vendor.compare_id);
                                           if (exists) {
@@ -3367,7 +3366,7 @@ type VendorSelected = {
                                   <label className={`block text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>วันที่ส่งมอบ</label>
                                   <div className="relative w-full">
                                     <DatePicker
-  
+
                                       selected={deliveryDate ? new Date(deliveryDate) : (
                                         compareData?.compare_vendors && compareData.compare_vendors.length > 0 && compareData.compare_vendors[0].date_shipped
                                           ? new Date(compareData.compare_vendors[0].date_shipped)
@@ -3476,7 +3475,6 @@ type VendorSelected = {
           onConfirm={handleConfirmRejectCompare}
           reason={rejectReason}
           setReason={setRejectReason}
-          partNo={partNo}
         />
       )}
 

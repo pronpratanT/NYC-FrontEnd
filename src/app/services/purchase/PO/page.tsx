@@ -204,7 +204,7 @@ export default function PurchaseOrderPage() {
     const paginatedPoCards = displayedPoCards;
 
     // Function to update URL parameters
-    const updateUrlParams = (newPage?: number, newPerPage?: number) => {
+    const updateUrlParams = React.useCallback((newPage?: number, newPerPage?: number) => {
         const params = new URLSearchParams(window.location.search);
         if (newPage !== undefined) {
             if (newPage === 1) {
@@ -222,7 +222,7 @@ export default function PurchaseOrderPage() {
         }
         const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
         router.replace(newUrl, { scroll: false });
-    };
+    }, [pathname, router]);
 
     // Reset to page 1 when filters change and update URL
     // Reset to page 1 only if filters actually change, not on every mount/navigation
@@ -241,7 +241,7 @@ export default function PurchaseOrderPage() {
             updateUrlParams(1, itemsPerPage);
         }
         prevFilters.current = { departmentFilter, statusFilter, search, sortBy, itemsPerPage };
-    }, [departmentFilter, statusFilter, search, sortBy, itemsPerPage]);
+    }, [departmentFilter, statusFilter, search, sortBy, itemsPerPage, updateUrlParams]);
 
     // Sync state with URL params only on mount or true URL change
     useEffect(() => {

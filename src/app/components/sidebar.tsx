@@ -108,7 +108,7 @@ export default function Sidebar() {
   type SidebarIconType = React.ComponentType<{ className?: string }>;
   type SidebarSubItem = { label: string; icon: SidebarIconType; href?: string };
   
-  const renderItem = (item: { label: string; icon: SidebarIconType; href?: string; subItems?: SidebarSubItem[] }, key: string, isSubItem: boolean = false) => {
+  const renderItem = (item: { label: string; icon: SidebarIconType; href?: string; subItems?: SidebarSubItem[] }, key: string) => {
     const isActive = isPathActive(item);
   const Icon = item.icon;
     const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -274,7 +274,7 @@ export default function Sidebar() {
             </div>
           </div>
           <div className="ml-6 space-y-0.5">
-            {item.subItems?.map((subItem, subIndex) => renderItem(subItem, `${key}-sub-${subIndex}`, true))}
+            {item.subItems?.map((subItem, subIndex) => renderItem(subItem, `${key}-sub-${subIndex}`))}
           </div>
         </div>
       );

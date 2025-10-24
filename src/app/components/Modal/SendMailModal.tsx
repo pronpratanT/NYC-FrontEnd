@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTheme } from '../ThemeProvider';
-import { LuMail, LuX, LuFileText } from 'react-icons/lu';
+import { LuX, LuFileText } from 'react-icons/lu';
 import { SiMinutemailer } from 'react-icons/si';
 
 interface SendMailModalProps {

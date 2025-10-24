@@ -7,10 +7,9 @@ export type RejectPRModalProps = {
     onConfirm: () => Promise<void>;
     reason: string;
     setReason: React.Dispatch<React.SetStateAction<string>>;
-    partNo: string;
 };
 
-const RejectCompare: React.FC<RejectPRModalProps> = ({ open, onClose, onConfirm, reason, setReason, partNo }) => {
+const RejectCompare: React.FC<RejectPRModalProps> = ({ open, onClose, onConfirm, reason, setReason }) => {
     const { isDarkMode } = useTheme();
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);

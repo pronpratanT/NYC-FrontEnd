@@ -61,7 +61,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     // Assume user info is available from context or prop
     // You may need to adjust this to your actual user context
     const { user } = useUser();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    
     const departmentId = user?.Department?.ID;
 
     const searchParams = useSearchParams();
