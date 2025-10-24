@@ -1,11 +1,15 @@
 "use client";
 
 import React from "react";
+import { useSidebar } from "../context/SidebarContext";
 
 // components
 import Sidebar from "../components/sidebar";
 import Header from "../components/header";
 export default function ManualPage() {
+    const { isCollapsed } = useSidebar();
+    const sidebarWidth = isCollapsed ? 80 : 288;
+    const marginLeft = sidebarWidth + 24; // px
     return (
         <div className="min-h-screen bg-gray-50 relative">
             {/* <AnimatedBackground /> */}
@@ -13,7 +17,7 @@ export default function ManualPage() {
             <Header />
             <main
                 className="mt-[7.5rem] mr-6 transition-all duration-300 relative flex justify-center items-start"
-                style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft: 'calc(18rem + 55px)' }}
+                style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft }}
             >
                 <div className="relative z-10 w-full max-w-3xl mx-auto">
                     <div className="bg-white/90 rounded-2xl shadow-xl p-8 border border-gray-200">

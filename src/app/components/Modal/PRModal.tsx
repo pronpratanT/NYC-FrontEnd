@@ -160,7 +160,16 @@ type VendorSelected = {
   email: string;
 }
 
-const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, pu_operator_approve, onClose, onSuccess }) => {
+  // --- Add type for editedPrices to support rawPrice ---
+  type EditedPrice = {
+    compare_id: number;
+    price?: number;
+    discounts?: number[];
+    date_ship?: string | null;
+    rawPrice?: string;
+  };
+
+  const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, pu_operator_approve, onClose, onSuccess }) => {
   // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
 
   const router = useRouter();
@@ -258,7 +267,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Removed: editingVendorCode (unused)
 
   // State to track edited prices (support price and discounts array)
-  const [editedPrices, setEditedPrices] = useState<{ compare_id: number; price?: number; discounts?: number[], date_ship?: string | null }[]>([]);
+  const [editedPrices, setEditedPrices] = useState<EditedPrice[]>([]);
 
   // เมื่อโหลด compareData แล้ว ให้ดึงข้อมูลล่าสุดมาเก็บ
   useEffect(() => {
@@ -1544,10 +1553,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
                                           {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
                                             ? (prWithPO.recent_purchase[0]?.price_for_approve !== undefined && prWithPO.recent_purchase[0]?.price_for_approve !== null
-                                              ? `${prWithPO.recent_purchase[0].price_for_approve.toLocaleString()} ฿`
+                                              ? `฿ ${prWithPO.recent_purchase[0].price_for_approve.toLocaleString()}`
                                               : '-')
                                             : (!Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase && (prWithPO.recent_purchase as { price_for_approve?: number }).price_for_approve !== undefined && (prWithPO.recent_purchase as { price_for_approve?: number }).price_for_approve !== null
-                                              ? `${((prWithPO.recent_purchase as { price_for_approve: number }).price_for_approve).toLocaleString()} ฿`
+                                              ? `฿ ${((prWithPO.recent_purchase as { price_for_approve: number }).price_for_approve).toLocaleString()}`
                                               : '-')}
                                         </div>
                                       </div>
@@ -1952,10 +1961,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
                                           {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
                                             ? ((prWithPO.recent_purchase[0] as { price?: number })?.price !== undefined
-                                              ? `${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()} ฿`
+                                              ? `฿ ${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()}`
                                               : '-')
                                             : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { price?: number })?.price !== undefined)
-                                              ? `${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()} ฿`
+                                              ? `฿ ${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()}`
                                               : '-'}
                                         </div>
                                       </div>
@@ -2712,29 +2721,53 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 <td className={`px-4 py-3 text-sm font-bold text-right pr-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
                                   <span className="flex items-center justify-center gap-1">
                                     <input
-                                      type="number"
-                                      min={0}
+                                      type="text"
+                                      inputMode="decimal"
                                       className={`w-24 px-2 py-1 rounded border text-right font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'} focus:outline-none focus:ring-2 focus:ring-emerald-400`}
                                       value={(() => {
+                                        // Show the raw string if user is editing, otherwise show number
                                         const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
-                                        if (typeof found?.price === 'number') return found.price;
-                                        if (typeof vendor.price === 'number' && vendor.price !== null) return vendor.price;
-                                        return 0;
+                                        if (typeof found?.rawPrice === 'string') return found.rawPrice;
+                                        if (typeof found?.price === 'number' && !isNaN(found.price)) return found.price === 0 ? '' : String(found.price);
+                                        if (typeof vendor.price === 'number' && vendor.price !== null && !isNaN(vendor.price)) return vendor.price === 0 ? '' : String(vendor.price);
+                                        return '';
                                       })()}
                                       onClick={e => e.stopPropagation()}
                                       onFocus={e => {
                                         e.stopPropagation();
                                       }}
-                                      onBlur={handlePriceBlur}
-                                      onChange={e => {
-                                        let newValue = Number(e.target.value);
-                                        if (isNaN(newValue) || e.target.value === '' || newValue === undefined || newValue === null) newValue = 0;
+                                      onBlur={() => {
+                                        // On blur, parse and save as number, remove rawPrice
+                                        const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
+                                        let val = found?.rawPrice ?? '';
+                                        let num = Number(val);
                                         setEditedPrices(prev => {
                                           const exists = prev.find(p => p.compare_id === vendor.compare_id);
                                           if (exists) {
-                                            return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, price: newValue } : p);
+                                            return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, price: isNaN(num) ? 0 : num, rawPrice: undefined } : p);
                                           } else {
-                                            return [...prev, { compare_id: vendor.compare_id, price: newValue }];
+                                            return [...prev, { compare_id: vendor.compare_id, price: isNaN(num) ? 0 : num }];
+                                          }
+                                        });
+                                        if (typeof handlePriceBlur === 'function') handlePriceBlur();
+                                      }}
+                                      onChange={e => {
+                                        let val = e.target.value;
+                                        // Allow only digits and one dot
+                                        val = val.replace(/[^\d.]/g, '');
+                                        // Only one dot allowed
+                                        const parts = val.split('.');
+                                        if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                                        // Remove leading zeros from integer part (except for 0. cases)
+                                        if (/^0\d+/.test(val)) val = val.replace(/^0+/, '');
+                                        // Prevent negative
+                                        if (val.startsWith('-')) val = val.replace(/^-+/, '');
+                                        setEditedPrices(prev => {
+                                          const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                          if (exists) {
+                                            return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, rawPrice: val } : p);
+                                          } else {
+                                            return [...prev, { compare_id: vendor.compare_id, rawPrice: val }];
                                           }
                                         });
                                       }}
@@ -3301,7 +3334,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       (() => {
                                         const found = editedPrices.find(p => p.compare_id === selectedRowData.selectedVendor.compare_id);
                                         const price = typeof found?.price === 'number' ? found.price : selectedRowData.selectedVendor.price;
-                                        return price ? `${price.toLocaleString()} ฿` : '-';
+                                        return price ? `฿ ${price.toLocaleString()}` : '-';
                                       })()
                                     }</div>
                                   </div>
@@ -3344,7 +3377,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       dateFormat="dd/MM/yyyy"
                                       placeholderText="เลือกวันที่"
                                       className={`px-3 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-slate-300 bg-white text-slate-800 focus:ring-orange-500 focus:border-orange-500'}`}
-                                      calendarClassName={isDarkMode ? 'react-datepicker-dark' : '!bg-white !border-2 !border-green-200 !shadow-2xl !rounded-2xl absolute'}
+                                      calendarClassName={isDarkMode ? 'react-datepicker-orange-dark' : 'react-datepicker-orange'}
                                       popperClassName="z-[9999]"
                                       popperPlacement="bottom-start"
                                     />

@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa';
 import { useUser } from '../context/UserContext';
 import { deleteCookie } from '../utils/cookies';
+import { useSidebar } from '../context/SidebarContext';
 
 export default function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -16,6 +17,9 @@ export default function Header() {
   const { isDarkMode, toggleTheme } = useTheme();
   const { user } = useUser();
   const router = useRouter();
+  const { isCollapsed } = useSidebar();
+  const sidebarWidth = isCollapsed ? 80 : 288;
+  const left = sidebarWidth + 55; // px (เพิ่มระยะห่างอีก 16px)
 
   // ฟังก์ชัน Sign Out
   const handleSignOut = () => {
@@ -44,7 +48,10 @@ export default function Header() {
   // toggleTheme now comes from context
 
   return (
-    <header className={`fixed top-6 left-85 right-6 h-16 border rounded-2xl flex items-center justify-between z-30 shadow-xl px-6 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}>
+    <header
+      className={`fixed top-6 right-6 h-16 border rounded-2xl flex items-center justify-between z-30 shadow-xl px-6 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}
+      style={{ left, transition: 'left 0.3s' }}
+    >
       {/* Search Bar */}
       <div className="flex-1 max-w-md">
         <div className="relative group">
@@ -155,11 +162,23 @@ export default function Header() {
                 <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>แผนก : {user?.Department?.name}</div>
               </div>
               <div className="py-2">
-                <button className={`w-full flex items-center gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-[#F0F8F2]'}`}>
+                <button
+                  className={`w-full flex items-center cursor-pointer gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-[#F0F8F2]'}`}
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push(process.env.NEXT_PUBLIC_PROFILE_REDIRECT || "/profile");
+                  }}
+                >
                   <FaUser className={`${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
                   My Profile
                 </button>
-                <button className={`w-full flex items-center gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-[#F0F8F2]'}`}>
+                <button
+                  className={`w-full flex items-center cursor-pointer gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-[#F0F8F2]'}`}
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push(process.env.NEXT_PUBLIC_SETTING_REDIRECT || "/setting");
+                  }}
+                >
                   <FaCog className={`${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
                   Settings
                 </button>

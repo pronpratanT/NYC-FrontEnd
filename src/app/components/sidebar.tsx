@@ -6,14 +6,14 @@ import {
   FaBook, FaCar, FaTools, FaDesktop, FaWrench, FaClipboardCheck,
   FaCreditCard, FaServer, FaBoxOpen, FaShoppingCart, FaChevronDown,
   FaLink, FaLeaf, FaDownload, FaCode, FaClock, FaChartLine, FaKey, FaUser,
-  FaFileInvoice, FaClipboardList
+  FaFileInvoice, FaClipboardList, FaBars
 } from 'react-icons/fa';
 import { RiDashboardFill } from "react-icons/ri";
 import { BsPersonFillGear } from "react-icons/bs";
 import { HiUserGroup } from "react-icons/hi2";
 import Link from 'next/link';
 import { useTheme } from './ThemeProvider';
-
+import { useSidebar } from '../context/SidebarContext';
 
 const menu = [
   { label: 'Dashboard', icon: RiDashboardFill, href: process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || '/nycsystem' },
@@ -49,13 +49,11 @@ const programs = [
   { label: 'คู่มือแผนการผลิต', icon: FaChartLine },
 ];
 
-
 const admin = [
   { label: 'จัดการข้อมูลพนักงาน', icon: FaUser, href: '/user' },
   { label: 'จัดการสถานะพนักงาน', icon: BsPersonFillGear, href: '/userStatus' },
   { label: 'กำหนดสิทธิแผนก', icon: HiUserGroup, href: '/admin' },
   { label: 'Tokens', icon: FaKey, href: '/token' },
-  // เพิ่มเมนูอื่น ๆ ได้ง่าย
 ];
 
 export default function Sidebar() {
@@ -63,75 +61,153 @@ export default function Sidebar() {
   const pathname = usePathname();
   const purchaseMenuPath = process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase';
   const [showPurchaseMenu, setShowPurchaseMenu] = useState(pathname.startsWith(purchaseMenuPath));
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isCollapsed, setIsCollapsed } = useSidebar();
+  // Tooltip state for collapsed menu
+  const [showTooltip, setShowTooltip] = useState<{ [key: string]: boolean }>({});
 
-  // Helper function to check if current path matches the item
-  const isPathActive = (item: { href?: string; label: string }) => {
+  const isPathActive = (item: { href?: string; label: string; subItems?: SidebarSubItem[] }): boolean => {
+    if (item.subItems && item.subItems.length > 0) {
+      // If any subItem is active, parent is active
+      return item.subItems.some((sub) => isPathActive(sub));
+    }
     if (!item.href) return false;
-    // Use env for dashboard root path if provided
-    const dashboardRootPath = process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || '/nycsystem/';
-    if (item.href === dashboardRootPath && pathname === dashboardRootPath) return true;
+    const dashboardRootPath = process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || '/nycsystem';
+    // กำหนด path ที่จะ active สำหรับ PR
+    const prActivePaths = [
+      '/services/purchase',
+      '/services/purchase/createPR',
+      '/services/purchase/comparePrice',
+    ];
+    // กำหนด path ที่จะ active สำหรับ PO
+    const poActivePaths = [
+      '/services/purchase/PO',
+      '/services/purchase/PO/ReviewedPO',
+    ];
 
+    // Dashboard: only exact match
+    if (item.href === dashboardRootPath) {
+      return pathname === dashboardRootPath;
+    }
 
-    // Special handling for purchase system paths using env
-    const purchaseMenuPath = process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase';
-    const purchasePOPath = process.env.NEXT_PUBLIC_PURCHASE_PO_REDIRECT || '/nycsystem/services/purchase/PO';
-    if (item.href === purchaseMenuPath && pathname === purchaseMenuPath) return true;
-    if (item.href === purchasePOPath && pathname.startsWith(purchasePOPath)) return true;
+    // PR: active เฉพาะ path ที่กำหนด
+    if (item.label === 'Purchase Request (PR)') {
+      return prActivePaths.includes(pathname);
+    }
 
-    // For other paths, use exact match or startsWith with additional path segment
-    if (item.href !== dashboardRootPath && item.href !== purchaseMenuPath && pathname.startsWith(item.href)) return true;
+    // PO: active เฉพาะ path ที่กำหนด
+    if (item.label === 'Purchase Order (PO)') {
+      return poActivePaths.includes(pathname);
+    }
+
+    // General: highlight if current path starts with item.href
+    if (pathname.startsWith(item.href)) return true;
 
     return false;
   };
 
-  type SidebarSubItem = { label: string; icon: React.ComponentType; href?: string };
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const renderItem = (item: { label: string; icon: React.ComponentType; href?: string; subItems?: SidebarSubItem[] }, key: string, isSubItem: boolean = false) => {
+  type SidebarIconType = React.ComponentType<{ className?: string }>;
+  type SidebarSubItem = { label: string; icon: SidebarIconType; href?: string };
+  
+  const renderItem = (item: { label: string; icon: SidebarIconType; href?: string; subItems?: SidebarSubItem[] }, key: string, isSubItem: boolean = false) => {
     const isActive = isPathActive(item);
-    const Icon = item.icon;
+  const Icon = item.icon;
     const hasSubItems = item.subItems && item.subItems.length > 0;
 
-    // Minimal styling with more breathing room
-    const commonClass = `group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm text-left outline-none ` +
+    const commonClass = `group relative w-full flex items-center gap-3 rounded-lg transition-all duration-150 text-sm text-left outline-none ` +
+      (isCollapsed ? 'px-2 py-2.5 justify-center' : 'px-3 py-2.5') +
       (isActive
-        ? (isDarkMode ? 'text-green-400 font-medium bg-green-900/20' : 'text-[#0f9015] font-medium bg-green-50')
-        : (isDarkMode ? 'text-slate-300 hover:text-green-400 hover:bg-slate-800/50' : 'text-slate-600 hover:text-[#0f9015] hover:bg-slate-50')) +
+        ? (isDarkMode ? ' text-green-400 font-medium bg-green-900/20' : ' text-[#0f9015] font-medium bg-green-50')
+        : (isDarkMode ? ' text-slate-300 hover:text-green-400 hover:bg-slate-800/50' : ' text-slate-600 hover:text-[#0f9015] hover:bg-slate-50')) +
       ' focus:ring-1 focus:ring-offset-0 ' + (isDarkMode ? 'focus:ring-green-400/30' : 'focus:ring-green-300/50');
 
     if (item.href && !hasSubItems) {
       return (
-        <Link href={item.href} key={key} className={commonClass} aria-pressed={isActive}>
-          {isActive && (
+        <Link 
+          href={item.href} 
+          key={key} 
+          className={commonClass} 
+          aria-pressed={isActive}
+          title={isCollapsed ? item.label : undefined}
+        >
+          {isActive && !isCollapsed && (
             <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r transition-all duration-200 ${isDarkMode ? 'bg-green-400' : 'bg-[#0f9015]'}`} />
           )}
           <span className={`text-base transition-all duration-150 ${isActive ? (isDarkMode ? 'text-green-400' : 'text-[#0f9015]') : (isDarkMode ? 'text-slate-400 group-hover:text-green-400' : 'text-slate-400 group-hover:text-[#0f9015]')}`}>
-            <Icon />
+            <Icon className="w-5 h-5" />
           </span>
-          <span className="truncate font-medium">{item.label}</span>
+          {!isCollapsed && <span className="truncate font-medium">{item.label}</span>}
         </Link>
       );
     }
 
-    // Handle items with sub-items - clickable parent for ระบบจัดซื้อ
     if (hasSubItems && item.label === 'ระบบจัดซื้อ') {
       const isExpanded = showPurchaseMenu;
-      // Check if any sub-item is active (for purchase system)
       const hasActiveSubItem = item.subItems?.some((subItem) => isPathActive(subItem));
 
-      // Use active styling if any sub-item is active
-      const parentClass = `group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm text-left outline-none justify-between cursor-pointer ` +
+      const parentClass = `group relative w-full flex items-center gap-3 rounded-lg transition-all duration-150 text-sm text-left outline-none cursor-pointer ` +
+        (isCollapsed ? 'px-2 py-2.5 justify-center' : 'px-3 py-2.5 justify-between') +
         (hasActiveSubItem
-          ? (isDarkMode ? 'text-green-400 font-medium bg-green-900/20' : 'text-[#0f9015] font-medium bg-green-50')
-          : (isDarkMode ? 'text-slate-300 hover:text-green-400 hover:bg-slate-800/50' : 'text-slate-600 hover:text-[#0f9015] hover:bg-slate-50')) +
+          ? (isDarkMode ? ' text-green-400 font-medium bg-green-900/20' : ' text-[#0f9015] font-medium bg-green-50')
+          : (isDarkMode ? ' text-slate-300 hover:text-green-400 hover:bg-slate-800/50' : ' text-slate-600 hover:text-[#0f9015] hover:bg-slate-50')) +
         ' focus:ring-1 focus:ring-offset-0 ' + (isDarkMode ? 'focus:ring-green-400/30' : 'focus:ring-green-300/50');
+
+      if (isCollapsed) {
+        return (
+          <div key={key} className="relative">
+            <button
+              className={parentClass}
+              onMouseEnter={() => setShowTooltip(prev => ({ ...prev, [key]: true }))}
+              onMouseLeave={() => setShowTooltip(prev => ({ ...prev, [key]: false }))}
+              onClick={() => setShowPurchaseMenu(!showPurchaseMenu)}
+            >
+              {hasActiveSubItem && (
+                <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r transition-all duration-200 ${isDarkMode ? 'bg-green-400' : 'bg-[#0f9015]'}`} />
+              )}
+              <span className={`text-base transition-all duration-150 ${hasActiveSubItem ? (isDarkMode ? 'text-green-400' : 'text-[#0f9015]') : (isDarkMode ? 'text-slate-400 group-hover:text-green-400' : 'text-slate-400 group-hover:text-[#0f9015]')}`}>
+                <Icon />
+              </span>
+              {isExpanded && (
+                <div className={`absolute -right-1 -top-1 w-2 h-2 rounded-full ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
+              )}
+            </button>
+            {/* Tooltip Popup Menu */}
+            {showTooltip[key] && (
+              <div
+                className={`absolute left-full ml-2 top-0 z-50 rounded-lg shadow-2xl border overflow-hidden transition-all duration-200 ${isDarkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'}`}
+                style={{ minWidth: '200px' }}
+              >
+                <div className={`px-3 py-2 border-b font-semibold text-sm ${isDarkMode ? 'bg-gray-700/50 border-gray-600 text-green-400' : 'bg-gray-50 border-gray-200 text-green-700'}`}>
+                  {item.label}
+                </div>
+                <div className="py-1">
+                  {item.subItems?.map((subItem, idx) => {
+                    const SubIcon = subItem.icon;
+                    const isSubActive = isPathActive(subItem);
+                    return (
+                      <Link
+                        key={idx}
+                        href={subItem.href || '#'}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                          isSubActive
+                            ? (isDarkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-700')
+                            : (isDarkMode ? 'text-slate-300 hover:bg-slate-700/50 hover:text-green-400' : 'text-slate-600 hover:bg-slate-50 hover:text-green-600')
+                        }`}
+                      >
+                        <SubIcon className={`text-sm ${isSubActive ? (isDarkMode ? 'text-green-400' : 'text-green-600') : (isDarkMode ? 'text-slate-400' : 'text-slate-400')}`} />
+                        <span className="font-medium">{subItem.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
 
       return (
         <div key={key} className="space-y-1">
-          <button
-            onClick={() => setShowPurchaseMenu(!showPurchaseMenu)}
-            className={parentClass}
-          >
+          <button onClick={() => setShowPurchaseMenu(!showPurchaseMenu)} className={parentClass}>
             {hasActiveSubItem && (
               <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r transition-all duration-200 ${isDarkMode ? 'bg-green-400' : 'bg-[#0f9015]'}`} />
             )}
@@ -145,16 +221,48 @@ export default function Sidebar() {
               className={`text-xs transition-transform duration-200 ${hasActiveSubItem ? (isDarkMode ? 'text-green-400' : 'text-[#0f9015]') : (isDarkMode ? 'text-slate-400' : 'text-slate-400')} ${isExpanded ? 'rotate-180' : ''}`}
             />
           </button>
-          <div className={`ml-6 space-y-0.5 transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-            }`}>
-            {item.subItems?.map((subItem, subIndex) => renderItem(subItem, `${key}-sub-${subIndex}`, true))}
+          
+          {/* Expanded Submenu */}
+          <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className={`ml-4 mt-1 space-y-0.5 pl-4 border-l-2 ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+              {item.subItems?.map((subItem, subIndex) => {
+                const SubIcon = subItem.icon;
+                const isSubActive = isPathActive(subItem);
+                return (
+                  <Link
+                    key={subIndex}
+                    href={subItem.href || '#'}
+                    className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+                      isSubActive
+                        ? (isDarkMode ? 'bg-green-900/30 text-green-400 font-medium' : 'bg-green-50 text-green-700 font-medium')
+                        : (isDarkMode ? 'text-slate-400 hover:text-green-400 hover:bg-slate-800/30' : 'text-slate-500 hover:text-green-600 hover:bg-slate-50')
+                    }`}
+                  >
+                    <SubIcon className={`text-sm ${isSubActive ? (isDarkMode ? 'text-green-400' : 'text-green-600') : ''}`} />
+                    <span>{subItem.label}</span>
+                    {isSubActive && (
+                      <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 rounded-r ${isDarkMode ? 'bg-green-400' : 'bg-green-600'}`} />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       );
     }
 
-    // Handle other items with sub-items - static display
     if (hasSubItems) {
+      if (isCollapsed) {
+        return (
+          <div key={key} className={`relative group/collapsed ${isCollapsed ? 'px-2 py-2.5' : 'px-3 py-2'} ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} title={item.label}>
+            <span className={`text-base ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              <Icon />
+            </span>
+          </div>
+        );
+      }
+
       return (
         <div key={key} className="space-y-1">
           <div className={`px-3 py-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -172,23 +280,24 @@ export default function Sidebar() {
       );
     }
 
-    // Default button - non-clickable items
     return (
       <div
         key={key}
-        className={`px-3 py-2.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+        className={`${isCollapsed ? 'px-2 py-2.5' : 'px-3 py-2.5'} ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+        title={isCollapsed ? item.label : undefined}
       >
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
           <span className={`text-base ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
             <Icon />
           </span>
-          <span className="truncate font-medium">{item.label}</span>
+          {!isCollapsed && <span className="truncate font-medium">{item.label}</span>}
         </div>
       </div>
     );
   };
 
   const renderSectionTitle = (title: string) => {
+    if (isCollapsed) return null;
     return (
       <div className={`px-1 pb-2 text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
         {title}
@@ -197,67 +306,50 @@ export default function Sidebar() {
   };
 
   return (
-    <>
-      {/* Responsive sidebar toggle button (mobile only) */}
-      <button
-        className="fixed top-4 left-4 z-[10001] flex items-center justify-center w-10 h-10 rounded-lg bg-green-600 text-white shadow-lg lg:hidden"
-        onClick={() => setSidebarOpen((v) => !v)}
-        aria-label="เปิด/ปิดเมนู"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-
-      <aside
-        className={`fixed top-0 left-0 h-full w-64 max-w-full border rounded-none lg:rounded-2xl flex flex-col z-40 shadow-xl transition-all duration-200
-        ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}
-        lg:left-6 lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-72
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0
-        `}
-        style={{ transitionProperty: 'transform, box-shadow, background-color, border-color' }}
-      >
-
-      {/* Header + Close button for mobile */}
-      <div className="px-5 py-5 flex items-center gap-4 justify-between" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #d1d5db' }}>
-        <div className="w-12 h-12 rounded-lg flex items-center justify-center shadow-lg" style={{
-          background: isDarkMode ? 'linear-gradient(135deg, #166534 0%, #16a34a 50%, #22c55e 100%)' : 'linear-gradient(135deg, #166534 0%, #16a34a 50%, #22c55e 100%)',
-        }}>
-          <span className="text-lg font-bold text-white">NYC</span>
-        </div>
-        <div>
-          <div
-            className={`text-lg font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}
-            style={{
-              letterSpacing: "1px",
-            }}
-          >
-            NYC
+    <aside 
+      className={`fixed left-6 top-6 h-[calc(100vh-3rem)] border rounded-2xl flex flex-col z-40 shadow-xl transition-all duration-300 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}
+      style={{ width: isCollapsed ? '80px' : '288px' }}
+    >
+      {/* Header */}
+      <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'px-3 py-5 justify-center' : 'px-5 py-5 gap-4'}`} style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #d1d5db' }}>
+        {!isCollapsed && (
+          <>
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center shadow-lg" style={{
+              background: isDarkMode ? 'linear-gradient(135deg, #166534 0%, #16a34a 50%, #22c55e 100%)' : 'linear-gradient(135deg, #166534 0%, #16a34a 50%, #22c55e 100%)',
+            }}>
+              <span className="text-lg font-bold text-white">NYC</span>
+            </div>
+            <div>
+              <div className={`text-lg font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`} style={{ letterSpacing: "1px" }}>
+                NYC
+              </div>
+              <div className={isDarkMode ? 'text-xs text-gray-400 font-medium' : 'text-xs text-gray-600 font-medium'}>INDUSTRY CO.,LTD.</div>
+            </div>
+          </>
+        )}
+        {isCollapsed && (
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg" style={{
+            background: isDarkMode ? 'linear-gradient(135deg, #166534 0%, #16a34a 50%, #22c55e 100%)' : 'linear-gradient(135deg, #166534 0%, #16a34a 50%, #22c55e 100%)',
+          }}>
+            <span className="text-sm font-bold text-white">NYC</span>
           </div>
-          <div className={isDarkMode ? 'text-xs text-gray-400 font-medium' : 'text-xs text-gray-600 font-medium'}>INDUSTRY CO.,LTD.</div>
-        </div>
-        {/* Close button for mobile */}
-        <button
-          className="lg:hidden flex items-center justify-center w-8 h-8 rounded-md bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 ml-auto"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="ปิดเมนู"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        )}
       </div>
 
-      {/* Navigation with custom scrollbar */}
-      <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-8" style={{
-        scrollbarWidth: 'thin',
-        scrollbarColor: isDarkMode ? '#10b981 transparent' : '#10b981 transparent',
-        WebkitOverflowScrolling: 'touch',
-        maxHeight: 'calc(100vh - 180px)'
-      }}>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className={`absolute -right-3 top-20 w-6 h-6 rounded-full shadow-lg flex items-center justify-center transition-colors duration-200 ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-green-400 border border-gray-600' : 'bg-white hover:bg-gray-50 text-green-600 border border-gray-300'}`}
+        title={isCollapsed ? 'ขยาย Sidebar' : 'ย่อ Sidebar'}
+      >
+        <FaBars className={`text-xs transition-transform duration-300 ${isCollapsed ? 'rotate-0' : 'rotate-180'}`} />
+      </button>
 
-        {/* Menu Section */}
+      {/* Navigation */}
+      <nav className={`flex-1 overflow-y-auto py-6 space-y-8 ${isCollapsed ? 'px-2' : 'px-3'}`} style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: isDarkMode ? '#10b981 transparent' : '#10b981 transparent'
+      }}>
         <section>
           {renderSectionTitle('Menu')}
           <div className="space-y-0.5">
@@ -265,7 +357,6 @@ export default function Sidebar() {
           </div>
         </section>
 
-        {/* System Section */}
         <section>
           {renderSectionTitle('System')}
           <div className="space-y-0.5">
@@ -273,7 +364,6 @@ export default function Sidebar() {
           </div>
         </section>
 
-        {/* Programs Section */}
         <section>
           {renderSectionTitle('Programs')}
           <div className="space-y-0.5">
@@ -281,7 +371,6 @@ export default function Sidebar() {
           </div>
         </section>
 
-        {/* Admin Section */}
         <section>
           {renderSectionTitle('Admin')}
           <div className="space-y-0.5">
@@ -290,47 +379,46 @@ export default function Sidebar() {
         </section>
       </nav>
 
-      {/* Footer Section */}
-      <footer className={`px-3 py-4 border-t ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
-        <div className="space-y-3">
-          {/* Version Info */}
-          <div className={`flex items-center justify-between text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-            <span className="font-medium">Version</span>
-            <span className={`px-2 py-1 rounded-md font-mono ${isDarkMode ? 'bg-slate-800/50 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
-              v0.1.0-beta
-            </span>
-          </div>
-
-          {/* Developed by */}
-          <div className={`text-center space-y-1`}>
-            <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-              จัดทำโดย
+      {/* Footer */}
+      {!isCollapsed && (
+        <footer className={`px-3 py-4 border-t ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
+          <div className="space-y-3">
+            <div className={`flex items-center justify-between text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className="font-medium">Version</span>
+              <span className={`px-2 py-1 rounded-md font-mono ${isDarkMode ? 'bg-slate-800/50 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
+                v0.1.0-beta
+              </span>
             </div>
-            <div className={`flex items-center justify-center gap-2`}>
-              <div className={`w-6 h-6 rounded flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                </svg>
+
+            <div className={`text-center space-y-1`}>
+              <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                จัดทำโดย
               </div>
-              <div className="text-xs">
-                <div className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                  แผนก IT
+              <div className={`flex items-center justify-center gap-2`}>
+                <div className={`w-6 h-6 rounded flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                  </svg>
                 </div>
-                <div className={`${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Information Technology
+                <div className="text-xs">
+                  <div className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    แผนก IT
+                  </div>
+                  <div className={`${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Information Technology
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Copyright */}
-          <div className={`text-center text-xs ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
-            © 2025 NYC Industry Co.,Ltd.
+            <div className={`text-center text-xs ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
+              © 2025 NYC Industry Co.,Ltd.
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
-      {/* Custom scrollbar styles - minimal and clean */}
+      {/* Custom scrollbar styles */}
       <style jsx global>{`
         nav::-webkit-scrollbar {
           width: 4px;
@@ -353,15 +441,6 @@ export default function Sidebar() {
           scrollbar-color: ${isDarkMode ? '#475569 transparent' : '#cbd5e1 transparent'};
         }
       `}</style>
-      </aside>
-      {/* Overlay for mobile when sidebar is open */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="ปิดเมนู (คลิกพื้นหลัง)"
-        />
-      )}
-    </>
+    </aside>
   );
 }

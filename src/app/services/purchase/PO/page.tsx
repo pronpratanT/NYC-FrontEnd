@@ -15,6 +15,7 @@ import Header from "../../../components/header";
 import { useTheme } from "../../../components/ThemeProvider";
 import { useToken } from "../../../context/TokenContext";
 import { useUser } from "../../../context/UserContext";
+import { useSidebar } from "../../../context/SidebarContext";
 
 // icons
 import { LuCalendarFold } from "react-icons/lu";
@@ -128,7 +129,7 @@ export default function PurchaseOrderPage() {
     useEffect(() => {
         if (departmentId !== undefined && departmentId !== 10086) {
             alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
-                router.replace(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase");
+            router.replace(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase");
         }
     }, [departmentId, router]);
 
@@ -422,20 +423,26 @@ export default function PurchaseOrderPage() {
                 gap: 0 !important;
                 padding: 0 !important;
             }
+            /* Light mode: selected day, range start/end */
             .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
-                background: #059669 !important;
+                background: #22c55e !important; /* light green */
                 color: #fff !important;
             }
+            /* Light mode: in range (not start/end) */
             .flatpickr-day.inRange:not(.startRange):not(.endRange) {
-                background: #134e4a !important;
-                color: #a7f3d0 !important;
+                background: #bbf7d0 !important; /* green-100 */
+                color: #166534 !important; /* green-800 */
             }
+            /* Light mode: hover */
             .flatpickr-day:not(.selected):not(.inRange):hover {
-                background: #334155 !important;
-                color: #22d3ee !important;
+                background: #d1fae5 !important; /* green-50 */
+                color: #059669 !important; /* green-600 */
             }
+            /* Light mode: today */
             .flatpickr-day.today:not(.selected) {
                 border: 1.5px solid #22c55e !important;
+                background: #f0fdf4 !important; /* green-50 */
+                color: #059669 !important;
             }
             /* Dark mode styles for flatpickr calendar */
             .flatpickr-calendar.dark-mode,
@@ -591,15 +598,21 @@ export default function PurchaseOrderPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [calendarOpen, isDarkMode]);
 
+    const { isCollapsed } = useSidebar();
+
     return (
         <div className="min-h-screen">
             <Sidebar />
             <Header />
             <main
-                className="mt-[7.5rem] mr-6 transition-all duration-300 relative"
-                style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft: 'calc(18rem + 55px)' }}
+                className="mt-[7.5rem] mr-6 transition-all duration-300"
+                style={{
+                    minHeight: 'calc(100vh - 3rem)',
+                    position: 'relative',
+                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                }}
             >
-                <div className="pl-5 pb-5 pr-5 relative z-10">
+                <div className="pb-5 pr-5 relative z-10">
                     {/* Loading and error display */}
                     {loading && (
                         <div className="mb-4 flex items-center justify-center">
@@ -739,7 +752,7 @@ export default function PurchaseOrderPage() {
                                     <div className="relative">
                                         <button
                                             type="button"
-                                            className={`p-3 text-base cursor-pointer font-medium h-[48px] text-white rounded-r-xl focus:ring-4 focus:outline-none focus:ring-green-300 w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                            className={`p-3 text-base cursor-pointer font-medium h-[48px] text-white rounded-r-xl focus:outline-none w-[48px] flex items-center justify-center ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                                             style={{ marginLeft: '-1px' }}
                                             onClick={e => {
                                                 e.preventDefault();
@@ -1077,10 +1090,12 @@ export default function PurchaseOrderPage() {
                                                 onClick={e => {
                                                     e.stopPropagation();
                                                     // ดาวน์โหลด PDF จาก public/generated-pdf/PO_{po.po_no}.pdf
-                                                    const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
+                                                    // const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
+                                                    const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
                                                     const a = document.createElement('a');
                                                     a.href = pdfPath;
-                                                    a.download = `PO_${po.po_no}.pdf`;
+                                                    // a.download = `PO_${po.po_no}.pdf`;
+                                                    a.download = `PO_D2510035.pdf`;
                                                     document.body.appendChild(a);
                                                     a.click();
                                                     a.remove();

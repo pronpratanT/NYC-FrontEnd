@@ -12,6 +12,7 @@ import { useUser } from "@/app/context/UserContext";
 import Sidebar from "../../../components/sidebar";
 import Header from "../../../components/header";
 import PRModal from '../../../components/Modal/PRModal';
+import { useSidebar } from "../../../context/SidebarContext";
 
 import { BsCalendar2Event } from "react-icons/bs";
 import { MdOutlineGroups3 } from "react-icons/md";
@@ -66,6 +67,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const searchParams = useSearchParams();
     const prId = searchParams.get("id");
     const router = useRouter();
+    const { isCollapsed } = useSidebar();
 
     // const selectedPR = prList.find(pr => pr.code === prCode);
     // const selectedParts = selectedPR?.parts || [];
@@ -312,7 +314,11 @@ function ComparePriceContent({ token }: { token: string | null }) {
             <Header />
             <main
                 className="mt-[7.5rem] mr-6 transition-all duration-300"
-                style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft: 'calc(18rem + 55px)' }}
+                style={{
+                    minHeight: 'calc(100vh - 3rem)',
+                    position: 'relative',
+                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                }}
             >
                 {/* Content: Show PR info and table only if prData exists */}
                 {prData ? (

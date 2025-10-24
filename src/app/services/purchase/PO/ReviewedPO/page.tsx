@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useToken } from "@/app/context/TokenContext";
 import Sidebar from "@/app/components/sidebar";
 import Header from "@/app/components/header";
+import { useSidebar } from '@/app/context/SidebarContext';
 import { useTheme } from "@/app/components/ThemeProvider";
 import ApprovePOModal from "@/app/components/Modal/Approve_PO";
 import POModal from "@/app/components/Modal/POModal";
@@ -284,13 +285,18 @@ export default function ReviewedPOPage() {
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
     if (error) return <div className="flex items-center justify-center min-h-screen"><div className="text-lg text-red-500">{error}</div></div>;
 
+    const { isCollapsed } = useSidebar();
     return (
         <div className="min-h-screen">
             <Sidebar />
             <Header />
             <main
                 className="mt-[7.5rem] mr-6 transition-all duration-300"
-                style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft: 'calc(18rem + 55px)' }}
+                style={{
+                    minHeight: 'calc(100vh - 3rem)',
+                    position: 'relative',
+                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                }}
             >
                 {poData ? (
                     <div className="max-w-none w-full space-y-6">

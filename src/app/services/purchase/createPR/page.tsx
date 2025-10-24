@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/styles/react-datepicker-dark.css";
+import "@/app/styles/react-datepicker-light.css";
+import "@/app/styles/react-datepicker-orange.css";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import { useTheme } from '../../../components/ThemeProvider';
@@ -13,6 +15,7 @@ import { MdOutlineGroups3 } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import Sidebar from '@/app/components/sidebar';
 import Header from '@/app/components/header';
+import { useSidebar } from '@/app/context/SidebarContext';
 import { useUser } from '../../../context/UserContext';
 import { useToken } from '../../../context/TokenContext';
 import { TiPlus } from "react-icons/ti";
@@ -30,6 +33,7 @@ type partData = {
 }
 
 export default function TestPage() {
+  const { isCollapsed } = useSidebar();
   const router = useRouter();
   // สร้างหมายเลข PR mock: PR-YY-X000
   function getMockPRNo() {
@@ -400,8 +404,12 @@ export default function TestPage() {
       <Header />
       {/* Main Content */}
       <main
-        className="mt-[7.5rem] mr-6 transition-all duration-300 relative"
-        style={{ minHeight: 'calc(100vh - 3rem)', position: 'relative', marginLeft: 'calc(18rem + 55px)' }}
+        className="mt-[7.5rem] mr-6 transition-all duration-300"
+        style={{
+          minHeight: 'calc(100vh - 3rem)',
+          position: 'relative',
+          marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+        }}
       >
         <div className="max-w-none w-full space-y-8 mb-6 relative z-10">
           {/* Header Section */}
@@ -585,10 +593,13 @@ export default function TestPage() {
                                 <DatePicker
                                   selected={pagedDueDates[idx]}
                                   onChange={date => handleRowDueDateChange((page - 1) * rowsPerPage + idx, date)}
-                                  dateFormat="dd/MM/yyyy" placeholderText="เลือกวันที่"
+                                  dateFormat="dd/MM/yyyy"
+                                  placeholderText="เลือกวันที่"
                                   className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
-                                  calendarClassName={`${isDarkMode ? 'react-datepicker-dark' : '!bg-white !border-2 !border-green-200 !shadow-2xl !rounded-2xl absolute'}`}
-                                  popperClassName="z-[9999]" popperPlacement="bottom-start" />
+                                  calendarClassName={isDarkMode ? 'react-datepicker-dark' : 'react-datepicker-light'}
+                                  popperClassName="z-[9999]"
+                                  popperPlacement="bottom-start"
+                                />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                   <FaRegCalendarAlt className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                                 </span>
@@ -685,7 +696,7 @@ export default function TestPage() {
                                   dateFormat="dd/MM/yyyy"
                                   placeholderText="เลือกวันที่"
                                   className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
-                                  calendarClassName={`${isDarkMode ? 'react-datepicker-dark' : '!bg-white !border-2 !border-orange-200 !shadow-2xl !rounded-2xl absolute'}`}
+                                  calendarClassName={isDarkMode ? 'react-datepicker-orange-dark' : 'react-datepicker-orange'}
                                   popperClassName="z-[9999]"
                                   popperPlacement="bottom-start"
                                 />

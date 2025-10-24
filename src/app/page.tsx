@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "./components/sidebar";
 import Header from "./components/header";
 import { useToken } from "./context/TokenContext";
+import { useSidebar } from "./context/SidebarContext";
 
 export default function Page() {
   const token = useToken();
@@ -23,10 +24,17 @@ export default function Page() {
     return null;
   }
 
+  const { isCollapsed } = useSidebar();
+  // Sidebar width: 288px (expanded), 80px (collapsed), left-6 (24px)
+  const sidebarWidth = isCollapsed ? 80 : 288;
+  const marginLeft = sidebarWidth + 24; // px
   return (
     <div className="flex min-h-screen">
       <Sidebar />
       <Header />
+      <main style={{ marginLeft, transition: 'margin-left 0.3s' }}>
+        {/* Main content here, add children if needed */}
+      </main>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { ThemeProvider } from "./components/ThemeProvider";
 import BackgroundSwitcher from "./components/BackgroundSwitcher";
+import { SidebarProvider } from "./context/SidebarContext";
 
 import { UserProvider } from "./context/UserContext";
 import { TokenProvider } from "./context/TokenContext";
@@ -36,10 +37,12 @@ export default function RootLayout({
         <TokenProvider>
           <UserProvider>
             <ThemeProvider>
-              <BackgroundSwitcher />
-              {/* <Sidebar />
-              <Header /> */}
-              {children}
+              <SidebarProvider>
+                <BackgroundSwitcher />
+                {/* <Sidebar />
+                <Header /> */}
+                {children}
+              </SidebarProvider>
             </ThemeProvider>
           </UserProvider>
         </TokenProvider>
@@ -47,10 +50,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-// {/* <ThemeProvider>
-//           <BackgroundSwitcher />
-//           {/* <Sidebar />
-//           <Header /> */}
-//           {children}
-// </ThemeProvider> */}
