@@ -285,9 +285,6 @@ export default function TestPage() {
     });
   };
 
-  // Removed unused function handleStockChange
-  // Removed unused function handlePriceChange
-
   // ฟังก์ชันตรวจสอบความถูกต้องของข้อมูลในแต่ละแถว
   function validatePRInputs() {
     for (let idx = 0; idx < selectedParts.length; idx++) {
@@ -502,17 +499,13 @@ export default function TestPage() {
                       {partNos.map((part, idx) => (
                         <div
                           key={part + '-' + idx}
-                          className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${selectedParts.includes(part) ? (isDarkMode ? 'bg-slate-700/50 border-l-4 border-emerald-500 font-semibold text-emerald-400' : 'bg-green-100 border-l-4 border-green-500 font-semibold text-green-800') : (isDarkMode ? 'hover:bg-slate-800/50 text-slate-300' : 'hover:bg-green-50')}`}
+                          className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-800/50 text-slate-300' : 'hover:bg-green-50'}`}
                           onClick={() => {
-                            if (selectedParts.includes(part)) {
-                              setSelectedParts(selectedParts.filter(p => p !== part));
-                            } else {
-                              setSelectedParts([...selectedParts, part]);
-                            }
+                            setSelectedParts([...selectedParts, part]);
                           }}
                         >
                           {selectedParts.includes(part) && (
-                            <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-emerald-500' : 'bg-green-500'}`} title="Selected"></span>
+                            <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-emerald-500' : 'bg-green-500'}`} title="เลือกแล้ว"></span>
                           )}
                           <span className={`${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{part}</span>
                         </div>
@@ -535,9 +528,7 @@ export default function TestPage() {
                     <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
                     <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
                     <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
-                    {/* <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th> */}
                     <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
-                    {/* <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th> */}
                     <th className={`px-2 py-3 text-center font-semibold w-22 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
                   </tr>
                 </thead>

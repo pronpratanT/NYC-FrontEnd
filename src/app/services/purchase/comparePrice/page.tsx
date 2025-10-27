@@ -2,6 +2,7 @@
 
 import RejectPRModal from '../../../components/Modal/Reject_PR';
 import ApprovePRModal from '../../../components/Modal/Approve_PR';
+import SplitQTYModal from '../../../components/Modal/SplitQTY';
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -18,8 +19,12 @@ import { BsCalendar2Event } from "react-icons/bs";
 import { MdOutlineGroups3 } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import { FaXmark } from "react-icons/fa6";
+import { LuSquareSplitHorizontal } from 'react-icons/lu';
 import { IoIosCheckmark } from "react-icons/io";
 import { FaRegClock } from "react-icons/fa6";
+import { VscGroupByRefType } from "react-icons/vsc";
+import { LuUngroup } from "react-icons/lu";
+import { LuGroup } from "react-icons/lu";
 
 type Part = {
     pcl_id: number;
@@ -61,7 +66,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     // Assume user info is available from context or prop
     // You may need to adjust this to your actual user context
     const { user } = useUser();
-    
+
     const departmentId = user?.Department?.ID;
 
     const searchParams = useSearchParams();
@@ -86,6 +91,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [approvePrNo, setApprovePrNo] = useState<string | null>(null);
     const [selectedParts, setSelectedParts] = useState<number[]>([]);
     const [multiApprovalModalOpen, setMultiApprovalModalOpen] = useState(false);
+
+    // Split QTY Modal states
+    const [splitModalOpen, setSplitModalOpen] = useState(false);
+    const [selectedSplitPart, setSelectedSplitPart] = useState<Part | null>(null);
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -305,6 +314,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
         await handleRefreshData();
     }
 
+    // Split QTY Modal functions
+    const handleSplitQtyClick = (part: Part) => {
+        setSelectedSplitPart(part);
+        setSplitModalOpen(true);
+    };
+
+    const handleSplitQtySuccess = async () => {
+        await handleRefreshData(); // Refresh data after successful split
+    };
+
     if (loading) return <div>กำลังโหลดข้อมูล...</div>;
     if (error) return <div style={{ color: "red" }}>{error}</div>;
 
@@ -340,57 +359,57 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     {!(prData?.manager_approve && prData?.supervisor_approve && prData?.pu_operator_approve)
                                         && !(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at)
                                         && (!(prData?.manager_approve && prData?.supervisor_approve) || departmentId === 10086) && (
-                                        <div className="flex items-center gap-2 relative">
-                                            <div className="flex items-center">
-                                                <button
-                                                    type="button"
-                                                    className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
-                                                    onClick={() => handleApproveClick()}
-                                                    style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                    onMouseEnter={e => {
-                                                        e.currentTarget.style.width = '112px';
-                                                        const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                        if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                    }}
-                                                    onMouseLeave={e => {
-                                                        e.currentTarget.style.width = '40px';
-                                                        const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                        if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                    }}
-                                                >
-                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
-                                                        <IoIosCheckmark size={40} />
-                                                    </span>
-                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
-                                                        Approve
-                                                    </span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
-                                                    onClick={handleReject}
-                                                    style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                    onMouseEnter={e => {
-                                                        e.currentTarget.style.width = '112px';
-                                                        const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                        if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                    }}
-                                                    onMouseLeave={e => {
-                                                        e.currentTarget.style.width = '40px';
-                                                        const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                        if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                    }}
-                                                >
-                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
-                                                        <FaXmark size={20} />
-                                                    </span>
-                                                    <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
-                                                        Reject
-                                                    </span>
-                                                </button>
+                                            <div className="flex items-center gap-2 relative">
+                                                <div className="flex items-center">
+                                                    <button
+                                                        type="button"
+                                                        className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
+                                                        onClick={() => handleApproveClick()}
+                                                        style={{ width: '40px', height: '40px', zIndex: 2 }}
+                                                        onMouseEnter={e => {
+                                                            e.currentTarget.style.width = '112px';
+                                                            const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            e.currentTarget.style.width = '40px';
+                                                            const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                        }}
+                                                    >
+                                                        <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <IoIosCheckmark size={40} />
+                                                        </span>
+                                                        <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                            Approve
+                                                        </span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
+                                                        onClick={handleReject}
+                                                        style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
+                                                        onMouseEnter={e => {
+                                                            e.currentTarget.style.width = '112px';
+                                                            const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            e.currentTarget.style.width = '40px';
+                                                            const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                        }}
+                                                    >
+                                                        <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <FaXmark size={20} />
+                                                        </span>
+                                                        <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                            Reject
+                                                        </span>
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
                                 </div>
                                 <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no}</div>
                                 <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
@@ -490,12 +509,27 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     อนุมัติหลายรายการ ({selectedParts.length})
                                                 </button>
                                             )}
-                                            <button
+                                            {/* <button
                                                 type="button"
                                                 className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
                                                 onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase")}
                                             >
                                                 เลือก PR ใหม่
+                                            </button> */}
+                                            <button
+                                                type="button"
+                                                className={`group relative rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
+                                                //onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase")}
+                                            >
+                                                <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 opacity-100 group-hover:opacity-0">
+                                                    <LuUngroup className="w-7 h-7" />
+                                                </span>
+                                                <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 opacity-0 group-hover:opacity-100">
+                                                    <LuGroup className="w-7 h-7" />
+                                                </span>
+                                                <span className="invisible">
+                                                    <LuUngroup className="w-7 h-7" />
+                                                </span>
                                             </button>
                                         </div>
                                     </div>
@@ -520,20 +554,24 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <table className="min-w-full text-sm overflow-visible">
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
-                                            {hasComparedParts && (
+                                            {/* Show split/checkbox column only if at least one row is 'Compared' or 'pending' */}
+                                            {prData?.pr_lists?.some(part => part.ordered === 'Compared' || part.ordered === 'pending') && (
                                                 <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                                    <input
-                                                        type="checkbox"
-                                                        className={`w-4 h-4 rounded border-2 transition-all duration-200 cursor-pointer ${isDarkMode
-                                                            ? 'border-slate-500 bg-slate-700 text-sky-400 focus:ring-2 focus:ring-sky-400/50 checked:bg-sky-500 checked:border-sky-500'
-                                                            : 'border-gray-300 bg-white text-sky-600 focus:ring-2 focus:ring-sky-500/50 checked:bg-sky-600 checked:border-sky-600'
-                                                            }`}
-                                                        checked={
-                                                            prData?.pr_lists?.filter(part => part.ordered === 'Compared').length > 0 &&
-                                                            prData?.pr_lists?.filter(part => part.ordered === 'Compared').every(part => selectedParts.includes(part.pcl_id))
-                                                        }
-                                                        onChange={(e) => handleSelectAll(e.target.checked)}
-                                                    />
+                                                    {/* Header: show select all only if there is at least one Compared row */}
+                                                    {prData?.pr_lists?.some(part => part.ordered === 'Compared') ? (
+                                                        <input
+                                                            type="checkbox"
+                                                            className={`w-4 h-4 rounded border-2 transition-all duration-200 cursor-pointer ${isDarkMode
+                                                                ? 'border-slate-500 bg-slate-700 text-sky-400 focus:ring-2 focus:ring-sky-400/50 checked:bg-sky-500 checked:border-sky-500'
+                                                                : 'border-gray-300 bg-white text-sky-600 focus:ring-2 focus:ring-sky-500/50 checked:bg-sky-600 checked:border-sky-600'
+                                                                }`}
+                                                            checked={
+                                                                prData?.pr_lists?.filter(part => part.ordered === 'Compared').length > 0 &&
+                                                                prData?.pr_lists?.filter(part => part.ordered === 'Compared').every(part => selectedParts.includes(part.pcl_id))
+                                                            }
+                                                            onChange={(e) => handleSelectAll(e.target.checked)}
+                                                        />
+                                                    ) : null}
                                                 </th>
                                             )}
                                             {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
@@ -566,23 +604,35 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     }
                                                 }}
                                             >
-                                                {hasComparedParts && (
+                                                {/* Show split/checkbox cell only if at least one row is 'Compared' or 'pending' */}
+                                                {prData?.pr_lists?.some(p => p.ordered === 'Compared' || p.ordered === 'pending') && (
                                                     <td className={`px-2 py-3 text-center w-12`}>
-                                                        <input
-                                                            type="checkbox"
-                                                            className={`w-4 h-4 rounded border-2 transition-all duration-200 ${part.ordered !== 'Compared'
-                                                                ? 'cursor-not-allowed opacity-40 border-gray-300 bg-gray-100'
-                                                                : isDarkMode
-                                                                    ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked:border-blue-500 hover:border-blue-400'
-                                                                    : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked:border-blue-600 hover:border-blue-400'
-                                                                }`}
-                                                            disabled={part.ordered !== 'Compared'}
-                                                            checked={selectedParts.includes(part.pcl_id)}
-                                                            onChange={(e) => {
-                                                                e.stopPropagation();
-                                                                handlePartSelection(part.pcl_id, e.target.checked);
-                                                            }}
-                                                        />
+                                                        {part.ordered === 'Compared' ? (
+                                                            <input
+                                                                type="checkbox"
+                                                                className={`w-4 h-4 rounded border-2 transition-all duration-200 ${isDarkMode
+                                                                    ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked-border-blue-500 hover:border-blue-400'
+                                                                    : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked-border-blue-600 hover:border-blue-400'
+                                                                    }`}
+                                                                checked={selectedParts.includes(part.pcl_id)}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handlePartSelection(part.pcl_id, e.target.checked);
+                                                                }}
+                                                            />
+                                                        ) : part.ordered === 'pending' ? (
+                                                            <button
+                                                                type="button"
+                                                                className={`p-2 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-blue-900/30 border border-blue-700 text-blue-300 hover:bg-blue-800/60' : 'bg-blue-100 border border-blue-300 text-blue-700 hover:bg-blue-200'}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleSplitQtyClick(part);
+                                                                }}
+                                                                title="แบ่งจำนวน"
+                                                            >
+                                                                <LuSquareSplitHorizontal className="w-4 h-4" />
+                                                            </button>
+                                                        ) : null}
                                                     </td>
                                                 )}
                                                 {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
@@ -674,7 +724,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <td colSpan={
                                                     (hasComparedParts ? 1 : 0) +
                                                     (prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve ? 1 : 0) +
-                                                    11
+                                                    12
                                                 } className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
                                                     <div className="inline-flex items-center gap-2">
                                                         <button
@@ -838,6 +888,15 @@ function ComparePriceContent({ token }: { token: string | null }) {
                     onClose={() => setRejectModalOpen(false)}
                     onConfirm={handleConfirmReject}
                     prNo={rejectPrNo}
+                />
+
+                {/* Split QTY Modal */}
+                <SplitQTYModal
+                    isOpen={splitModalOpen}
+                    onClose={() => setSplitModalOpen(false)}
+                    selectedPart={selectedSplitPart}
+                    token={token}
+                    onSuccess={handleSplitQtySuccess}
                 />
             </main >
         </div >

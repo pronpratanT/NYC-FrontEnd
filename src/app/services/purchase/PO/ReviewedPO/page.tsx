@@ -27,6 +27,8 @@ import { LuMail } from "react-icons/lu";
 import { SiMinutemailer } from "react-icons/si";
 import { RiMailSendLine } from "react-icons/ri";
 import { MdOutlineEdit } from "react-icons/md";
+import RequestEditPOModal from "@/app/components/Request_Edit_PO";
+import { BiQuestionMark } from "react-icons/bi";
 
 type ReviewedPO = {
     po_id: number;
@@ -98,6 +100,7 @@ type VendorSelected = {
 // type VendorSelected = { ... } // เพิ่ม type ตามที่ใช้งานจริง
 
 export default function ReviewedPOPage() {
+    const [showRequestEditModal, setShowRequestEditModal] = useState(false);
     // components
     // const { user } = useUser(); // Removed unused variable
     const token = useToken();
@@ -425,6 +428,33 @@ export default function ReviewedPOPage() {
                                                 </div>
                                             </div>
                                         )}
+                                        {poData.mail_out_date && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className={`w-10 h-10 rounded-lg cursor-pointer flex items-center justify-center font-semibold transition-colors duration-200
+                                                        ${isDarkMode
+                                                            ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                                                            : 'bg-rose-500 hover:bg-rose-600 text-white'}
+                                                    `}
+                                                    title="ร้องขอการแก้ไขรายละเอียด"
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        setShowRequestEditModal(true);
+                                                    }}
+                                                >
+                                                    <BiQuestionMark className="h-8 w-8" />
+                                                </button>
+                                                <RequestEditPOModal
+                                                    open={showRequestEditModal}
+                                                    onClose={() => setShowRequestEditModal(false)}
+                                                    onSubmit={detail => {
+                                                        setShowRequestEditModal(false);
+                                                        // TODO: ส่ง detail ไปยัง API หรือแสดง toast ตามต้องการ
+                                                    }}
+                                                />
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -448,7 +478,10 @@ export default function ReviewedPOPage() {
                                             {!(poData.approved_by || poData.rejected_by) && (
                                                 <button
                                                     type="button"
-                                                    className={`w-10 h-10 rounded-lg cursor-pointer flex items-center justify-center transition-all duration-150 shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 border font-semibold ${isDarkMode ? 'bg-blue-500/10 border-blue-700 text-blue-400 hover:bg-blue-700/30 hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white'}`}
+                                                    className={`w-9 h-9 rounded-full flex items-center justify-center focus:outline-none
+                                                        ${isDarkMode ? 'bg-sky-900 text-sky-200 hover:bg-sky-800' : 'bg-sky-100 text-sky-700 hover:bg-sky-200'}
+                                                    `}
+                                                    style={{ boxShadow: 'none', border: 'none', padding: 0 }}
                                                     title="แก้ไขข้อมูลผู้ขาย"
                                                     onClick={e => {
                                                         e.stopPropagation();
