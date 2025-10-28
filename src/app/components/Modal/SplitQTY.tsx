@@ -80,36 +80,37 @@ export default function SplitQTYModal({ isOpen, onClose, selectedPart, token, on
             for (const item of splitQuantities) {
                 const splitData = {
                     pr_list_id: selectedPart.pr_list_id,
-                    qty: item.qty
+                    qty: item.qty,
+                    plant: item.plant
                 };
                 console.log('Sending split data:', splitData);
-                // try {
-                //     const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/split-qty`, {
-                //         method: 'POST',
-                //         headers: {
-                //             'Content-Type': 'application/json',
-                //             Authorization: `Bearer ${token}`
-                //         },
-                //         body: JSON.stringify(splitData)
-                //     });
-                //     if (response.ok) {
-                //         successCount++;
-                //     } else {
-                //         errorCount++;
-                //         const errText = await response.text();
-                //         errorDetails.push(`qty: ${item.qty} - ${errText}`);
-                //     }
-                // } catch (err) {
-                //     errorCount++;
-                //     errorDetails.push(`qty: ${item.qty} - ${err instanceof Error ? err.message : 'เกิดข้อผิดพลาด'}`);
-                // }
+                try {
+                    const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/split-qty`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify(splitData)
+                    });
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        const errText = await response.text();
+                        errorDetails.push(`qty: ${item.qty} - ${errText}`);
+                    }
+                } catch (err) {
+                    errorCount++;
+                    errorDetails.push(`qty: ${item.qty} - ${err instanceof Error ? err.message : 'เกิดข้อผิดพลาด'}`);
+                }
             }
             let message = `แบ่งจำนวนสำเร็จ ${successCount} รายการ`;
             if (errorCount > 0) {
                 message += `, ล้มเหลว ${errorCount} รายการ\nรายละเอียด:\n${errorDetails.join('\n')}`;
             }
-            // alert(message);
-            // onClose();
+            alert(message);
+            onClose();
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error('Error splitting quantity:', error);

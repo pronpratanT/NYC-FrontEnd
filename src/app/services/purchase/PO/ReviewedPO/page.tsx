@@ -478,7 +478,7 @@ export default function ReviewedPOPage() {
                                             {!(poData.approved_by || poData.rejected_by) && (
                                                 <button
                                                     type="button"
-                                                    className={`w-9 h-9 rounded-full flex items-center justify-center focus:outline-none
+                                                    className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer focus:outline-none
                                                         ${isDarkMode ? 'bg-sky-900 text-sky-200 hover:bg-sky-800' : 'bg-sky-100 text-sky-700 hover:bg-sky-200'}
                                                     `}
                                                     style={{ boxShadow: 'none', border: 'none', padding: 0 }}

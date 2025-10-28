@@ -23,6 +23,7 @@ import { LuSquareSplitHorizontal } from 'react-icons/lu';
 import { IoIosCheckmark } from "react-icons/io";
 import { FaRegClock } from "react-icons/fa6";
 import { VscGroupByRefType } from "react-icons/vsc";
+import GroupPRModal from "@/app/components/Modal/Group_PR";
 import { LuUngroup } from "react-icons/lu";
 import { LuGroup } from "react-icons/lu";
 
@@ -91,6 +92,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [approvePrNo, setApprovePrNo] = useState<string | null>(null);
     const [selectedParts, setSelectedParts] = useState<number[]>([]);
     const [multiApprovalModalOpen, setMultiApprovalModalOpen] = useState(false);
+    // Group PR Modal state
+    const [groupPRModalOpen, setGroupPRModalOpen] = useState(false);
 
     // Split QTY Modal states
     const [splitModalOpen, setSplitModalOpen] = useState(false);
@@ -107,9 +110,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
         setSelectedPartNo(part.part_no);
         setSelectedPart(part);
         setModalOpen(true);
-        console.log("Selected part_no:", part.part_no);
-        console.log("Selected part data:", part);
-        console.log("PR Data:", prData);
+        // console.log("Selected part_no:", part.part_no);
+        // console.log("Selected part data:", part);
+        // console.log("PR Data:", prData);
     };
 
     // Check if any parts have "Compared" status
@@ -145,10 +148,28 @@ function ComparePriceContent({ token }: { token: string | null }) {
             });
             if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
             const data = await response.json();
+            // Custom sort: group by part_no, preserve first appearance order
+            if (data.data && Array.isArray(data.data.pr_lists)) {
+                const prLists = data.data.pr_lists;
+                const partNoFirstIndex = new Map();
+                prLists.forEach((item: any, idx: number) => {
+                    if (!partNoFirstIndex.has(item.part_no)) {
+                        partNoFirstIndex.set(item.part_no, idx);
+                    }
+                });
+                prLists.sort((a: any, b: any) => {
+                    const aIdx = partNoFirstIndex.get(a.part_no);
+                    const bIdx = partNoFirstIndex.get(b.part_no);
+                    if (a.part_no === b.part_no) {
+                        return 0;
+                    }
+                    return aIdx - bIdx;
+                });
+            }
             setPrData(data.data);
             // Reset selections when data refreshes
             setSelectedParts([]);
-            console.log("Refreshed PR Data:", data.data);
+            // console.log("Refreshed PR Data:", data.data);
         } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message || "เกิดข้อผิดพลาด");
@@ -173,12 +194,33 @@ function ComparePriceContent({ token }: { token: string | null }) {
                 const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                console.log("PRID: ", prId);
-                console.log("Response status:", response.status);
+                // console.log("PRID: ", prId);
+                // console.log("Response status:", response.status);
                 if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
                 const data = await response.json();
+                // Custom sort: group by part_no, preserve first appearance order
+                if (data.data && Array.isArray(data.data.pr_lists)) {
+                    const prLists = data.data.pr_lists;
+                    // Map part_no to first index
+                    const partNoFirstIndex = new Map();
+                    prLists.forEach((item: any, idx: number) => {
+                        if (!partNoFirstIndex.has(item.part_no)) {
+                            partNoFirstIndex.set(item.part_no, idx);
+                        }
+                    });
+                    // Sort: group by part_no, order by first appearance
+                    prLists.sort((a: any, b: any) => {
+                        const aIdx = partNoFirstIndex.get(a.part_no);
+                        const bIdx = partNoFirstIndex.get(b.part_no);
+                        if (a.part_no === b.part_no) {
+                            // If same part_no, preserve original order
+                            return 0;
+                        }
+                        return aIdx - bIdx;
+                    });
+                }
                 setPrData(data.data);
-                console.log("Fetched PR Data: ", data.data);
+                // console.log("Fetched PR Data: ", data.data);
             } catch (err: unknown) {
                 if (err instanceof Error) {
                     setError(err.message || "เกิดข้อผิดพลาด");
@@ -519,7 +561,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <button
                                                 type="button"
                                                 className={`group relative rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
-                                                //onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase")}
+                                                onClick={() => setGroupPRModalOpen(true)}
                                             >
                                                 <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 opacity-100 group-hover:opacity-0">
                                                     <LuUngroup className="w-7 h-7" />
@@ -531,6 +573,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     <LuUngroup className="w-7 h-7" />
                                                 </span>
                                             </button>
+                                            {/* Group PR Modal */}
+                                            <GroupPRModal open={groupPRModalOpen} onClose={() => setGroupPRModalOpen(false)} pr_id={prId} />
                                         </div>
                                     </div>
 
@@ -578,10 +622,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
                                             )}
                                             <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
-                                            <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
-                                            <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-40 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-40 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
-                                            <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-48 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
                                             {departmentId === 10086 && (
@@ -702,10 +746,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     </td>
                                                 )}
                                                 <td className={`px-2 py-3 text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
-                                                <td className={`px-2 py-3 font-medium w-32 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.part_no}</td>
-                                                <td className={`px-2 py-3 font-medium w-32 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.prod_code}</td>
+                                                <td className={`px-2 py-3 font-medium w-40 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.part_no}</td>
+                                                <td className={`px-2 py-3 font-medium w-40 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.prod_code}</td>
                                                 <td className={`px-2 py-3 w-64 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.part_name}</td>
-                                                <td className={`px-2 py-3 w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.objective}</td>
+                                                <td className={`px-2 py-3 w-48 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.objective}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.qty}</td>
                                                 <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.unit}</td>
                                                 {departmentId === 10086 && (
