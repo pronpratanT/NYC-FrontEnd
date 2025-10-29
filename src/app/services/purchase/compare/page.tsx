@@ -1,5 +1,4 @@
 "use client";
-import React from "react";
 
 import RejectPRModal from '../../../components/Modal/Reject_PR';
 import ApprovePRModal from '../../../components/Modal/Approve_PR';
@@ -134,35 +133,21 @@ function ComparePriceContent({ token }: { token: string | null }) {
     // Pagination
     const [page, setPage] = useState(1);
     const rowsPerPage = 10;
-    // Flatten all parts from all groups for pagination
-    const allParts = data.flatMap(group => group.list.map(item => ({ ...item, group })));
-    const totalRows = allParts.length;
+    const totalRows = prData?.pr_lists?.length || 0;
     const totalPages = Math.ceil(totalRows / rowsPerPage);
-    const pagedParts = allParts.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+    const pagedParts = prData?.pr_lists?.slice((page - 1) * rowsPerPage, page * rowsPerPage) || [];
 
-    // Convert List to Part for modal usage
-    const handleItemClick = (part: List & { group: Data }) => {
+    const handleItemClick = (part: Part) => {
         setSelectedPartNo(part.part_no);
-        setSelectedPart({
-            pcl_id: part.pcl_id,
-            pr_list_id: part.id, // Map List.id to pr_list_id
-            part_no: part.part_no,
-            prod_code: part.prod_code,
-            part_name: part.part_name,
-            qty: part.qty,
-            unit: part.unit,
-            stock: part.stock,
-            objective: part.objective,
-            plant: part.plant,
-            vendor: part.vendor,
-            price_per_unit: part.price_per_unit,
-            ordered: part.status // Map status to ordered
-        });
+        setSelectedPart(part);
         setModalOpen(true);
+        // console.log("Selected part_no:", part.part_no);
+        // console.log("Selected part data:", part);
+        // console.log("PR Data:", prData);
     };
 
-    // Use grouped data only
-    const hasComparedParts = allParts.some(part => part.status === 'Compared');
+    // Check if any parts have "Compared" status
+    const hasComparedParts = prData?.pr_lists?.some(part => part.ordered === 'Compared') || false;
 
     // Handle checkbox selection
     const handlePartSelection = (pclId: number, checked: boolean) => {
@@ -176,7 +161,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     // Handle select all checkbox
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            const comparedParts = allParts.filter(part => part.status === 'Compared').map(part => part.pcl_id);
+            const comparedParts = prData?.pr_lists?.filter(part => part.ordered === 'Compared').map(part => part.pcl_id) || [];
             setSelectedParts(comparedParts);
         } else {
             setSelectedParts([]);
@@ -184,66 +169,44 @@ function ComparePriceContent({ token }: { token: string | null }) {
     };
 
     // Function to refresh data after PO creation
-    // const handleRefreshData = async () => {
-    //     if (!prId || !token) return;
-
-    //     try {
-    //         setError("");
-    //         const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
-    //             headers: { Authorization: `Bearer ${token}` }
-    //         });
-    //         if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
-    //         const data = await response.json();
-    //         // Custom sort: group by part_no, preserve first appearance order
-    //         if (data.data && Array.isArray(data.data.pr_lists)) {
-    //             const prLists = data.data.pr_lists;
-    //             const partNoFirstIndex = new Map();
-    //             prLists.forEach((item: any, idx: number) => {
-    //                 if (!partNoFirstIndex.has(item.part_no)) {
-    //                     partNoFirstIndex.set(item.part_no, idx);
-    //                 }
-    //             });
-    //             prLists.sort((a: any, b: any) => {
-    //                 const aIdx = partNoFirstIndex.get(a.part_no);
-    //                 const bIdx = partNoFirstIndex.get(b.part_no);
-    //                 if (a.part_no === b.part_no) {
-    //                     return 0;
-    //                 }
-    //                 return aIdx - bIdx;
-    //             });
-    //         }
-    //         setPrData(data.data);
-    //         // Reset selections when data refreshes
-    //         setSelectedParts([]);
-    //         // console.log("Refreshed PR Data:", data.data);
-    //     } catch (err: unknown) {
-    //         if (err instanceof Error) {
-    //             setError(err.message || "เกิดข้อผิดพลาด");
-    //         } else {
-    //             setError("เกิดข้อผิดพลาด");
-    //         }
-    //     }
-    // };
-
     const handleRefreshData = async () => {
         if (!prId || !token) return;
 
         try {
-            setLoading(true);
             setError("");
-            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pcl/group?prId=${prId}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error("Failed to fetch groups");
-            const result = await response.json();
-            console.log("Fetched groups data:", result);
-            // ปรับให้รองรับโครงสร้างข้อมูลที่แตกต่างกัน
-            setData(result.data || result.groups || result || []);
-        } catch (error) {
-            setError("Error fetching groups");
-            console.error("Error fetching groups:", error);
-        } finally {
-            setLoading(false);
+            if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
+            const data = await response.json();
+            // Custom sort: group by part_no, preserve first appearance order
+            if (data.data && Array.isArray(data.data.pr_lists)) {
+                const prLists = data.data.pr_lists;
+                const partNoFirstIndex = new Map();
+                prLists.forEach((item: any, idx: number) => {
+                    if (!partNoFirstIndex.has(item.part_no)) {
+                        partNoFirstIndex.set(item.part_no, idx);
+                    }
+                });
+                prLists.sort((a: any, b: any) => {
+                    const aIdx = partNoFirstIndex.get(a.part_no);
+                    const bIdx = partNoFirstIndex.get(b.part_no);
+                    if (a.part_no === b.part_no) {
+                        return 0;
+                    }
+                    return aIdx - bIdx;
+                });
+            }
+            setPrData(data.data);
+            // Reset selections when data refreshes
+            setSelectedParts([]);
+            // console.log("Refreshed PR Data:", data.data);
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || "เกิดข้อผิดพลาด");
+            } else {
+                setError("เกิดข้อผิดพลาด");
+            }
         }
     };
 
@@ -303,32 +266,32 @@ function ComparePriceContent({ token }: { token: string | null }) {
     }, [prId, token]);
 
     useEffect(() => {
-        if (!prId) {
-            setError("ไม่พบ PR ID");
-            setLoading(false);
-            return;
-        }
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                setError("");
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pcl/group?prId=${prId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error("Failed to fetch groups");
-                const result = await response.json();
-                console.log("Fetched groups data:", result);
-                // ปรับให้รองรับโครงสร้างข้อมูลที่แตกต่างกัน
-                setData(result.data || result.groups || result || []);
-            } catch (error) {
-                setError("Error fetching groups");
-                console.error("Error fetching groups:", error);
-            } finally {
+            if (!prId) {
+                setError("ไม่พบ PR ID");
                 setLoading(false);
+                return;
             }
-        };
-        fetchData();
-    }, [prId, token]);
+            const fetchData = async () => {
+                try {
+                    setLoading(true);
+                    setError("");
+                    const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pcl/group?prId=${prId}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (!response.ok) throw new Error("Failed to fetch groups");
+                    const result = await response.json();
+                    // console.log("Fetched groups data:", result);
+                    // ปรับให้รองรับโครงสร้างข้อมูลที่แตกต่างกัน
+                    setData(result.data || result.groups || result || []);
+                } catch (error) {
+                    setError("Error fetching groups");
+                    console.error("Error fetching groups:", error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchData();
+        }, [prId, token]);
 
     const handleApprove = async () => {
         if (!prId) {
@@ -453,24 +416,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
     }
 
     // Split QTY Modal functions
-    const handleSplitQtyClick = (part: List & { group: Data }) => {
-        // Convert to Part format for modal
-        const partForModal: Part = {
-            pcl_id: part.pcl_id,
-            pr_list_id: part.id,
-            part_no: part.part_no,
-            prod_code: part.prod_code,
-            part_name: part.part_name,
-            qty: part.qty,
-            unit: part.unit,
-            stock: part.stock,
-            objective: part.objective,
-            plant: part.plant,
-            vendor: part.vendor,
-            price_per_unit: part.price_per_unit,
-            ordered: part.status
-        };
-        setSelectedSplitPart(partForModal);
+    const handleSplitQtyClick = (part: Part) => {
+        setSelectedSplitPart(part);
         setSplitModalOpen(true);
     };
 
@@ -594,7 +541,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-orange-300 text-bold' : 'text-orange-500'}`} />
                                             รอแผนกจัดซื้ออนุมัติ
                                         </span>
-                                    ) : prData.count_ordered === allParts.length ? (
+                                    ) : prData.count_ordered === (prData.pr_lists?.length ?? 0) ? (
                                         // Green - Complete (เสร็จสมบูรณ์)
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/50 text-green-300' : 'bg-green-50 border-green-500 text-green-900'}`}>
                                             <svg className={`w-3 h-3 ${isDarkMode ? 'text-green-300' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -647,8 +594,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
                                             <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-300 bg-emerald-900/30 border-emerald-600/30' : 'text-green-700 bg-green-50 border-green-200'}`}>
                                                 {prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at
-                                                    ? `${allParts.length} รายการ`
-                                                    : `ดำเนินการ ${prData.count_ordered} / ${allParts.length} รายการ`
+                                                    ? `${prData.pr_lists?.length ?? 0} รายการ`
+                                                    : `ดำเนินการ ${prData.count_ordered} / ${prData.pr_lists?.length ?? 0} รายการ`
                                                 }
                                             </span>
                                         </div>
@@ -686,9 +633,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 </span>
                                             </button>
                                             {/* Group PR Modal */}
-                                            <GroupPRModal
-                                                open={groupPRModalOpen}
-                                                onClose={() => setGroupPRModalOpen(false)}
+                                            <GroupPRModal 
+                                                open={groupPRModalOpen} 
+                                                onClose={() => setGroupPRModalOpen(false)} 
                                                 pr_id={prId ?? ''}
                                                 pr_no={prData?.pr_no ?? ''}
                                             />
@@ -711,15 +658,15 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     )}
                                 </div>
                             </div>
-                            <div className="overflow-x-auto shadow-lg backdrop-blur-sm">
-                                <table className="w-full text-sm table-auto">
+                            <div className="overflow-visible">
+                                <table className="min-w-full text-sm overflow-visible">
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
                                             {/* Show split/checkbox column only if at least one row is 'Compared' or 'pending' */}
-                                            {allParts.some(part => part.status === 'Compared' || part.status === 'pending') && (
+                                            {prData?.pr_lists?.some(part => part.ordered === 'Compared' || part.ordered === 'pending') && (
                                                 <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                                                     {/* Header: show select all only if there is at least one Compared row */}
-                                                    {allParts.some(part => part.status === 'Compared') ? (
+                                                    {prData?.pr_lists?.some(part => part.ordered === 'Compared') ? (
                                                         <input
                                                             type="checkbox"
                                                             className={`w-4 h-4 rounded border-2 transition-all duration-200 cursor-pointer ${isDarkMode
@@ -727,8 +674,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 : 'border-gray-300 bg-white text-sky-600 focus:ring-2 focus:ring-sky-500/50 checked:bg-sky-600 checked:border-sky-600'
                                                                 }`}
                                                             checked={
-                                                                allParts.filter(part => part.status === 'Compared').length > 0 &&
-                                                                allParts.filter(part => part.status === 'Compared').every(part => selectedParts.includes(part.pcl_id))
+                                                                prData?.pr_lists?.filter(part => part.ordered === 'Compared').length > 0 &&
+                                                                prData?.pr_lists?.filter(part => part.ordered === 'Compared').every(part => selectedParts.includes(part.pcl_id))
                                                             }
                                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                                         />
@@ -755,228 +702,130 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
                                         </tr>
                                     </thead>
-                                    <tbody className={`divide-y divide-opacity-30 transition-all duration-200 ${isDarkMode ? 'bg-slate-800/20 divide-slate-700/30' : 'bg-white/80 divide-gray-200/40'}`}>
-                                        {/* Render group header and notes before each group's list */}
-                                        {(() => {
-                                            const groupIndexes: { [groupId: number]: number } = {};
-                                            pagedParts.forEach((item, idx) => {
-                                                if (groupIndexes[item.group.id] === undefined) {
-                                                    groupIndexes[item.group.id] = idx;
-                                                }
-                                            });
-
-                                            return pagedParts.map((part, idx) => {
-                                                const isFirstInGroup = groupIndexes[part.group.id] === idx;
-                                                return (
-                                                    <React.Fragment key={part.part_no + '-frag-' + ((page - 1) * rowsPerPage + idx)}>
-                                                        {isFirstInGroup && (
-                                                            <>
-                                                                <tr key={`group-header-${part.group.id}`}
-                                                                    className={`border-t-4 shadow-sm ${isDarkMode ? 'border-slate-500/60 bg-gradient-to-r from-slate-700/80 via-slate-800/80 to-slate-700/80 backdrop-blur-sm' : 'border-green-400/60 bg-gradient-to-r from-green-50/80 via-green-100/80 to-green-50/80 backdrop-blur-sm'}`}
-                                                                >
-                                                                    <td colSpan={
-                                                                        (hasComparedParts ? 1 : 0) +
-                                                                        (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
-                                                                        12
-                                                                    } className="py-4 px-6 font-bold text-base align-middle">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className={`w-4 h-4 rounded-full ${isDarkMode ? 'bg-gradient-to-br from-sky-400 to-cyan-500' : 'bg-gradient-to-br from-green-500 to-emerald-600'} shadow-md flex items-center justify-center`}>
-                                                                                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    <tbody className={`divide-y transition-all duration-150 ${isDarkMode ? 'bg-slate-900/50 divide-slate-700/50 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-white divide-green-100 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
+                                        {pagedParts.map((part, idx) => (
+                                            <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
+                                                className={`transition-all duration-150 ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-green-50'} ${!(prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                                onClick={() => {
+                                                    if (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) {
+                                                        handleItemClick(part);
+                                                    }
+                                                }}
+                                            >
+                                                {/* Show split/checkbox cell only if at least one row is 'Compared' or 'pending' */}
+                                                {prData?.pr_lists?.some(p => p.ordered === 'Compared' || p.ordered === 'pending') && (
+                                                    <td className={`px-2 py-3 text-center w-12`}>
+                                                        {part.ordered === 'Compared' ? (
+                                                            <input
+                                                                type="checkbox"
+                                                                className={`w-4 h-4 rounded border-2 transition-all duration-200 ${isDarkMode
+                                                                    ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked-border-blue-500 hover:border-blue-400'
+                                                                    : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked-border-blue-600 hover:border-blue-400'
+                                                                    }`}
+                                                                checked={selectedParts.includes(part.pcl_id)}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handlePartSelection(part.pcl_id, e.target.checked);
+                                                                }}
+                                                            />
+                                                        ) : part.ordered === 'pending' ? (
+                                                            <button
+                                                                type="button"
+                                                                className={`p-2 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-blue-900/30 border border-blue-700 text-blue-300 hover:bg-blue-800/60' : 'bg-blue-100 border border-blue-300 text-blue-700 hover:bg-blue-200'}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleSplitQtyClick(part);
+                                                                }}
+                                                                title="แบ่งจำนวน"
+                                                            >
+                                                                <LuSquareSplitHorizontal className="w-4 h-4" />
+                                                            </button>
+                                                        ) : null}
+                                                    </td>
+                                                )}
+                                                {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
+                                                    <td className={`px-2 py-3 text-center w-16`}>
+                                                        <div className="flex items-center justify-center">
+                                                            {(() => {
+                                                                switch (part.ordered) {
+                                                                    case 'pending':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-yellow-900/60 via-yellow-800/50 to-yellow-900/60 border-yellow-700/60' : 'from-yellow-50 via-yellow-100 to-yellow-50 border-yellow-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
                                                                             </div>
-                                                                            <span className={`tracking-wide font-extrabold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                                กลุ่ม: {part.group.group_name}
-                                                                            </span>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                                {part.group.note && part.group.note.length > 0 && (
-                                                                    <tr key={`group-note-${part.group.id}`}
-                                                                        className={`${isDarkMode ? 'bg-slate-800/50 border-slate-600/40' : 'bg-yellow-50/70 border-yellow-200/40'}`}
-                                                                    >
-                                                                        <td colSpan={
-                                                                            (hasComparedParts ? 1 : 0) +
-                                                                            (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
-                                                                            12
-                                                                        } className={`px-6 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                                                                                </svg>
-                                                                                <span className="font-medium">หมายเหตุ: {part.group.note.map(n => n.note).join(', ')}</span>
+                                                                        );
+                                                                    case 'Compared':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-blue-900/60 via-blue-800/50 to-blue-900/60 border-blue-700/60' : 'from-blue-50 via-blue-100 to-blue-50 border-blue-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>compared</span>
                                                                             </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
-                                                            className={`transition-all duration-300 group border-b border-opacity-20 ${!(prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086)
-                                                                ? 'cursor-not-allowed opacity-50'
-                                                                : 'cursor-pointer hover:shadow-md'
-                                                                } ${isDarkMode
-                                                                    ? 'bg-slate-800/20 hover:bg-slate-700/40 hover:shadow-slate-900/20 border-slate-700/30'
-                                                                    : 'bg-white/70 hover:bg-green-100/50 hover:shadow-green-900/10 border-gray-200/50'
-                                                                }`}
-                                                            onClick={() => {
-                                                                if (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) {
-                                                                    handleItemClick(part);
+                                                                        );
+                                                                    case 'Approved':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-green-900/60 via-green-800/50 to-green-900/60 border-green-700/60' : 'from-green-50 via-green-100 to-green-50 border-green-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Rejected':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>rejected</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'PO Created':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-teal-900/60 via-teal-800/50 to-teal-900/60 border-teal-700/60' : 'from-teal-50 via-teal-100 to-teal-50 border-teal-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-teal-400' : 'bg-teal-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>po created</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Po Approved':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-purple-900/60 via-purple-800/50 to-purple-900/60 border-purple-700/60' : 'from-purple-50 via-purple-100 to-purple-50 border-purple-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>po approved</span>
+                                                                            </div>
+                                                                        );
+                                                                    case 'Po Rejected':
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>po rejected</span>
+                                                                            </div>
+                                                                        );
+                                                                    default:
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-gray-900/50 via-gray-800/40 to-gray-900/50 border-gray-700/50' : 'from-gray-50 via-gray-100 to-gray-50 border-gray-300'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-gray-400' : 'bg-gray-500'}`}></div>
+                                                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{part.ordered || '-'}</span>
+                                                                            </div>
+                                                                        );
                                                                 }
-                                                            }}
-                                                        >
-                                                            {/* Show split/checkbox cell only if at least one row is 'Compared' or 'pending' */}
-                                                            {allParts.some(p => p.status === 'Compared' || p.status === 'pending') && (
-                                                                <td className={`px-2 py-3 text-center w-12`}>
-                                                                    {part.status === 'Compared' ? (
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            className={`w-4 h-4 rounded border-2 transition-all duration-200 ${isDarkMode
-                                                                                ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked-border-blue-500 hover:border-blue-400'
-                                                                                : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked-border-blue-600 hover:border-blue-400'
-                                                                                }`}
-                                                                            checked={selectedParts.includes(part.pcl_id)}
-                                                                            onChange={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handlePartSelection(part.pcl_id, e.target.checked);
-                                                                            }}
-                                                                        />
-                                                                    ) : part.status === 'pending' ? (
-                                                                        <button
-                                                                            type="button"
-                                                                            className={`p-2 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-blue-900/30 border border-blue-700 text-blue-300 hover:bg-blue-800/60' : 'bg-blue-100 border border-blue-300 text-blue-700 hover:bg-blue-200'}`}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleSplitQtyClick(part);
-                                                                            }}
-                                                                            title="แบ่งจำนวน"
-                                                                        >
-                                                                            <LuSquareSplitHorizontal className="w-4 h-4" />
-                                                                        </button>
-                                                                    ) : null}
-                                                                </td>
-                                                            )}
-                                                            {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                                                <td className={`px-2 py-3 text-center w-16`}>
-                                                                    <div className="flex items-center justify-center">
-                                                                        {(() => {
-                                                                            switch (part.status) {
-                                                                                case 'pending':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-yellow-900/60 via-yellow-800/50 to-yellow-900/60 border-yellow-700/60' : 'from-yellow-50 via-yellow-100 to-yellow-50 border-yellow-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Compared':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-blue-900/60 via-blue-800/50 to-blue-900/60 border-blue-700/60' : 'from-blue-50 via-blue-100 to-blue-50 border-blue-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>compared</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Approved':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-green-900/60 via-green-800/50 to-green-900/60 border-green-700/60' : 'from-green-50 via-green-100 to-green-50 border-green-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Rejected':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>rejected</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'PO Created':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-teal-900/60 via-teal-800/50 to-teal-900/60 border-teal-700/60' : 'from-teal-50 via-teal-100 to-teal-50 border-teal-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-teal-400' : 'bg-teal-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>po created</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Po Approved':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-purple-900/60 via-purple-800/50 to-purple-900/60 border-purple-700/60' : 'from-purple-50 via-purple-100 to-purple-50 border-purple-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>po approved</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Po Rejected':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>po rejected</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                default:
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-gray-900/50 via-gray-800/40 to-gray-900/50 border-gray-700/50' : 'from-gray-50 via-gray-100 to-gray-50 border-gray-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-gray-400' : 'bg-gray-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{part.status || '-'}</span>
-                                                                                        </div>
-                                                                                    );
-                                                                            }
-                                                                        })()}
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                            <td className={`px-3 py-4 text-center w-12 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/40 text-slate-200 group-hover:bg-slate-600/50' : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'}`}>
-                                                                    {(page - 1) * rowsPerPage + idx + 1}
-                                                                </span>
-                                                            </td>
-                                                            <td className={`px-3 py-4 font-mono font-semibold w-40 text-left align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="tracking-wide">{part.part_no}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className={`px-3 py-4 font-mono font-medium w-40 text-left align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                <span className="tracking-wide">{part.prod_code}</span>
-                                                            </td>
-                                                            <td className={`px-3 py-4 w-64 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                <div className="font-medium leading-relaxed">{part.part_name}</div>
-                                                            </td>
-                                                            <td className={`px-3 py-4 w-48 align-middle ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                                <div className="text-sm leading-relaxed">{part.objective}</div>
-                                                            </td>
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/30 border border-slate-600/50 group-hover:bg-slate-600/40' : 'bg-gray-50 border border-gray-200 group-hover:bg-gray-100'}`}>
-                                                                    {part.qty}
-                                                                </span>
-                                                            </td>
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                                <span className="text-sm font-semibold">{part.unit}</span>
-                                                            </td>
-                                                            {departmentId === 10086 && (
-                                                                <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                    <div className="text-sm font-semibold">{part.vendor}</div>
-                                                                </td>
-                                                            )}
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${part.stock > 0
-                                                                    ? isDarkMode
-                                                                        ? 'bg-green-900/30 text-green-400 border border-green-700/50'
-                                                                        : 'bg-green-50 text-green-700 border border-green-200'
-                                                                    : isDarkMode
-                                                                        ? 'bg-red-900/30 text-red-400 border border-red-700/50'
-                                                                        : 'bg-red-50 text-red-700 border border-red-200'
-                                                                    }`}>
-                                                                    {part.stock}
-                                                                </span>
-                                                            </td>
-                                                            {departmentId === 10086 && (
-                                                                <td className={`px-3 py-4 w-16 text-right align-middle font-mono font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                    <div className="text-sm">{part.price_per_unit}</div>
-                                                                </td>
-                                                            )}
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                                <span className="text-sm font-semibold">{part.plant}</span>
-                                                            </td>
-                                                        </tr>
-                                                    </React.Fragment>
-                                                );
-                                            });
-                                        })()}
+                                                            })()}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                <td className={`px-2 py-3 text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
+                                                <td className={`px-2 py-3 font-medium w-40 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.part_no}</td>
+                                                <td className={`px-2 py-3 font-medium w-40 text-left ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{part.prod_code}</td>
+                                                <td className={`px-2 py-3 w-64 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.part_name}</td>
+                                                <td className={`px-2 py-3 w-48 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.objective}</td>
+                                                <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.qty}</td>
+                                                <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.unit}</td>
+                                                {departmentId === 10086 && (
+                                                    <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.vendor}</td>
+                                                )}
+                                                <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.stock}</td>
+                                                {departmentId === 10086 && (
+                                                    <td className={`px-2 py-3 w-16 text-right ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.price_per_unit}</td>
+                                                )}
+                                                <td className={`px-2 py-3 w-16 text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{part.plant}</td>
+                                            </tr>
+                                        ))}
                                         {/* Pagination row */}
                                         {totalRows > rowsPerPage && (
                                             <tr>
@@ -1069,8 +918,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         </div>
 
                                         <div className="space-y-3">
-                                            {allParts
-                                                .filter(part => selectedParts.includes(part.pcl_id))
+                                            {prData.pr_lists
+                                                ?.filter(part => selectedParts.includes(part.pcl_id))
                                                 .map((part, idx) => (
                                                     <div key={part.pcl_id} className={`p-4 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
                                                         <div className="flex items-center justify-between">
