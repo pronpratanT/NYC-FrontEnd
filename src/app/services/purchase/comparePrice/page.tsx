@@ -4,17 +4,20 @@ import React from "react";
 import RejectPRModal from '../../../components/Modal/Reject_PR';
 import ApprovePRModal from '../../../components/Modal/Approve_PR';
 import SplitQTYModal from '../../../components/Modal/SplitQTY';
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 
 import { useToken } from "../../../context/TokenContext";
 import { useTheme } from "../../../components/ThemeProvider";
 import { useUser } from "@/app/context/UserContext";
+import { useSidebar } from "../../../context/SidebarContext";
 import Sidebar from "../../../components/sidebar";
 import Header from "../../../components/header";
 import PRModal from '../../../components/Modal/PRModal';
-import { useSidebar } from "../../../context/SidebarContext";
+import GroupPRModal from "@/app/components/Modal/Group_PR";
+import FreeItemsModal from "@/app/components/Modal/Free_Item_Modal";
 
 import { BsCalendar2Event } from "react-icons/bs";
 import { MdOutlineGroups3 } from "react-icons/md";
@@ -23,10 +26,12 @@ import { FaXmark } from "react-icons/fa6";
 import { LuSquareSplitHorizontal } from 'react-icons/lu';
 import { IoIosCheckmark } from "react-icons/io";
 import { FaRegClock } from "react-icons/fa6";
-import { VscGroupByRefType } from "react-icons/vsc";
-import GroupPRModal from "@/app/components/Modal/Group_PR";
+import { GoGift } from "react-icons/go";
+import { SlOptionsVertical } from "react-icons/sl";
 import { LuUngroup } from "react-icons/lu";
 import { LuGroup } from "react-icons/lu";
+import { PiNotepadBold } from "react-icons/pi";
+import { FiFolder } from "react-icons/fi";
 
 type Part = {
     pcl_id: number;
@@ -91,6 +96,14 @@ type List = {
     price_per_unit: number;
     plant: string;
     status: string;
+    free_item: FreeItems[];
+}
+
+type FreeItems = {
+    po_list_id: number;
+    part_no: string;
+    qty: number;
+    remark: string;
 }
 
 function ComparePriceContent({ token }: { token: string | null }) {
@@ -111,7 +124,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
 
     // const [modalOpen, setModalOpen] = useState(false);
     // const [modalPart, setModalPart] = useState<Part | null>(null);
-    const [data, setData] = useState<Data[]>([]);
+    const [data, setData] = useState<Data[] | null>([]);
     const [prData, setPrData] = useState<PRs | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -127,6 +140,13 @@ function ComparePriceContent({ token }: { token: string | null }) {
     // Group PR Modal state
     const [groupPRModalOpen, setGroupPRModalOpen] = useState(false);
 
+    // Free item modal state
+    const [freeItemModalOpen, setFreeItemModalOpen] = useState(false);
+    const [selectedFreeItemPart, setSelectedFreeItemPart] = useState<any>(null);
+
+    // dropdown open
+    const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+
     // Split QTY Modal states
     const [splitModalOpen, setSplitModalOpen] = useState(false);
     const [selectedSplitPart, setSelectedSplitPart] = useState<Part | null>(null);
@@ -135,10 +155,25 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const [page, setPage] = useState(1);
     const rowsPerPage = 10;
     // Flatten all parts from all groups for pagination
-    const allParts = data.flatMap(group => group.list.map(item => ({ ...item, group })));
+    const allParts = Array.isArray(data)
+        ? data
+            .filter(group => Array.isArray(group.list))
+            .flatMap(group => group.list.map(item => ({ ...item, group })))
+        : [];
     const totalRows = allParts.length;
     const totalPages = Math.ceil(totalRows / rowsPerPage);
     const pagedParts = allParts.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+    // --- Hydration-safe date formatting (must be before any return/conditional) ---
+    const [formattedDate, setFormattedDate] = useState('');
+    const [formattedTime, setFormattedTime] = useState('');
+    useEffect(() => {
+        if (prData?.pr_date) {
+            const date = new Date(prData.pr_date);
+            setFormattedDate(date.toLocaleDateString('th-TH'));
+            setFormattedTime(date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+        }
+    }, [prData?.pr_date]);
 
     // Convert List to Part for modal usage
     const handleItemClick = (part: List & { group: Data }) => {
@@ -182,6 +217,42 @@ function ComparePriceContent({ token }: { token: string | null }) {
             setSelectedParts([]);
         }
     };
+
+    // Ref for dropdown to detect outside click
+    const dropdownRef = useRef<HTMLDivElement | null>(null);
+    const buttonRef = useRef<{ [key: number]: HTMLButtonElement | null }>({});
+    const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        if (openDropdown !== null && buttonRef.current[openDropdown]) {
+            const button = buttonRef.current[openDropdown];
+            if (button) {
+                const rect = button.getBoundingClientRect();
+                setDropdownPosition({
+                    top: rect.top + window.scrollY,
+                    left: rect.right + window.scrollX + 8
+                });
+            }
+        } else {
+            setDropdownPosition(null);
+        }
+    }, [openDropdown]);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node)
+            ) {
+                setOpenDropdown(null); // ฟังก์ชันนี้ต้องปิด dropdown
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [dropdownRef]);
 
     // Function to refresh data after PO creation
     // const handleRefreshData = async () => {
@@ -229,21 +300,33 @@ function ComparePriceContent({ token }: { token: string | null }) {
         if (!prId || !token) return;
 
         try {
-            setLoading(true);
             setError("");
             const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pcl/group?prId=${prId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error("Failed to fetch groups");
+            if (!response.ok) {
+                if (response.status === 401) {
+                    setError("ไม่ได้รับอนุญาต กรุณา login ใหม่ หรือขอสิทธิ์การเข้าถึง");
+                } else {
+                    setError(`เกิดข้อผิดพลาด (${response.status}): ไม่สามารถดึงข้อมูลกลุ่มได้`);
+                }
+                setData([]);
+                return;
+            }
             const result = await response.json();
             console.log("Fetched groups data:", result);
             // ปรับให้รองรับโครงสร้างข้อมูลที่แตกต่างกัน
-            setData(result.data || result.groups || result || []);
+            const groups = result.data || result.groups || result || [];
+            if (!Array.isArray(groups)) {
+                setError("ข้อมูลกลุ่มไม่ถูกต้อง");
+                setData([]);
+            } else {
+                setData(groups);
+            }
         } catch (error) {
             setError("Error fetching groups");
+            setData([]);
             console.error("Error fetching groups:", error);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -258,71 +341,44 @@ function ComparePriceContent({ token }: { token: string | null }) {
                 setError("");
                 setLoading(true);
                 if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-                // fetch ข้อมูล PR พร้อม header Authorization
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
+
+                // Fetch PR data
+                const prRes = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                // console.log("PRID: ", prId);
-                // console.log("Response status:", response.status);
-                if (!response.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
-                const data = await response.json();
-                // Custom sort: group by part_no, preserve first appearance order
-                if (data.data && Array.isArray(data.data.pr_lists)) {
-                    const prLists = data.data.pr_lists;
-                    // Map part_no to first index
+                if (!prRes.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
+                const prJson = await prRes.json();
+                if (prJson.data && Array.isArray(prJson.data.pr_lists)) {
+                    const prLists = prJson.data.pr_lists;
                     const partNoFirstIndex = new Map();
                     prLists.forEach((item: any, idx: number) => {
                         if (!partNoFirstIndex.has(item.part_no)) {
                             partNoFirstIndex.set(item.part_no, idx);
                         }
                     });
-                    // Sort: group by part_no, order by first appearance
                     prLists.sort((a: any, b: any) => {
                         const aIdx = partNoFirstIndex.get(a.part_no);
                         const bIdx = partNoFirstIndex.get(b.part_no);
-                        if (a.part_no === b.part_no) {
-                            // If same part_no, preserve original order
-                            return 0;
-                        }
+                        if (a.part_no === b.part_no) return 0;
                         return aIdx - bIdx;
                     });
                 }
-                setPrData(data.data);
-                // console.log("Fetched PR Data: ", data.data);
+                setPrData(prJson.data);
+
+                // Fetch group data
+                const groupRes = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pcl/group?prId=${prId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!groupRes.ok) throw new Error("Failed to fetch groups");
+                const groupJson = await groupRes.json();
+                console.log("Fetched groups data:", groupJson);
+                setData(groupJson.data || groupJson.groups || groupJson || []);
             } catch (err: unknown) {
                 if (err instanceof Error) {
                     setError(err.message || "เกิดข้อผิดพลาด");
                 } else {
                     setError("เกิดข้อผิดพลาด");
                 }
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, [prId, token]);
-
-    useEffect(() => {
-        if (!prId) {
-            setError("ไม่พบ PR ID");
-            setLoading(false);
-            return;
-        }
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                setError("");
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pcl/group?prId=${prId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error("Failed to fetch groups");
-                const result = await response.json();
-                console.log("Fetched groups data:", result);
-                // ปรับให้รองรับโครงสร้างข้อมูลที่แตกต่างกัน
-                setData(result.data || result.groups || result || []);
-            } catch (error) {
-                setError("Error fetching groups");
-                console.error("Error fetching groups:", error);
             } finally {
                 setLoading(false);
             }
@@ -480,6 +536,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
 
     if (loading) return <div>กำลังโหลดข้อมูล...</div>;
     if (error) return <div style={{ color: "red" }}>{error}</div>;
+    if (!Array.isArray(data)) return <div style={{ color: "red" }}>ไม่พบข้อมูลกลุ่มหรือข้อมูลผิดรูปแบบ</div>;
 
     return (
         <div className="min-h-screen">
@@ -567,6 +624,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 </div>
                                 <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no}</div>
                                 <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                    {/* Hydration-safe date rendering */}
+                                    วันที่ทำ PR: {formattedDate} เวลา: {formattedTime}
+                                    <br />
                                     สถานะ : {' '}
                                     {prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at ? (
                                         // Red - ปฏิเสธ (Rejected)
@@ -663,13 +723,6 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     อนุมัติหลายรายการ ({selectedParts.length})
                                                 </button>
                                             )}
-                                            {/* <button
-                                                type="button"
-                                                className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
-                                                onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase")}
-                                            >
-                                                เลือก PR ใหม่
-                                            </button> */}
                                             <button
                                                 type="button"
                                                 className={`group relative rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
@@ -691,6 +744,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 onClose={() => setGroupPRModalOpen(false)}
                                                 pr_id={prId ?? ''}
                                                 pr_no={prData?.pr_no ?? ''}
+                                                onSuccess={handleRefreshData}
                                             />
                                         </div>
                                     </div>
@@ -767,214 +821,341 @@ function ComparePriceContent({ token }: { token: string | null }) {
 
                                             return pagedParts.map((part, idx) => {
                                                 const isFirstInGroup = groupIndexes[part.group.id] === idx;
-                                                return (
-                                                    <React.Fragment key={part.part_no + '-frag-' + ((page - 1) * rowsPerPage + idx)}>
-                                                        {isFirstInGroup && (
-                                                            <>
-                                                                <tr key={`group-header-${part.group.id}`}
-                                                                    className={`border-t-4 shadow-sm ${isDarkMode ? 'border-slate-500/60 bg-gradient-to-r from-slate-700/80 via-slate-800/80 to-slate-700/80 backdrop-blur-sm' : 'border-green-400/60 bg-gradient-to-r from-green-50/80 via-green-100/80 to-green-50/80 backdrop-blur-sm'}`}
-                                                                >
-                                                                    <td colSpan={
-                                                                        (hasComparedParts ? 1 : 0) +
-                                                                        (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
-                                                                        12
-                                                                    } className="py-4 px-6 font-bold text-base align-middle">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className={`w-4 h-4 rounded-full ${isDarkMode ? 'bg-gradient-to-br from-sky-400 to-cyan-500' : 'bg-gradient-to-br from-green-500 to-emerald-600'} shadow-md flex items-center justify-center`}>
-                                                                                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                                                            </div>
-                                                                            <span className={`tracking-wide font-extrabold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                                กลุ่ม: {part.group.group_name}
-                                                                            </span>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                                {part.group.note && part.group.note.length > 0 && (
-                                                                    <tr key={`group-note-${part.group.id}`}
-                                                                        className={`${isDarkMode ? 'bg-slate-800/50 border-slate-600/40' : 'bg-yellow-50/70 border-yellow-200/40'}`}
-                                                                    >
-                                                                        <td colSpan={
-                                                                            (hasComparedParts ? 1 : 0) +
-                                                                            (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
-                                                                            12
-                                                                        } className={`px-6 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                                                                                </svg>
-                                                                                <span className="font-medium">หมายเหตุ: {part.group.note.map(n => n.note).join(', ')}</span>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
-                                                            className={`transition-all duration-300 group border-b border-opacity-20 ${!(prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086)
-                                                                ? 'cursor-not-allowed opacity-50'
-                                                                : 'cursor-pointer hover:shadow-md'
-                                                                } ${isDarkMode
-                                                                    ? 'bg-slate-800/20 hover:bg-slate-700/40 hover:shadow-slate-900/20 border-slate-700/30'
-                                                                    : 'bg-white/70 hover:bg-green-100/50 hover:shadow-green-900/10 border-gray-200/50'
-                                                                }`}
-                                                            onClick={() => {
-                                                                if (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) {
-                                                                    handleItemClick(part);
-                                                                }
-                                                            }}
+                                                // Find if this is the last item in the group
+                                                const isLastInGroup = (() => {
+                                                    for (let j = idx + 1; j < pagedParts.length; j++) {
+                                                        if (pagedParts[j].group.id === part.group.id) return false;
+                                                    }
+                                                    return true;
+                                                })();
+
+                                                const rows = [];
+
+                                                if (isFirstInGroup) {
+                                                    rows.push(
+                                                        <tr key={`group-header-${part.group.id}`}
+                                                            className={`shadow-sm ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100 backdrop-blur-sm'}`}
                                                         >
-                                                            {/* Show split/checkbox cell only if at least one row is 'Compared' or 'pending' */}
-                                                            {allParts.some(p => p.status === 'Compared' || p.status === 'pending') && (
-                                                                <td className={`px-2 py-3 text-center w-12`}>
-                                                                    {part.status === 'Compared' ? (
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            className={`w-4 h-4 rounded border-2 transition-all duration-200 ${isDarkMode
-                                                                                ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked-border-blue-500 hover:border-blue-400'
-                                                                                : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked-border-blue-600 hover:border-blue-400'
-                                                                                }`}
-                                                                            checked={selectedParts.includes(part.pcl_id)}
-                                                                            onChange={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handlePartSelection(part.pcl_id, e.target.checked);
-                                                                            }}
-                                                                        />
-                                                                    ) : part.status === 'pending' ? (
-                                                                        <button
-                                                                            type="button"
-                                                                            className={`p-2 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-blue-900/30 border border-blue-700 text-blue-300 hover:bg-blue-800/60' : 'bg-blue-100 border border-blue-300 text-blue-700 hover:bg-blue-200'}`}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleSplitQtyClick(part);
-                                                                            }}
-                                                                            title="แบ่งจำนวน"
-                                                                        >
-                                                                            <LuSquareSplitHorizontal className="w-4 h-4" />
-                                                                        </button>
-                                                                    ) : null}
-                                                                </td>
-                                                            )}
-                                                            {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                                                <td className={`px-2 py-3 text-center w-16`}>
-                                                                    <div className="flex items-center justify-center">
-                                                                        {(() => {
-                                                                            switch (part.status) {
-                                                                                case 'pending':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-yellow-900/60 via-yellow-800/50 to-yellow-900/60 border-yellow-700/60' : 'from-yellow-50 via-yellow-100 to-yellow-50 border-yellow-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Compared':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-blue-900/60 via-blue-800/50 to-blue-900/60 border-blue-700/60' : 'from-blue-50 via-blue-100 to-blue-50 border-blue-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>compared</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Approved':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-green-900/60 via-green-800/50 to-green-900/60 border-green-700/60' : 'from-green-50 via-green-100 to-green-50 border-green-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Rejected':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>rejected</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'PO Created':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-teal-900/60 via-teal-800/50 to-teal-900/60 border-teal-700/60' : 'from-teal-50 via-teal-100 to-teal-50 border-teal-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-teal-400' : 'bg-teal-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>po created</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Po Approved':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-purple-900/60 via-purple-800/50 to-purple-900/60 border-purple-700/60' : 'from-purple-50 via-purple-100 to-purple-50 border-purple-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>po approved</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                case 'Po Rejected':
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>po rejected</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                default:
-                                                                                    return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-gray-900/50 via-gray-800/40 to-gray-900/50 border-gray-700/50' : 'from-gray-50 via-gray-100 to-gray-50 border-gray-300'}`}>
-                                                                                            <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-gray-400' : 'bg-gray-500'}`}></div>
-                                                                                            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{part.status || '-'}</span>
-                                                                                        </div>
-                                                                                    );
-                                                                            }
-                                                                        })()}
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                            <td className={`px-3 py-4 text-center w-12 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/40 text-slate-200 group-hover:bg-slate-600/50' : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'}`}>
-                                                                    {(page - 1) * rowsPerPage + idx + 1}
-                                                                </span>
-                                                            </td>
-                                                            <td className={`px-3 py-4 font-mono font-semibold w-40 text-left align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="tracking-wide">{part.part_no}</span>
+                                                            <td colSpan={
+                                                                (hasComparedParts ? 1 : 0) +
+                                                                (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
+                                                                12
+                                                            } className="py-2.5 px-6 font-bold text-base align-middle">
+                                                                <div className="flex items-center gap-2 px-2 py-0.5">
+                                                                    <span className={`flex items-center justify-center w-6 h-6 rounded-full shadow-sm ${isDarkMode ? 'bg-blue-900/30' : 'bg-green-100'}`}>
+                                                                        <FiFolder className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-200' : 'text-green-600'}`} />
+                                                                    </span>
+                                                                    <span className={`font-bold text-[1.08rem] tracking-wide ${isDarkMode ? 'text-blue-300' : 'text-green-700'}`}>{part.group.group_name}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className={`px-3 py-4 font-mono font-medium w-40 text-left align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                <span className="tracking-wide">{part.prod_code}</span>
+                                                        </tr>
+                                                    );
+                                                }
+
+                                                rows.push(
+                                                    <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
+                                                        className={`transition-all duration-300 group border-b border-opacity-20 ${!(prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086)
+                                                            ? 'cursor-not-allowed opacity-50'
+                                                            : 'cursor-pointer hover:shadow-md'
+                                                            } ${isDarkMode
+                                                                ? 'bg-slate-800/20 hover:bg-slate-700/40 hover:shadow-slate-900/20 border-slate-700/30'
+                                                                : 'bg-white/70 hover:bg-green-100/50 hover:shadow-green-900/10 border-gray-200/50'
+                                                            }`}
+                                                        onClick={() => {
+                                                            if (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) {
+                                                                handleItemClick(part);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {/* Show split/checkbox cell only if at least one row is 'Compared' or 'pending' */}
+                                                        {allParts.some(p => p.status === 'Compared' || p.status === 'pending') && (
+                                                            <td className={`px-2 py-3 text-center w-12`}>
+                                                                {part.status === 'Compared' ? (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className={`w-4 h-4 rounded border-2 transition-all duration-200 ${isDarkMode
+                                                                            ? 'cursor-pointer border-slate-500 bg-slate-700 text-blue-400 focus:ring-2 focus:ring-blue-400/50 checked:bg-blue-500 checked-border-blue-500 hover:border-blue-400'
+                                                                            : 'cursor-pointer border-gray-300 bg-white text-blue-600 focus:ring-2 focus:ring-blue-500/50 checked:bg-blue-600 checked-border-blue-600 hover:border-blue-400'
+                                                                            }`}
+                                                                        checked={selectedParts.includes(part.pcl_id)}
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        onChange={(e) => {
+                                                                            handlePartSelection(part.pcl_id, e.target.checked);
+                                                                        }}
+                                                                    />
+                                                                ) : part.status === 'pending' ? (
+                                                                    <div className="relative inline-block">
+                                                                        <button
+                                                                            ref={el => { buttonRef.current[part.pcl_id] = el; }}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setOpenDropdown(openDropdown === part.pcl_id ? null : part.pcl_id);
+                                                                            }}
+                                                                            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 hover:scale-105 ${isDarkMode
+                                                                                ? 'hover:bg-gray-600 border-gray-600'
+                                                                                : 'hover:bg-slate-100 border-slate-200'
+                                                                                }`}
+                                                                            type="button"
+                                                                        >
+                                                                            <SlOptionsVertical size={18} className={`${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                                                        </button>
+                                                                        {openDropdown === part.pcl_id && dropdownPosition && typeof window !== 'undefined' && createPortal(
+                                                                            <div
+                                                                                ref={dropdownRef}
+                                                                                className={`fixed border-2 rounded-xl shadow-xl z-[9999] min-w-[160px] ${isDarkMode
+                                                                                    ? 'bg-gray-700 border-gray-600'
+                                                                                    : 'bg-white border-slate-200'
+                                                                                    }`}
+                                                                                style={{
+                                                                                    top: `${dropdownPosition.top}px`,
+                                                                                    left: `${dropdownPosition.left}px`,
+                                                                                    transform: 'translateY(-50%)'
+                                                                                }}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                            >
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleSplitQtyClick(part);
+                                                                                        setOpenDropdown(null);
+                                                                                    }}
+                                                                                    className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-t-xl ${isDarkMode
+                                                                                        ? 'text-gray-300 hover:bg-blue-900/30'
+                                                                                        : 'text-slate-700 hover:bg-blue-50'
+                                                                                        }`}
+                                                                                >
+                                                                                    <LuSquareSplitHorizontal size={18} className={isDarkMode ? 'text-blue-400' : 'text-blue-600'} /> แบ่งจำนวน
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setSelectedFreeItemPart(part);
+                                                                                        setFreeItemModalOpen(true);
+                                                                                        setOpenDropdown(null);
+                                                                                    }}
+                                                                                    className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-b-xl ${isDarkMode
+                                                                                        ? 'text-gray-300 hover:bg-emerald-900/30'
+                                                                                        : 'text-slate-700 hover:bg-emerald-50'
+                                                                                        }`}
+                                                                                >
+                                                                                    <GoGift size={18} className={isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} /> เพิ่มของแถม
+                                                                                </button>
+                                                                            </div>,
+                                                                            document.body
+                                                                        )}
+                                                                    </div>
+                                                                ) : null}
                                                             </td>
-                                                            <td className={`px-3 py-4 w-64 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                <div className="font-medium leading-relaxed">{part.part_name}</div>
+                                                        )}
+                                                        {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
+                                                            <td className={`px-2 py-3 text-center w-16`}>
+                                                                <div className="flex items-center justify-center">
+                                                                    {(() => {
+                                                                        switch (part.status) {
+                                                                            case 'pending':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-yellow-900/60 via-yellow-800/50 to-yellow-900/60 border-yellow-700/60' : 'from-yellow-50 via-yellow-100 to-yellow-50 border-yellow-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'Compared':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-blue-900/60 via-blue-800/50 to-blue-900/60 border-blue-700/60' : 'from-blue-50 via-blue-100 to-blue-50 border-blue-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>compared</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'Approved':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-green-900/60 via-green-800/50 to-green-900/60 border-green-700/60' : 'from-green-50 via-green-100 to-green-50 border-green-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'Rejected':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>rejected</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'PO Created':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-teal-900/60 via-teal-800/50 to-teal-900/60 border-teal-700/60' : 'from-teal-50 via-teal-100 to-teal-50 border-teal-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-teal-400' : 'bg-teal-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>po created</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'Po Approved':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-purple-900/60 via-purple-800/50 to-purple-900/60 border-purple-700/60' : 'from-purple-50 via-purple-100 to-purple-50 border-purple-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>po approved</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'Po Rejected':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>po rejected</span>
+                                                                                    </div>
+                                                                                );
+                                                                            default:
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-gray-900/50 via-gray-800/40 to-gray-900/50 border-gray-700/50' : 'from-gray-50 via-gray-100 to-gray-50 border-gray-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-gray-400' : 'bg-gray-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{part.status || '-'}</span>
+                                                                                    </div>
+                                                                                );
+                                                                        }
+                                                                    })()}
+                                                                </div>
                                                             </td>
-                                                            <td className={`px-3 py-4 w-48 align-middle ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                                <div className="text-sm leading-relaxed">{part.objective}</div>
+                                                        )}
+                                                        <td className={`px-3 py-4 text-center w-12 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/40 text-slate-200 group-hover:bg-slate-600/50' : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'}`}>
+                                                                {(page - 1) * rowsPerPage + idx + 1}
+                                                            </span>
+                                                        </td>
+                                                        <td className={`px-3 py-4 font-mono font-semibold w-40 text-left align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="tracking-wide">{part.part_no}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className={`px-3 py-4 font-mono font-medium w-40 text-left align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                            <span className="tracking-wide">{part.prod_code}</span>
+                                                        </td>
+                                                        <td className={`px-3 py-4 w-64 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                            <div className="font-medium leading-relaxed">{part.part_name}</div>
+                                                        </td>
+                                                        <td className={`px-3 py-4 w-48 align-middle ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                            <div className="text-sm leading-relaxed">{part.objective}</div>
+                                                        </td>
+                                                        <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
+                                                            <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/30 border border-slate-600/50 group-hover:bg-slate-600/40' : 'bg-gray-50 border border-gray-200 group-hover:bg-gray-100'}`}>
+                                                                {part.qty}
+                                                            </span>
+                                                        </td>
+                                                        <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                            <span className="text-sm font-semibold">{part.unit}</span>
+                                                        </td>
+                                                        {departmentId === 10086 && (
+                                                            <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                                <div className="text-sm font-semibold">{part.vendor}</div>
                                                             </td>
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/30 border border-slate-600/50 group-hover:bg-slate-600/40' : 'bg-gray-50 border border-gray-200 group-hover:bg-gray-100'}`}>
-                                                                    {part.qty}
-                                                                </span>
+                                                        )}
+                                                        <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
+                                                            <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${part.stock > 0
+                                                                ? isDarkMode
+                                                                    ? 'bg-green-900/30 text-green-400 border border-green-700/50'
+                                                                    : 'bg-green-50 text-green-700 border border-green-200'
+                                                                : isDarkMode
+                                                                    ? 'bg-red-900/30 text-red-400 border border-red-700/50'
+                                                                    : 'bg-red-50 text-red-700 border-red-200'
+                                                                }`}>
+                                                                {part.stock}
+                                                            </span>
+                                                        </td>
+                                                        {departmentId === 10086 && (
+                                                            <td className={`px-3 py-4 w-16 text-right align-middle font-mono font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                                <div className="text-sm">{part.price_per_unit}</div>
                                                             </td>
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                                <span className="text-sm font-semibold">{part.unit}</span>
-                                                            </td>
-                                                            {departmentId === 10086 && (
-                                                                <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                    <div className="text-sm font-semibold">{part.vendor}</div>
+                                                        )}
+                                                        <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                            <span className="text-sm font-semibold">{part.plant}</span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                                // Show free_item rows after this part if any
+                                                if (Array.isArray(part.free_item) && part.free_item.length > 0) {
+                                                    part.free_item.forEach((item, i) => {
+                                                        rows.push(
+                                                            <tr key={`${part.part_no}-freebie-${item.part_no || ''}-${i}-${idx}`} className={`${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-50/80'}`}>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+                                                                        ของแถม
+                                                                    </span>
                                                                 </td>
-                                                            )}
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
-                                                                <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${part.stock > 0
-                                                                    ? isDarkMode
-                                                                        ? 'bg-green-900/30 text-green-400 border border-green-700/50'
-                                                                        : 'bg-green-50 text-green-700 border border-green-200'
-                                                                    : isDarkMode
-                                                                        ? 'bg-red-900/30 text-red-400 border border-red-700/50'
-                                                                        : 'bg-red-50 text-red-700 border border-red-200'
-                                                                    }`}>
-                                                                    {part.stock}
-                                                                </span>
-                                                            </td>
-                                                            {departmentId === 10086 && (
-                                                                <td className={`px-3 py-4 w-16 text-right align-middle font-mono font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                                                    <div className="text-sm">{part.price_per_unit}</div>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                    {(() => {
+                                                                        // แยก part_no จาก format: part_no|part_name|prod_code
+                                                                        if (item.part_no && item.part_no.includes('|')) {
+                                                                            return item.part_no.split('|')[0];
+                                                                        }
+                                                                        return item.part_no;
+                                                                    })()}
                                                                 </td>
-                                                            )}
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                                <span className="text-sm font-semibold">{part.plant}</span>
+                                                                {/* <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                    {(() => {
+                                                                        // แยก prod_code จาก format: part_no|part_name|prod_code
+                                                                        if (item.part_no && item.part_no.includes('|')) {
+                                                                            const parts = item.part_no.split('|');
+                                                                            return parts[2] || '-';
+                                                                        }
+                                                                        return item.prod_code || '-';
+                                                                    })()}
+                                                                </td>
+                                                                <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                    <div className="flex flex-col gap-0.5">
+                                                                        <div>
+                                                                            {(() => {
+                                                                                // แยก part_name จาก format: part_no|part_name|prod_code
+                                                                                if (item.part_no && item.part_no.includes('|')) {
+                                                                                    const parts = item.part_no.split('|');
+                                                                                    return parts[1] || '-';
+                                                                                }
+                                                                                return item.part_name || '-';
+                                                                            })()}
+                                                                        </div>
+                                                                        {item.remark && (
+                                                                            <div className={`text-xs italic leading-tight ${isDarkMode ? 'text-slate-400/80' : 'text-gray-500/80'}`}>
+                                                                                หมายเหตุ: {item.remark}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td> */}
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-left text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>*หมายเหตุ : {item.remark}</td>
+                                                                <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-center text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                    {item.qty}
+                                                                </td>
+                                                                <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                    {part.unit}
+                                                                </td>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                            </tr>
+                                                        );
+                                                    });
+                                                }
+
+                                                // Add group note row after the last item in the group
+                                                if (isLastInGroup && part.group.note && part.group.note.length > 0) {
+                                                    rows.push(
+                                                        <tr key={`group-note-${part.group.id}`}
+                                                            className={`${isDarkMode ? 'border-b-1 border-blue-500/50 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100 backdrop-blur-sm'}`}
+                                                        >
+                                                            <td colSpan={
+                                                                (hasComparedParts ? 1 : 0) +
+                                                                (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
+                                                                12
+                                                            } className={`px-8.5 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                                                <div className="flex items-center gap-2">
+                                                                    <PiNotepadBold className="w-5 h-5 text-yellow-500" />
+                                                                    <span className="font-medium">หมายเหตุ : {part.group.note.map(n => n.note).join(', ')}</span>
+                                                                </div>
                                                             </td>
                                                         </tr>
-                                                    </React.Fragment>
-                                                );
+                                                    );
+                                                }
+
+                                                return rows;
                                             });
                                         })()}
                                         {/* Pagination row */}
@@ -1034,7 +1215,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                             prNo={rejectPrNo}
                         />
 
-                        {/* Multi Approval Modal */}
+                        {/* Multi Approval Modal (grouped by group) */}
                         {multiApprovalModalOpen && prData && (
                             <div
                                 className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
@@ -1068,40 +1249,48 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             รายการที่เลือกสำหรับการอนุมัติ ({selectedParts.length} รายการ)
                                         </div>
 
-                                        <div className="space-y-3">
-                                            {allParts
-                                                .filter(part => selectedParts.includes(part.pcl_id))
-                                                .map((part, idx) => (
-                                                    <div key={part.pcl_id} className={`p-4 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-4">
-                                                                    <span className={`text-sm font-mono px-2 py-1 rounded ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                                                                        {idx + 1}
-                                                                    </span>
-                                                                    <div>
-                                                                        <div className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>
-                                                                            {part.part_no}
+                                        {/* Group selected parts by group */}
+                                        <div className="space-y-6">
+                                            {(() => {
+                                                // Build a map: groupId -> { group, items: [] }
+                                                const grouped: { [groupId: number]: { group: any, items: any[] } } = {};
+                                                allParts.filter(part => selectedParts.includes(part.pcl_id)).forEach(part => {
+                                                    if (!grouped[part.group.id]) {
+                                                        grouped[part.group.id] = { group: part.group, items: [] };
+                                                    }
+                                                    grouped[part.group.id].items.push(part);
+                                                });
+                                                return Object.values(grouped).map(({ group, items }) => (
+                                                    <div key={group.id} className="mb-2">
+                                                        <div className={`flex items-center gap-2 mb-2 px-2 py-1 rounded-lg font-bold text-base ${isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-green-100 text-green-700'}`}>
+                                                            <FiFolder className="w-4 h-4" />
+                                                            <span>{group.group_name}</span>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {items.map((part, idx) => (
+                                                                <div key={part.pcl_id} className={`p-4 rounded-lg border flex items-center justify-between ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                                                                    <div className="flex-1">
+                                                                        <div className="flex items-center gap-4">
+                                                                            <span className={`text-sm font-mono px-2 py-1 rounded ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>{idx + 1}</span>
+                                                                            <div>
+                                                                                <div className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{part.part_no}</div>
+                                                                                <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>{part.part_name}</div>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
-                                                                            {part.part_name}
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <div className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>จำนวน: {part.qty} {part.unit}</div>
+                                                                        <div className="flex items-center gap-1.5 mt-1">
+                                                                            <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
+                                                                            <span className={`text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>Compared</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <div className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                                                    จำนวน: {part.qty} {part.unit}
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5 mt-1">
-                                                                    <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
-                                                                    <span className={`text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>Compared</span>
-                                                                </div>
-                                                            </div>
+                                                            ))}
                                                         </div>
                                                     </div>
-                                                ))
-                                            }
+                                                ));
+                                            })()}
                                         </div>
                                     </div>
 
@@ -1156,6 +1345,14 @@ function ComparePriceContent({ token }: { token: string | null }) {
                     selectedPart={selectedSplitPart}
                     token={token}
                     onSuccess={handleSplitQtySuccess}
+                />
+                {/* Free Item Modal */}
+                <FreeItemsModal
+                    open={freeItemModalOpen}
+                    onClose={() => setFreeItemModalOpen(false)}
+                    part={selectedFreeItemPart}
+                    // data={selectedFreeItemPart}
+                    onSuccess={handleRefreshData}
                 />
             </main >
         </div >

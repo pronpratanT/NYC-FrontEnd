@@ -11,7 +11,7 @@ import Header from "@/app/components/header";
 import { useSidebar } from '@/app/context/SidebarContext';
 import { useTheme } from "@/app/components/ThemeProvider";
 import ApprovePOModal from "@/app/components/Modal/Approve_PO";
-import POModal from "@/app/components/Modal/POModal";
+import POModal from "@/app/components/Modal/Free_Item_Modal";
 import EditVendor from '@/app/components/Modal/EditVendor';
 import RejectPOModal from "@/app/components/Modal/Reject_PO";
 import SendMailModal from "@/app/components/Modal/SendMailModal";
@@ -936,7 +936,7 @@ export default function ReviewedPOPage() {
             </main>
 
             {/* Modal สำหรับรายละเอียดสินค้าและเพิ่ม remark/ของแถม */}
-            <POModal
+            {/* <POModal
                 open={showPOModal}
                 onClose={() => setShowPOModal(false)}
                 part={selectedPart}
@@ -946,7 +946,7 @@ export default function ReviewedPOPage() {
                 onSuccess={() => {
                     fetchData();
                 }}
-            />
+            /> */}
             {showEditVendor && (
                 <EditVendor
                     vendorData={editVendorData ? {

@@ -9,33 +9,105 @@ import { TiPlus } from "react-icons/ti";
 import { useToken } from "@/app/context/TokenContext";
 import CreatPartNo from "./CreatPartNo";
 
-type POList = {
-    po_list_id: number;
+// type POList = {
+//     po_list_id: number;
+//     part_no: string;
+//     part_name: string;
+//     prod_code: string;
+//     pr_no: string;
+//     qty: number;
+//     unit: string;
+//     unit_price: number;
+//     discount: number[];
+//     amount: number;
+//     deli_date: string;
+//     free_item: FreeItems[];
+// };
+
+// type FreeItems = {
+//     po_list_id: number;
+//     part_no: string;
+//     qty: number;
+//     remark: string;
+// }
+
+// type Part = {
+//     pcl_id: number;
+//     pr_list_id: number;
+//     part_no: string;
+//     prod_code: string;
+//     part_name: string;
+//     qty: number;
+//     unit: string;
+//     stock: number;
+//     objective: string;
+//     plant: string;
+//     vendor: string;
+//     price_per_unit: number;
+//     ordered: string;
+// };
+
+// type PRs = {
+//     pr_id: number;
+//     pr_no: string;
+//     pr_date: string;
+//     dept_name: string;
+//     dept_short: string;
+//     dept_id: number;
+//     manager_approve: boolean;
+//     supervisor_approve: boolean;
+//     pu_operator_approve: boolean;
+//     supervisor_reject_at: string | null;
+//     manager_reject_at: string | null;
+//     pu_operator_reject_at: string | null;
+//     reason_reject: string | null;
+//     count_ordered: number;
+//     pr_lists: Part[];
+// };
+
+type Data = {
+    id: number;
+    group_name: string;
+    pr_id: number;
+    note: Note[];
+    list: List[];
+}
+
+type Note = {
+    id: number;
+    note: string;
+}
+
+type List = {
+    id: number;
+    member_id: number;
+    pcl_id: number;
     part_no: string;
-    part_name: string;
     prod_code: string;
-    pr_no: string;
+    part_name: string;
+    objective: string;
     qty: number;
     unit: string;
-    unit_price: number;
-    discount: number[];
-    amount: number;
-    deli_date: string;
+    vendor: string;
+    stock: number;
+    price_per_unit: number;
+    plant: string;
+    status: string;
     free_item: FreeItems[];
-};
+}
 
 type FreeItems = {
-    po_list_id: number;
+    free_item_id: number;
+    pcl_id: number;
     part_no: string;
     qty: number;
     remark: string;
 }
 
-interface POModalProps {
+interface FreeItemsProps {
     open: boolean;
     onClose: () => void;
-    part: POList | null;
-    // ลบ onSubmit ถ้าไม่ได้ใช้
+    part: List | null;
     onSuccess?: () => void;
 }
 
@@ -89,9 +161,9 @@ const scrollbarStyles = `
   }
 `;
 
-const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => {
-    // ดึงรายการของแถมเดิมไว้ใช้เช็คซ้ำ (เฉพาะก่อนเครื่องหมาย |)
-    const existingFreeItems = part?.free_item?.map((f: FreeItems) => f.part_no.split('|')[0].trim()) || [];
+const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess }) => {
+    // ดึงรายการของแถมเดิมไว้ใช้เช็คซ้ำ (เฉพาะก่อนเครื่องหมาย |) จาก part.free_item
+    const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
     
     const { isDarkMode } = useTheme();
     const [remark, setRemark] = useState("");
@@ -117,8 +189,8 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
 
     // เมื่อเปิด modal หรือ part เปลี่ยน ให้แสดงข้อมูลของแถมทันทีใน Part No. ที่เลือกและ qty
     useEffect(() => {
+        // รวม free_item จาก part.free_item
         if (part?.free_item && part.free_item.length > 0) {
-            // ใช้ part_no จาก free_item แบบเต็ม ไม่ต้องตัดหลัง |
             const freePartNos = part.free_item.map(f => f.part_no.trim());
             setSelectedParts(freePartNos);
             // set qty ให้ตรงกับ free_item
@@ -127,10 +199,10 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
                 qtyObj[item.part_no.trim()] = item.qty;
             }
             setFreebieQtys(qtyObj);
-        } else {
-            setSelectedParts([]);
-            setFreebieQtys({});
+            return;
         }
+        setSelectedParts([]);
+        setFreebieQtys({});
     }, [part]);
 
     // Search part no
@@ -198,8 +270,8 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
             alert("กรุณาเลือก Part No. ที่ต้องการเพิ่มของแถม");
             return;
         }
-        // สร้าง array ของ part_no ที่มีอยู่แล้วใน free_item
-        const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
+    // สร้าง array ของ part_no ที่มีอยู่แล้วใน free_item
+    const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
         let successCount = 0;
         for (const partNoRaw of selectedParts) {
             // Use only the first part_no before '|'
@@ -212,7 +284,7 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
             const qty = freebieQtys[partNoRaw] || 0;
             if (qty <= 0) continue; // skip if qty is not set or zero
             const body = {
-                po_list_id: part?.po_list_id,
+                pcl_id: part?.pcl_id,
                 part_no: partNo,
                 qty,
                 remark: remark.trim(),
@@ -300,19 +372,19 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
                                         <div className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-300 bg-slate-700' : 'text-gray-700 bg-gray-100'}`}>ชื่อสินค้า</div>
                                         <div className={`px-4 py-3 text-sm col-span-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{part?.part_name}</div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-0">
+                                    {/* <div className="grid grid-cols-3 gap-0">
                                         <div className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-300 bg-slate-700' : 'text-gray-700 bg-gray-100'}`}>PR Number</div>
                                         <div className={`px-4 py-3 text-sm font-medium col-span-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{part?.pr_no}</div>
-                                    </div>
+                                    </div> */}
                                     <div className="grid grid-cols-3 gap-0">
                                         <div className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-300 bg-slate-700' : 'text-gray-700 bg-gray-100'}`}>จำนวน</div>
                                         <div className={`px-4 py-3 text-sm font-semibold col-span-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{part?.qty} {part?.unit}</div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-0">
+                                    {/* <div className="grid grid-cols-3 gap-0">
                                         <div className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-300 bg-slate-700' : 'text-gray-700 bg-gray-100'}`}>ราคาต่อหน่วย</div>
                                         <div className={`px-4 py-3 text-sm font-semibold col-span-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>฿{part?.unit_price?.toLocaleString()}</div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-0">
+                                    </div> */}
+                                    {/* <div className="grid grid-cols-3 gap-0">
                                         <div className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-300 bg-slate-700' : 'text-gray-700 bg-gray-100'}`}>ส่วนลด</div>
                                         <div className={`px-4 py-3 text-sm col-span-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                             {part?.discount && Array.isArray(part.discount) && part.discount.length > 0 ? (
@@ -335,11 +407,11 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
                                                 <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>ไม่มีส่วนลด</span>
                                             )}
                                         </div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-0">
+                                    </div> */}
+                                    {/* <div className="grid grid-cols-3 gap-0">
                                         <div className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-300 bg-slate-700' : 'text-gray-700 bg-gray-100'}`}>ราคารวม</div>
                                         <div className={`px-4 py-3 text-sm font-bold col-span-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>฿{part?.amount?.toLocaleString()}</div>
-                                    </div>
+                                    </div> */}
                                 </div>
                             </div>
                         </div>
@@ -518,4 +590,4 @@ const POModal: React.FC<POModalProps> = ({ open, onClose, part, onSuccess }) => 
     );
 };
 
-export default POModal;
+export default FreeItems;

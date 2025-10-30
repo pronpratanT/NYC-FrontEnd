@@ -44,9 +44,10 @@ interface GroupPRModalProps {
     onClose: () => void;
     pr_id?: string | null;
     pr_no?: string | null;
+    onSuccess?: () => void;
 }
 
-const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no }) => {
+const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no, onSuccess }) => {
     const [data, setData] = useState<Data[]>([]);
     const [newGroupName, setNewGroupName] = useState('');
     const [loading, setLoading] = useState(false);
@@ -118,6 +119,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
             });
             const result = await fetchResponse.json();
             setData(result.data || result.groups || result || []);
+            if (onSuccess) onSuccess();
         } catch (error) {
             setError("Error creating group");
             console.error("Error creating group:", error);
@@ -148,6 +150,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
             const result = await fetchResponse.json();
             setData(result.data || result.groups || result || []);
             setOpenDropdown(null);
+            if (onSuccess) onSuccess();
         } catch (error) {
             setError("Error deleting group");
             console.error("Error deleting group:", error);
@@ -183,6 +186,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
             setData(result.data || result.groups || result || []);
             setEditingGroup(null);
             setOpenDropdown(null);
+            if (onSuccess) onSuccess();
         } catch (error) {
             setError("Error updating group");
             console.error("Error updating group:", error);
@@ -218,6 +222,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
             setData(result.data || result.groups || result || []);
             setEditingNote(null);
             setOpenDropdown(null);
+            if (onSuccess) onSuccess();
         } catch (error) {
             setError("Error updating group note");
             console.error("Error updating group note:", error);
@@ -251,6 +256,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
             const result = await fetchResponse.json();
             setData(result.data || result.groups || result || []);
             setEditingNoteItem(null);
+            if (onSuccess) onSuccess();
         } catch (error) {
             setError("Error editing note");
             console.error("Error editing note:", error);
@@ -280,6 +286,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
             });
             const result = await fetchResponse.json();
             setData(result.data || result.groups || result || []);
+            if (onSuccess) onSuccess();
         } catch (error) {
             setError("Error deleting note");
             console.error("Error deleting note:", error);
@@ -314,6 +321,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
             });
             const result = await fetchResponse.json();
             setData(result.data || result.groups || result || []);
+            if (onSuccess) onSuccess();
         } catch (error) {
             setError("Error adding item to group");
             console.error("Error adding item to group:", error);

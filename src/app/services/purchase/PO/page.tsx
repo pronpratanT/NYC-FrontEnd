@@ -1079,8 +1079,9 @@ export default function PurchaseOrderPage() {
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     // ทดสอบเปิดไฟล์ PDF เฉพาะ PO_D2510035.pdf
-                                                    const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
-                                                    window.open(pdfPath, '_blank', 'noopener');
+                                                    // const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
+                                                    // window.open(pdfPath, '_blank', 'noopener');
+                                                    window.open(`http://192.168.1.139:5000/preview/${po.po_no}`, '_blank', 'noopener');
                                                 }}
                                             >
                                                 <MdOutlineRemoveRedEye className="w-7 h-7" />

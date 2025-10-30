@@ -170,7 +170,7 @@ type EditedPrice = {
 };
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
-  // console.log("PRModal rendered with props:", { partNo, prNumber, department, prDate, qty, unit, pr_list_id });
+  // console.log("PRModal rendered with props:", { partNo, prNumber, pr_list_id });
 
   const router = useRouter();
   // State สำหรับรายการที่เลือกใน Approved Dropdown
@@ -206,8 +206,22 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   //search vendor
   // เช็คสถานะ PR เพื่อ disabled ช่อง search และปุ่มเพิ่ม Vendor
-  const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
-  const isVendorInputDisabled = prItem?.status === 'Pending Approval' || prItem?.status === 'Approved' || prItem?.status === 'Compared' || prItem?.status === 'Po Created' || prItem?.status === 'PO Approved' || prItem?.status === 'ORDERED';
+  const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
+  const isVendorInputDisabled = (() => {
+    if (!prItem || !prItem.status) return false;
+    const status = prItem.status.trim().toLowerCase();
+    // อนุญาตให้ค้นหา/เพิ่ม vendor เฉพาะสถานะ pending, po rejected, rejected หรือยังไม่มี status
+    if (status === 'pending' || status === 'po rejected' || status === 'rejected') return false;
+    // อื่นๆ disabled
+    return [
+      'pending approval',
+      'approved',
+      'compared',
+      'po created',
+      'po approved',
+      'ordered'
+    ].includes(status);
+  })();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState<string>("");
@@ -534,8 +548,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   useEffect(() => {
     const prIdValue = typeof pr_id !== 'undefined' ? pr_id : undefined;
     if (!prIdValue) return;
-    // Only fetch if status is Approved
-    if (prItem?.status === 'Approved') {
+    // Only fetch if status is Approved for current pr_list_id
+    const currentPRItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
+    if (currentPRItem?.status === 'Approved') {
       setLoading(true);
       fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/approved-list?prId=${prIdValue}`, {
         headers: {
@@ -1251,7 +1266,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
               {/* TODO - implement tab logic by status */}
               {(() => {
-                const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
+                const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
                 // console.log("Current PR Item for tab logic:", prItem?.status);
                 if (!prItem) {
                   // ถ้าไม่พบ PR ให้แสดง summary เฉพาะเมื่อข้อมูลโหลดเสร็จ
@@ -2670,10 +2685,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           const startIdx = (purchasePage - 1) * rowsPerPage;
                           const pagedRows = allCompareData.slice(startIdx, startIdx + rowsPerPage);
                           return pagedRows.length > 0 ? pagedRows.map((vendor, index) => {
-                            // Find matching purchase row for this vendor
-                            const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.po_no && item.po_no.trim() !== '');
-                            const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
-
+                            // Find matching purchase row for this vendor - use current pr_list_id
+                            const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id && item.po_no && item.po_no.trim() !== '');
+                            const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
+                            
                             // Debug log สำหรับทุก vendor row
                             console.log(`Row ${index + 1} - Vendor: ${vendor.vendor_name}`);
                             console.log(`Status: "${prItem?.status}"`);

@@ -5,6 +5,6 @@ export { default as ApprovePRModal } from './Approve_PR';
 export { default as CreateVendor } from './CreateVendor';
 export { default as EditVendor } from './EditVendor';
 export { default as CreatPartNo } from './CreatPartNo';
-export { default as POModal } from './POModal';
+export { default as POModal } from './Free_Item_Modal';
 export { default as RejectCompare } from './Reject_Compare';
 export { default as RejectPO } from './Reject_PO';
