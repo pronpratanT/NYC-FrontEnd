@@ -56,7 +56,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
     const [editingGroup, setEditingGroup] = useState<{ id: number; name: string } | null>(null);
     const [editingNote, setEditingNote] = useState<{ id: number; note: string } | null>(null);
     const [editingNoteItem, setEditingNoteItem] = useState<{ noteId: number; groupId: number; note: string } | null>(null);
-    const [selectedItems, setSelectedItems] = useState<number[]>([]);
+    // const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [draggedItem, setDraggedItem] = useState<List | null>(null);
 
     const token = useToken();
@@ -695,7 +695,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
 
                                             {group.list && group.list.length > 0 ? (
                                                 <div className="space-y-3 mb-4">
-                                                    {group.list.map((item, idx) => (
+                                                    {group.list.map((item) => (
                                                         <div
                                                             key={item.id}
                                                             className={`p-3 rounded-xl border-l-4 border-blue-400 hover:border-blue-500 cursor-grab transition-all duration-200 hover:shadow-md hover:scale-[1.01] ${isDarkMode
@@ -912,7 +912,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                         >
                             {ungroupedData && ungroupedData.list && ungroupedData.list.length > 0 ? (
                                 <div className="space-y-4">
-                                    {ungroupedData.list.map((item, idx) => (
+                                    {ungroupedData.list.map((item) => (
                                         <div
                                             key={item.id}
                                             className={`p-4 rounded-2xl border-2 shadow-md hover:shadow-lg transition-all duration-300 cursor-grab relative group hover:scale-[1.02] ${isDarkMode

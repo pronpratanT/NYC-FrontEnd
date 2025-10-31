@@ -1,3 +1,4 @@
+
 "use client";
 import React from "react";
 
@@ -100,7 +101,8 @@ type List = {
 }
 
 type FreeItems = {
-    po_list_id: number;
+    free_item_id: number;
+    pcl_id: number;
     part_no: string;
     qty: number;
     remark: string;
@@ -142,7 +144,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
 
     // Free item modal state
     const [freeItemModalOpen, setFreeItemModalOpen] = useState(false);
-    const [selectedFreeItemPart, setSelectedFreeItemPart] = useState<any>(null);
+    const [selectedFreeItemPart, setSelectedFreeItemPart] = useState<List | null>(null);
 
     // dropdown open
     const [openDropdown, setOpenDropdown] = useState<number | null>(null);
@@ -351,12 +353,12 @@ function ComparePriceContent({ token }: { token: string | null }) {
                 if (prJson.data && Array.isArray(prJson.data.pr_lists)) {
                     const prLists = prJson.data.pr_lists;
                     const partNoFirstIndex = new Map();
-                    prLists.forEach((item: any, idx: number) => {
+                    prLists.forEach((item: List, idx: number) => {
                         if (!partNoFirstIndex.has(item.part_no)) {
                             partNoFirstIndex.set(item.part_no, idx);
                         }
                     });
-                    prLists.sort((a: any, b: any) => {
+                    prLists.sort((a: List, b: List) => {
                         const aIdx = partNoFirstIndex.get(a.part_no);
                         const bIdx = partNoFirstIndex.get(b.part_no);
                         if (a.part_no === b.part_no) return 0;
@@ -509,6 +511,31 @@ function ComparePriceContent({ token }: { token: string | null }) {
     }
 
     // Split QTY Modal functions
+    // --- Dropdown stick logic ---
+    useEffect(() => {
+        if (openDropdown == null) return;
+        function updateDropdownPos() {
+            if (openDropdown == null) return;
+            const btn = buttonRef.current[openDropdown];
+            if (btn) {
+                const rect = btn.getBoundingClientRect();
+                setDropdownPosition({
+                    top: rect.top,
+                    left: rect.right + 8
+                });
+            }
+        }
+        window.addEventListener('scroll', updateDropdownPos, true);
+        window.addEventListener('resize', updateDropdownPos);
+        updateDropdownPos();
+        return () => {
+            window.removeEventListener('scroll', updateDropdownPos, true);
+            window.removeEventListener('resize', updateDropdownPos);
+        };
+    }, [openDropdown]);
+    // Ensure portal only renders on client
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true); }, []);
     const handleSplitQtyClick = (part: List & { group: Data }) => {
         // Convert to Part format for modal
         const partForModal: Part = {
@@ -624,9 +651,6 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 </div>
                                 <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no}</div>
                                 <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                    {/* Hydration-safe date rendering */}
-                                    วันที่ทำ PR: {formattedDate} เวลา: {formattedTime}
-                                    <br />
                                     สถานะ : {' '}
                                     {prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at ? (
                                         // Red - ปฏิเสธ (Rejected)
@@ -770,8 +794,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
                                             {/* Show split/checkbox column only if at least one row is 'Compared' or 'pending' */}
-                                            {allParts.some(part => part.status === 'Compared' || part.status === 'pending') && (
-                                                <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                            {allParts.some(part => part.status === 'Compared' || part.status === 'pending') && (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
+                                                <th className={`px-1 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                                                     {/* Header: show select all only if there is at least one Compared row */}
                                                     {allParts.some(part => part.status === 'Compared') ? (
                                                         <input
@@ -790,7 +814,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 </th>
                                             )}
                                             {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                                <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                                                <th className={`px-2 py-3 text-center font-semibold w-26 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
                                             )}
                                             <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-40 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
@@ -799,11 +823,11 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <th className={`px-2 py-3 text-left font-semibold w-48 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
-                                            {departmentId === 10086 && (
+                                            {(departmentId === 10086 && prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
                                                 <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Vendor</th>
                                             )}
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
-                                            {departmentId === 10086 && (
+                                            {departmentId === 10086 && prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086 && (
                                                 <th className={`px-2 py-3 text-right font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Price/Unit</th>
                                             )}
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
@@ -868,8 +892,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                         }}
                                                     >
                                                         {/* Show split/checkbox cell only if at least one row is 'Compared' or 'pending' */}
-                                                        {allParts.some(p => p.status === 'Compared' || p.status === 'pending') && (
-                                                            <td className={`px-2 py-3 text-center w-12`}>
+                                                        {allParts.some(p => p.status === 'Compared' || p.status === 'pending') && (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
+                                                            <td className={`px-1 py-3 text-center w-12`}>
                                                                 {part.status === 'Compared' ? (
                                                                     <input
                                                                         type="checkbox"
@@ -883,7 +907,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                             handlePartSelection(part.pcl_id, e.target.checked);
                                                                         }}
                                                                     />
-                                                                ) : part.status === 'pending' ? (
+                                                                ) : (part.status === 'pending' || part.status === 'Rejected') && (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) ? (
                                                                     <div className="relative inline-block">
                                                                         <button
                                                                             ref={el => { buttonRef.current[part.pcl_id] = el; }}
@@ -899,56 +923,57 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                         >
                                                                             <SlOptionsVertical size={18} className={`${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                                                                         </button>
-                                                                        {openDropdown === part.pcl_id && dropdownPosition && typeof window !== 'undefined' && createPortal(
-                                                                            <div
-                                                                                ref={dropdownRef}
-                                                                                className={`fixed border-2 rounded-xl shadow-xl z-[9999] min-w-[160px] ${isDarkMode
-                                                                                    ? 'bg-gray-700 border-gray-600'
-                                                                                    : 'bg-white border-slate-200'
+                                                                        {isClient && openDropdown !== null && openDropdown === part.pcl_id && dropdownPosition &&
+                                                                            createPortal(
+                                                                                <div
+                                                                                    ref={dropdownRef}
+                                                                                    className={`fixed border-2 rounded-xl shadow-xl z-[9999] min-w-[160px] ${isDarkMode
+                                                                                        ? 'bg-gray-700 border-gray-600'
+                                                                                        : 'bg-white border-slate-200'
                                                                                     }`}
-                                                                                style={{
-                                                                                    top: `${dropdownPosition.top}px`,
-                                                                                    left: `${dropdownPosition.left}px`,
-                                                                                    transform: 'translateY(-50%)'
-                                                                                }}
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        handleSplitQtyClick(part);
-                                                                                        setOpenDropdown(null);
+                                                                                    style={{
+                                                                                        top: dropdownPosition.top,
+                                                                                        left: dropdownPosition.left
                                                                                     }}
-                                                                                    className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-t-xl ${isDarkMode
-                                                                                        ? 'text-gray-300 hover:bg-blue-900/30'
-                                                                                        : 'text-slate-700 hover:bg-blue-50'
-                                                                                        }`}
+                                                                                    onClick={(e) => e.stopPropagation()}
                                                                                 >
-                                                                                    <LuSquareSplitHorizontal size={18} className={isDarkMode ? 'text-blue-400' : 'text-blue-600'} /> แบ่งจำนวน
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        setSelectedFreeItemPart(part);
-                                                                                        setFreeItemModalOpen(true);
-                                                                                        setOpenDropdown(null);
-                                                                                    }}
-                                                                                    className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-b-xl ${isDarkMode
-                                                                                        ? 'text-gray-300 hover:bg-emerald-900/30'
-                                                                                        : 'text-slate-700 hover:bg-emerald-50'
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            handleSplitQtyClick(part);
+                                                                                            setOpenDropdown(null);
+                                                                                        }}
+                                                                                        className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-t-xl ${isDarkMode
+                                                                                            ? 'text-gray-300 hover:bg-blue-900/30'
+                                                                                            : 'text-slate-700 hover:bg-blue-50'
                                                                                         }`}
-                                                                                >
-                                                                                    <GoGift size={18} className={isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} /> เพิ่มของแถม
-                                                                                </button>
-                                                                            </div>,
-                                                                            document.body
-                                                                        )}
+                                                                                    >
+                                                                                        <LuSquareSplitHorizontal size={18} className={isDarkMode ? 'text-blue-400' : 'text-blue-600'} /> แบ่งจำนวน
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            setSelectedFreeItemPart(part);
+                                                                                            setFreeItemModalOpen(true);
+                                                                                            setOpenDropdown(null);
+                                                                                        }}
+                                                                                        className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-b-xl ${isDarkMode
+                                                                                            ? 'text-gray-300 hover:bg-emerald-900/30'
+                                                                                            : 'text-slate-700 hover:bg-emerald-50'
+                                                                                        }`}
+                                                                                    >
+                                                                                        <GoGift size={18} className={isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} /> ของแถม
+                                                                                    </button>
+                                                                                </div>,
+                                                                                document.body
+                                                                            )
+                                                                        }
                                                                     </div>
                                                                 ) : null}
                                                             </td>
                                                         )}
                                                         {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                                            <td className={`px-2 py-3 text-center w-16`}>
+                                                            <td className={`px-2 py-3 text-center w-26`}>
                                                                 <div className="flex items-center justify-center">
                                                                     {(() => {
                                                                         switch (part.status) {
@@ -1040,7 +1065,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                         <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                             <span className="text-sm font-semibold">{part.unit}</span>
                                                         </td>
-                                                        {departmentId === 10086 && (
+                                                        {(departmentId === 10086 && prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
                                                             <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                                 <div className="text-sm font-semibold">{part.vendor}</div>
                                                             </td>
@@ -1057,7 +1082,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 {part.stock}
                                                             </span>
                                                         </td>
-                                                        {departmentId === 10086 && (
+                                                        {(departmentId === 10086 && prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
                                                             <td className={`px-3 py-4 w-16 text-right align-middle font-mono font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                                 <div className="text-sm">{part.price_per_unit}</div>
                                                             </td>
@@ -1075,7 +1100,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                                 <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
-                                                                        ของแถม
+                                                                        <GoGift className="w-4.5 h-4.5"/>
                                                                     </span>
                                                                 </td>
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
@@ -1118,8 +1143,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                     </div>
                                                                 </td> */}
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                <td className={`px-4 py-2 text-left text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>*หมายเหตุ : {item.remark}</td>
-                                                                <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-left text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>* หมายเหตุ : {item.remark}</td>
                                                                 <td className={`px-4 py-2 text-center text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                                     {item.qty}
                                                                 </td>
@@ -1127,7 +1151,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                     {part.unit}
                                                                 </td>
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                             </tr>
@@ -1253,7 +1278,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         <div className="space-y-6">
                                             {(() => {
                                                 // Build a map: groupId -> { group, items: [] }
-                                                const grouped: { [groupId: number]: { group: any, items: any[] } } = {};
+                                                const grouped: { [groupId: number]: { group: Data, items: typeof allParts } } = {};
                                                 allParts.filter(part => selectedParts.includes(part.pcl_id)).forEach(part => {
                                                     if (!grouped[part.group.id]) {
                                                         grouped[part.group.id] = { group: part.group, items: [] };

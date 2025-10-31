@@ -4,6 +4,8 @@ import { useTheme } from "../ThemeProvider";
 
 // icon
 import { TiPlus } from "react-icons/ti";
+import { FiEdit } from "react-icons/fi";
+import { IoTrashBinOutline } from "react-icons/io5";
 
 // component props
 import { useToken } from "@/app/context/TokenContext";
@@ -65,13 +67,13 @@ import CreatPartNo from "./CreatPartNo";
 //     pr_lists: Part[];
 // };
 
-type Data = {
-    id: number;
-    group_name: string;
-    pr_id: number;
-    note: Note[];
-    list: List[];
-}
+// type Data = {
+//     id: number;
+//     group_name: string;
+//     pr_id: number;
+//     note: Note[];
+//     list: List[];
+// }
 
 type Note = {
     id: number;
@@ -164,17 +166,21 @@ const scrollbarStyles = `
 const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess }) => {
     // ดึงรายการของแถมเดิมไว้ใช้เช็คซ้ำ (เฉพาะก่อนเครื่องหมาย |) จาก part.free_item
     const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
-    
+
     const { isDarkMode } = useTheme();
     const [remark, setRemark] = useState("");
     // freebieQtys: { [partNo: string]: number }
     const [freebieQtys, setFreebieQtys] = useState<{ [partNo: string]: number }>({});
+    // Track which free_item_id is being edited for qty
+    const [editingQty, setEditingQty] = useState<number | null>(null);
+    // Track remark being edited for each partNo
+    const [editingRemark, setEditingRemark] = useState<{ [partNo: string]: string }>({});
 
     const token = useToken();
 
     // Part No. search states
     const [search, setSearch] = useState("");
-    type PartNoType = string | { part_no: string; [key: string]: string | number | boolean | null | undefined };
+    type PartNoType = string | { part_no: string;[key: string]: string | number | boolean | null | undefined };
     const [partNos, setPartNos] = useState<PartNoType[]>([]);
     const [selectedParts, setSelectedParts] = useState<string[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
@@ -187,22 +193,14 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
     // (ต้องอยู่หลังการประกาศ partNos)
 
 
-    // เมื่อเปิด modal หรือ part เปลี่ยน ให้แสดงข้อมูลของแถมทันทีใน Part No. ที่เลือกและ qty
+    // เมื่อเปิด modal หรือ part เปลี่ยน ให้ reset เฉพาะ qty/remark ของรายการใหม่ ไม่ยุ่งกับ free_item เดิม
     useEffect(() => {
-        // รวม free_item จาก part.free_item
-        if (part?.free_item && part.free_item.length > 0) {
-            const freePartNos = part.free_item.map(f => f.part_no.trim());
-            setSelectedParts(freePartNos);
-            // set qty ให้ตรงกับ free_item
-            const qtyObj: { [partNo: string]: number } = {};
-            for (const item of part.free_item) {
-                qtyObj[item.part_no.trim()] = item.qty;
-            }
-            setFreebieQtys(qtyObj);
-            return;
-        }
         setSelectedParts([]);
         setFreebieQtys({});
+        setEditingQty(null);
+        setEditingRemark({});
+        setSearch("");
+        setRemark("");
     }, [part]);
 
     // Search part no
@@ -270,8 +268,8 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
             alert("กรุณาเลือก Part No. ที่ต้องการเพิ่มของแถม");
             return;
         }
-    // สร้าง array ของ part_no ที่มีอยู่แล้วใน free_item
-    const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
+        // สร้าง array ของ part_no ที่มีอยู่แล้วใน free_item
+        const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
         let successCount = 0;
         for (const partNoRaw of selectedParts) {
             // Use only the first part_no before '|'
@@ -317,6 +315,71 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
             }
         }
         onClose();
+    };
+
+    const handleDeleteFreeItem = async (partNo: string) => {
+        // Find the free item for this partNo
+        const freeItem = part?.free_item?.find(f => f.part_no.trim() === partNo.trim());
+        if (!freeItem) return;
+        const confirmDelete = window.confirm(`คุณต้องการลบของแถม Part No. ${partNo} นี้หรือไม่?`);
+        if (!confirmDelete) return;
+        const body = {
+            id: freeItem.free_item_id,
+            pcl_id: part?.pcl_id,
+            part_no: partNo,
+            qty: freeItem.qty ?? 0,
+            remark: freeItem.remark ?? '',
+        };
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/delete-free-item`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(body),
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to delete free item: ${response.statusText}`);
+            }
+            const data = await response.json();
+            console.log('Free item deleted successfully:', data);
+            if (onSuccess) onSuccess();
+            onClose();
+        } catch (error) {
+            console.error('Error deleting free item:', error);
+        }
+    }
+
+    const updateFreeItem = async (freeItem: FreeItems, newQty: number, newRemark: string) => {
+        const body = {
+            id: freeItem.free_item_id,
+            pcl_id: part?.pcl_id,
+            part_no: freeItem.part_no,
+            qty: newQty,
+            remark: newRemark,
+        };
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/update-free-item`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(body),
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to update free item: ${response.statusText}`);
+            }
+            alert('บันทึกข้อมูลของแถมเรียบร้อยแล้ว');
+            if (onSuccess) onSuccess();
+            onClose();
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลของแถม');
+        }
+        setEditingQty(null);
+        setFreebieQtys({});
+        setEditingRemark({});
     };
 
     return (
@@ -500,12 +563,124 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                                     )}
                                 </div>
 
-                                {/* Selected Parts List */}
+                                {/* Free items already in DB (แถมเดิม) */}
+                                {part?.free_item && part.free_item.length > 0 && (
+                                    <div className="mt-4">
+                                        <div className={`border rounded-lg overflow-hidden ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                                            <div className={`px-4 py-3 border-b ${isDarkMode ? 'bg-slate-700 border-slate-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                                                <h4 className="text-sm font-medium">รายการของแถม ({part.free_item.length} รายการ)</h4>
+                                            </div>
+                                            <div className="divide-y divide-slate-600 max-h-48 overflow-y-auto custom-scrollbar">
+                                                {part.free_item.map((freeItem, idx) => {
+                                                    const partNo = freeItem.part_no.trim();
+                                                    const isEditing = editingQty === freeItem.free_item_id;
+                                                    return (
+                                                        <div key={`freeitem-${freeItem.free_item_id}`} className={`p-4 ${isDarkMode ? 'divide-slate-600' : 'divide-gray-200'}`}>
+                                                            <div className="flex items-center justify-between gap-4">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                                        {partNo}
+                                                                    </p>
+                                                                    {freeItem.remark && (
+                                                                        <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>หมายเหตุ: {freeItem.remark}</p>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>ของแถม:</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            min={0}
+                                                                            placeholder="0"
+                                                                            className={`w-20 px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-100' : 'border-gray-300 bg-white text-gray-900'}`}
+                                                                            value={isEditing ? (freebieQtys[partNo] ?? freeItem.qty) : freeItem.qty}
+                                                                            disabled={!isEditing}
+                                                                            onChange={e => {
+                                                                                if (!isEditing) return;
+                                                                                const val = Math.max(0, Number(e.target.value));
+                                                                                setFreebieQtys({ [partNo]: val });
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    {!isEditing ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                // Reset state เฉพาะแถวที่แก้ไข
+                                                                                setEditingQty(freeItem.free_item_id);
+                                                                                setFreebieQtys({ [partNo]: freeItem.qty });
+                                                                                setEditingRemark({ [partNo]: freeItem.remark ?? '' });
+                                                                            }}
+                                                                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${isDarkMode ? 'text-indigo-400 hover:bg-indigo-900/30 hover:text-indigo-300' : 'text-indigo-500 hover:bg-indigo-50 hover:text-indigo-600'}`}
+                                                                            title="แก้ไขจำนวนของแถม"
+                                                                        >
+                                                                            <FiEdit className="w-5 h-5" />
+                                                                        </button>
+                                                                    ) : null}
+                                                                    {isEditing ? (
+                                                                        <>
+                                                                            <input
+                                                                                type="text"
+                                                                                className={`w-32 px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-100' : 'border-gray-300 bg-white text-gray-900'}`}
+                                                                                value={isEditing ? (editingRemark[partNo] ?? freeItem.remark ?? '') : freeItem.remark ?? ''}
+                                                                                onChange={e => {
+                                                                                    if (!isEditing) return;
+                                                                                    setEditingRemark({ [partNo]: e.target.value });
+                                                                                }}
+                                                                                placeholder="หมายเหตุ..."
+                                                                                style={{ marginRight: 8 }}
+                                                                                disabled={!isEditing}
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={async () => {
+                                                                                    const newQty = freebieQtys[partNo] ?? freeItem.qty;
+                                                                                    const newRemark = editingRemark[partNo] ?? freeItem.remark ?? '';
+                                                                                    await updateFreeItem(freeItem, newQty, newRemark);
+                                                                                }}
+                                                                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${isDarkMode ? 'text-green-400 hover:bg-green-900/30 hover:text-green-300' : 'text-green-500 hover:bg-green-50 hover:text-green-600'}`}
+                                                                                title="บันทึกจำนวนหรือหมายเหตุใหม่"
+                                                                            >
+                                                                                ✓
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    setEditingQty(null);
+                                                                                    setFreebieQtys({});
+                                                                                    setEditingRemark({});
+                                                                                }}
+                                                                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${isDarkMode ? 'text-gray-400 hover:bg-slate-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                                                                                title="ยกเลิก"
+                                                                            >
+                                                                                ×
+                                                                            </button>
+                                                                        </>
+                                                                    ) : null}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleDeleteFreeItem(partNo)}
+                                                                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${isDarkMode ? 'text-red-400 hover:bg-red-900/30 hover:text-red-300' : 'text-red-500 hover:bg-red-50 hover:text-red-600'}`}
+                                                                        title="ลบรายการของแถม"
+                                                                    >
+                                                                        <IoTrashBinOutline className="w-5 h-5" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Selected Parts List (ใหม่) */}
                                 {selectedParts.length > 0 && (
                                     <div className="mt-4">
                                         <div className={`border rounded-lg overflow-hidden ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                                             <div className={`px-4 py-3 border-b ${isDarkMode ? 'bg-slate-700 border-slate-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
-                                                <h4 className="text-sm font-medium">Part No. ที่เลือก ({selectedParts.length} รายการ)</h4>
+                                                <h4 className="text-sm font-medium">Part No. ที่เลือก (ยังไม่บันทึก) {selectedParts.length} รายการ</h4>
                                             </div>
                                             <div className="divide-y divide-slate-600 max-h-48 overflow-y-auto custom-scrollbar">
                                                 {selectedParts.map((partNo, idx) => (
@@ -537,9 +712,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                                                                     className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${isDarkMode ? 'text-red-400 hover:bg-red-900/30 hover:text-red-300' : 'text-red-500 hover:bg-red-50 hover:text-red-600'}`}
                                                                     title="ลบรายการ"
                                                                 >
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
+                                                                    <IoTrashBinOutline className="w-5 h-5" />
                                                                 </button>
                                                             </div>
                                                         </div>

@@ -76,7 +76,7 @@ export default function SplitQTYModal({ isOpen, onClose, selectedPart, token, on
         try {
             let successCount = 0;
             let errorCount = 0;
-            let errorDetails: string[] = [];
+            const errorDetails: string[] = [];
             for (const item of splitQuantities) {
                 const splitData = {
                     pr_list_id: selectedPart.pr_list_id,
@@ -277,7 +277,7 @@ export default function SplitQTYModal({ isOpen, onClose, selectedPart, token, on
                         ) : (
                             <div className={`text-center py-8 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                 <p className="font-medium">ยังไม่มีรายการที่แบ่ง</p>
-                                <p className="text-sm mt-1">กรอกจำนวนและกดปุ่ม "เพิ่มรายการ" เพื่อเริ่มต้น</p>
+                                <p className="text-sm mt-1">กรอกจำนวนและกดปุ่ม &quot;เพิ่มรายการ&quot; เพื่อเริ่มต้น</p>
                             </div>
                         )}
                     </div>

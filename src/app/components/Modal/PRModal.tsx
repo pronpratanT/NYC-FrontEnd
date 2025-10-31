@@ -170,6 +170,9 @@ type EditedPrice = {
 };
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
+  // --- State for editing qty in summary tab ---
+  const [editingQty, setEditingQty] = useState(false);
+  const [qtyValue, setQtyValue] = useState(qty || '');
   // console.log("PRModal rendered with props:", { partNo, prNumber, pr_list_id });
 
   const router = useRouter();
@@ -653,11 +656,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
     // เตรียม payload โดยใช้ pcl_id จาก compareData ถ้ามี ไม่เช่นนั้นใช้ pr_list_id จาก props
     const reasonToSend = selectedReason === '11' ? customReason : selectedReason;
+    // Use qtyValue (edited) if available, fallback to qty
     const payload = {
       pcl_id: compareData?.pcl_id,
       vendor_selected: selectedRowData?.selectedVendor?.vendor_id || null,
       reason_choose: reasonToSend,
-      new_qty: qty,
+      new_qty: qtyValue !== '' ? Number(qtyValue) : qty,
     };
 
     // สร้าง array edited_prices[] โดยรวมทุก vendor แต่ date_ship จะอยู่เฉพาะ vendor ที่เลือก
@@ -3200,7 +3204,53 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               <div className="grid grid-cols-3 gap-3">
                                 <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                   <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>จำนวน</label>
-                                  <div className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{qty || '-'}</div>
+                                  <div className={`flex justify-between text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                    {!editingQty ? (
+                                      <>
+                                        {qtyValue || '-'}
+                                        <button
+                                          type="button"
+                                          className={`ml-2 px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+                                          onClick={() => setEditingQty(true)}
+                                          style={{marginLeft: 8}}
+                                        >
+                                          แก้ไข
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={qtyValue}
+                                          onChange={e => setQtyValue(e.target.value)}
+                                          className={`w-20 px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-100' : 'border-gray-300 bg-white text-gray-900'}`}
+                                          style={{marginRight: 8}}
+                                        />
+                                        {/* <button
+                                          type="button"
+                                          className={`px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-green-600 text-green-300 hover:bg-green-900/30' : 'border-green-300 text-green-700 hover:bg-green-50'}`}
+                                          onClick={() => {
+                                            // TODO: Call API to update qty here if needed
+                                            setEditingQty(false);
+                                          }}
+                                          style={{marginRight: 4}}
+                                        >
+                                          บันทึก
+                                        </button> */}
+                                        <button
+                                          type="button"
+                                          className={`px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+                                          onClick={() => {
+                                            setQtyValue(qty || '');
+                                            setEditingQty(false);
+                                          }}
+                                        >
+                                          ยกเลิก
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                   <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>หน่วย</label>

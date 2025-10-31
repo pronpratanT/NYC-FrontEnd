@@ -11,7 +11,7 @@ import Header from "@/app/components/header";
 import { useSidebar } from '@/app/context/SidebarContext';
 import { useTheme } from "@/app/components/ThemeProvider";
 import ApprovePOModal from "@/app/components/Modal/Approve_PO";
-import POModal from "@/app/components/Modal/Free_Item_Modal";
+// import POModal from "@/app/components/Modal/Free_Item_Modal";
 import EditVendor from '@/app/components/Modal/EditVendor';
 import RejectPOModal from "@/app/components/Modal/Reject_PO";
 import SendMailModal from "@/app/components/Modal/SendMailModal";
@@ -130,8 +130,8 @@ export default function ReviewedPOPage() {
     const [showRejectModal, setShowRejectModal] = useState(false);
 
     // Modal สำหรับแสดงรายละเอียดสินค้า
-    const [showPOModal, setShowPOModal] = useState(false);
-    const [selectedPart, setSelectedPart] = useState<POList | null>(null);
+    // const [showPOModal, setShowPOModal] = useState(false);
+    // const [selectedPart, setSelectedPart] = useState<POList | null>(null);
 
     // State สำหรับ modal EditVendor
     const [showEditVendor, setShowEditVendor] = useState(false);
@@ -466,7 +466,7 @@ export default function ReviewedPOPage() {
                             <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Vendor Information Card */}
                                 <div className={`rounded-xl border shadow-sm hover:shadow-md transition-shadow ${isDarkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
-                                    <div className={`px-5 py-4 border-b flex justify-between ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                                    <div className={`px-5 py-4 border-b flex justify-between rounded-t-2xl ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
                                                 <LuBriefcaseBusiness className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
@@ -571,7 +571,7 @@ export default function ReviewedPOPage() {
 
                                 {/* Delivery & PO Info Card */}
                                 <div className={`rounded-xl border shadow-sm hover:shadow-md transition-shadow ${isDarkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
-                                    <div className={`px-5 py-4 border-b ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                                    <div className={`px-5 py-4 border-b rounded-t-2xl ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
                                                 <IoDocumentTextOutline className={`h-5 w-5 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
@@ -634,7 +634,7 @@ export default function ReviewedPOPage() {
 
                             {/* Right Section - Financial Summary */}
                             <div className={`rounded-xl border shadow-sm hover:shadow-md transition-shadow ${isDarkMode ? 'bg-gradient-to-br from-green-900/20 via-slate-800/50 to-emerald-900/20 border-slate-700/50' : 'bg-gradient-to-br from-green-50 via-white to-emerald-50 border-gray-200'}`}>
-                                <div className={`px-5 py-4 border-b ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                                <div className={`px-5 py-4 border-b rounded-t-2xl ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-green-500/10' : 'bg-green-50'}`}>
                                             <MdAttachMoney className={`h-5 w-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
@@ -744,15 +744,18 @@ export default function ReviewedPOPage() {
                                         {pagedParts.map((part, idx) => (
                                             <React.Fragment key={part.part_no + '-frag-' + ((page - 1) * rowsPerPage + idx)}>
                                                 <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
-                                                    className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400' : 'bg-white border-l-orange-400/70'}
-                                                        ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-pointer hover:bg-amber-100 hover:shadow-xl hover:shadow-orange-200/30') : 'cursor-not-allowed opacity-60'}
+                                                    className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-900/50  border-l-orange-400' : 'bg-white border-l-orange-400/70'}
+                                                        ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'hover:bg-slate-800/90 hover:shadow-md hover:shadow-sky-400/30' : 'hover:bg-teal-100/50 hover:shadow-md hover:shadow-sky-400/30') : 'cursor-not-allowed opacity-60'}
                                                     `}
-                                                    onClick={() => {
-                                                        if (!(poData.approved_by || poData.rejected_by)) {
-                                                            setSelectedPart(part);
-                                                            setShowPOModal(true);
-                                                        }
-                                                    }}
+                                                    // className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400' : 'bg-white border-l-orange-400/70'}
+                                                    //     ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-pointer hover:bg-amber-100 hover:shadow-xl hover:shadow-orange-200/30') : 'cursor-not-allowed opacity-60'}
+                                                    // `}
+                                                    // onClick={() => {
+                                                    //     if (!(poData.approved_by || poData.rejected_by)) {
+                                                    //         setSelectedPart(part);
+                                                    //         setShowPOModal(true);
+                                                    //     }
+                                                    // }}
                                                 >
                                                     <td className={`px-4 py-4 text-center text-sm font-bold ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
                                                         {(page - 1) * rowsPerPage + idx + 1}
@@ -763,7 +766,7 @@ export default function ReviewedPOPage() {
                                                     <td className={`px-4 py-4 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                         {part.prod_code}
                                                     </td>
-                                                    <td className={`px-4 py-4 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                    <td className={`px-4 py-4 text-sm font-semi ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                         {part.part_name}
                                                     </td>
                                                     <td className={`px-4 py-4 text-center text-sm font-bold ${isDarkMode ? 'text-sky-300' : 'text-sky-700'}`}>
