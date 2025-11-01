@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useState, useRef, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "../../context/SidebarContext";
 
 // Calendar
@@ -94,6 +94,7 @@ export default function PurchasePage() {
 
     // Router
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // Sync ค่า layout กับ localStorage ทุกครั้งที่เปลี่ยน
     useEffect(() => {
@@ -198,13 +199,41 @@ export default function PurchasePage() {
         return urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
     });
     const totalItems = displayedPrCards.length;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const totalPages = Math.ceil((totalItems + 1) / itemsPerPage);
+    
+    // Calculate pagination correctly considering Create PR card
+    // Page 1: Shows Create card + (itemsPerPage - 1) PR cards
+    // Page 2+: Shows itemsPerPage PR cards each, starting from where page 1 left off
     const showCreateCard = currentPage === 1;
-    const itemsToShow = currentPage === 1 ? itemsPerPage - 1 : itemsPerPage; // -1 is createPR card
-    const actualStartIndex = currentPage === 1 ? 0 : startIndex - 1; // -1 because first page has create card
-    const actualEndIndex = currentPage === 1 ? itemsToShow : actualStartIndex + itemsPerPage;
+    
+    let actualStartIndex, actualEndIndex, itemsToShow;
+    
+    if (currentPage === 1) {
+        // First page: show Create card + up to (itemsPerPage - 1) PR cards
+        actualStartIndex = 0;
+        itemsToShow = Math.min(itemsPerPage - 1, totalItems); // -1 for Create card
+        actualEndIndex = itemsToShow; // slice(0, 9) = [0,1,2,3,4,5,6,7,8]
+    } else {
+        // Subsequent pages: show itemsPerPage PR cards
+        // Calculate how many PR cards were shown on page 1
+        const page1PRCards = Math.min(itemsPerPage - 1, totalItems);
+        // Start from where page 1 left off (no overlap)
+        actualStartIndex = page1PRCards + ((currentPage - 2) * itemsPerPage);
+        itemsToShow = itemsPerPage;
+        actualEndIndex = actualStartIndex + itemsToShow;
+    }
+    
     const paginatedPrCards = displayedPrCards.slice(actualStartIndex, actualEndIndex);
+    
+    // Calculate total pages: 
+    // If we have fewer items than can fit on page 1 (after Create card), then 1 page
+    // Otherwise, calculate based on remaining items after page 1
+    let totalPages;
+    if (totalItems <= (itemsPerPage - 1)) {
+        totalPages = 1;
+    } else {
+        const remainingAfterPage1 = totalItems - (itemsPerPage - 1);
+        totalPages = 1 + Math.ceil(remainingAfterPage1 / itemsPerPage);
+    }
     // Function to update URL parameters
     const updateUrlParams = React.useCallback((newPage?: number, newPerPage?: number) => {
         const params = new URLSearchParams(window.location.search);
@@ -302,7 +331,11 @@ export default function PurchasePage() {
                     return;
                 }
 
-                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/departments`;
+                // Calculate API parameters: always fetch a large enough set for client-side pagination
+                // This ensures we have enough data to paginate properly with Create PR card
+                const maxItemsNeeded = Math.max(50, itemsPerPage * 5); // Fetch at least 50 items or 5 pages worth
+                
+                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/departments?page=1&limit=${maxItemsNeeded}`;
                 let fetchOptions: RequestInit = {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -312,7 +345,7 @@ export default function PurchasePage() {
 
                 // ถ้ามี search ให้ใช้ API search-pr
                 if (search && search.trim() !== "") {
-                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-pr?keyword=${encodeURIComponent(search)}`;
+                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-pr?keyword=${encodeURIComponent(search)}&page=1&limit=${maxItemsNeeded}`;
                     fetchOptions = {
                         ...fetchOptions,
                         cache: "no-store",
@@ -371,7 +404,7 @@ export default function PurchasePage() {
         if (token !== null) {
             fetchPrCards();
         }
-    }, [token, router, search, dateRange]);
+    }, [token, router, search, dateRange, searchParams]);
 
     {/* departments */ }
     useEffect(() => {
@@ -962,8 +995,23 @@ export default function PurchasePage() {
                                     <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
                                             const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
-                                            const startItem = totalItemsWithCreate === 1 ? 0 : (currentPage === 1 ? 1 : startIndex + 1);
-                                            const endItem = currentPage === 1 ? Math.min(itemsPerPage, totalItemsWithCreate) : Math.min(startIndex + itemsPerPage, totalItemsWithCreate);
+                                            let startItem, endItem;
+                                            
+                                            if (totalItems === 0) {
+                                                startItem = 0;
+                                                endItem = 0;
+                                            } else if (currentPage === 1) {
+                                                // Page 1: Create card + PR cards
+                                                startItem = 1;
+                                                endItem = Math.min(itemsPerPage, totalItemsWithCreate);
+                                            } else {
+                                                // Subsequent pages: only PR cards
+                                                const page1PRCards = Math.min(itemsPerPage - 1, totalItems);
+                                                const itemsBeforeThisPage = page1PRCards + ((currentPage - 2) * itemsPerPage);
+                                                startItem = itemsBeforeThisPage + 1 + 1; // +1 for Create card position
+                                                endItem = Math.min(startItem + paginatedPrCards.length - 1, totalItemsWithCreate);
+                                            }
+                                            
                                             return (
                                                 <>
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>

@@ -11,10 +11,10 @@ import Header from "@/app/components/header";
 import { useSidebar } from '@/app/context/SidebarContext';
 import { useTheme } from "@/app/components/ThemeProvider";
 import ApprovePOModal from "@/app/components/Modal/Approve_PO";
-// import POModal from "@/app/components/Modal/Free_Item_Modal";
 import EditVendor from '@/app/components/Modal/EditVendor';
 import RejectPOModal from "@/app/components/Modal/Reject_PO";
 import SendMailModal from "@/app/components/Modal/SendMailModal";
+import RequestEditPOModal from "@/app/components/Modal/Request_Edit_PO";
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -22,12 +22,9 @@ import { MdAttachMoney } from "react-icons/md";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import { LuBriefcaseBusiness } from "react-icons/lu";
 import { HiDocumentText } from "react-icons/hi2";
-
 import { LuMail } from "react-icons/lu";
-import { SiMinutemailer } from "react-icons/si";
 import { RiMailSendLine } from "react-icons/ri";
 import { MdOutlineEdit } from "react-icons/md";
-import RequestEditPOModal from "@/app/components/Request_Edit_PO";
 import { BiQuestionMark } from "react-icons/bi";
 
 type ReviewedPO = {
@@ -363,99 +360,86 @@ export default function ReviewedPOPage() {
                                                 />
                                             </>
                                         )}
-                                        {/* TODO send email button */}
-                                        {/* Show mail button if approved_by exists and mail_out_date is missing */}
-                                        {poData.approved_by && !poData.mail_out_date && (
-                                            <div className="relative ml-2">
-                                                <button
-                                                    type="button"
-                                                    className={`w-12 h-12 rounded-full cursor-pointer flex items-center justify-center transition-all duration-300 font-semibold group relative overflow-hidden
-                                                        ${isDarkMode
-                                                            ? 'bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 text-white hover:scale-110 hover:rotate-3 shadow-lg hover:shadow-emerald-500/40'
-                                                            : 'bg-gradient-to-br from-emerald-400 via-green-400 to-teal-400 text-white hover:scale-110 hover:rotate-3 shadow-lg hover:shadow-emerald-400/40'}
-                                                    `}
-                                                    style={{
-                                                        boxShadow: isDarkMode
-                                                            ? '0 4px 15px -3px rgba(16, 185, 129, 0.2), 0 4px 6px -2px rgba(16, 185, 129, 0.05)'
-                                                            : '0 4px 15px -3px rgba(16, 185, 129, 0.25), 0 4px 6px -2px rgba(16, 185, 129, 0.1)'
-                                                    }}
-                                                    title="ส่งอีเมล PO ไปยังผู้ขาย"
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        setShowSendMailModal(true);
-                                                    }}
-                                                >
-                                                    {/* Ripple effect background */}
-                                                    <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 group-hover:animate-ping transition-opacity duration-300"></div>
 
-                                                    {/* Mail icon with enhanced animation and hover swap */}
-                                                    <span className="relative w-6 h-6 flex items-center justify-center">
-                                                        {/* Default icon */}
-                                                        <LuMail className="h-6 w-6 transition-all duration-300 group-hover:-rotate-12 group-hover:scale-125 absolute inset-0 opacity-100 group-hover:opacity-0 z-10" />
-                                                        {/* Hover icon */}
-                                                        <RiMailSendLine className="h-6 w-6 transition-all duration-300 absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:-rotate-12 group-hover:scale-125 z-10" />
-                                                    </span>
+                                        {/* Modern Action Buttons Section - แสดงตามสถานะ */}
+                                        {poData.approved_by && (
+                                            <div className="flex items-center gap-3 ml-3">
 
-                                                    {/* Glowing border effect */}
-                                                    <div className={`absolute inset-0 rounded-full border-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300
-                                                        ${isDarkMode ? 'border-emerald-300/50' : 'border-white/50'}
-                                                    `}></div>
-                                                </button>
+                                                {/* Send Mail Button - แสดงเฉพาะเมื่อยังไม่ได้ส่งเมล */}
+                                                {!poData.mail_out_date && (
+                                                    <div className="relative group">
+                                                        <button
+                                                            type="button"
+                                                            className={`relative px-4 py-2.5 rounded-xl font-medium transition-all duration-300 transform group hover:scale-105 flex items-center gap-2 overflow-hidden
+                                                                ${isDarkMode
+                                                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg hover:shadow-emerald-500/25 hover:from-emerald-500 hover:to-teal-500'
+                                                                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-600'}
+                                                            `}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShowSendMailModal(true);
+                                                            }}
+                                                        >
+                                                            {/* Animated background overlay */}
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
 
-                                                {/* Premium badge with better styling */}
-                                                <div className="absolute -top-1 -right-1">
-                                                    <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[9px] font-black shadow-lg border-2 animate-bounce
-                                                        ${isDarkMode
-                                                            ? 'bg-gradient-to-r from-blue-500 to-sky-400 text-white border-blue-300'
-                                                            : 'bg-gradient-to-r from-blue-200 to-sky-300 text-blue-700 border-blue-200'}
-                                                    `}>
-                                                        <SiMinutemailer className="h-4 w-4" />
-                                                    </span>
-                                                </div>
+                                                            {/* Icon */}
+                                                            <div className="relative z-10 flex items-center justify-center w-5 h-5">
+                                                                <span className="relative w-6 h-6 flex items-center justify-center">
+                                                                    {/* Default icon */}
+                                                                    <LuMail className="h-5 w-5 transition-all duration-300 group-hover:-rotate-12 group-hover:scale-125 absolute inset-0 opacity-100 group-hover:opacity-0 z-10" />
+                                                                    {/* Hover icon */}
+                                                                    <RiMailSendLine className="h-5 w-5 transition-all duration-300 absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:-rotate-12 group-hover:scale-125 z-10" />
+                                                                </span>
+                                                            </div>
 
-                                                {/* Enhanced tooltip */}
-                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 z-20 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 transform group-hover:-translate-y-1">
-                                                    <div className={`px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shadow-xl border
-                                                        ${isDarkMode
-                                                            ? 'bg-slate-900/95 text-emerald-300 border-slate-700/50 backdrop-blur-sm'
-                                                            : 'bg-white/95 text-emerald-700 border-emerald-200/50 backdrop-blur-sm'}
-                                                    `}>
-                                                        ส่งอีเมล PO ไปยังผู้ขาย
-                                                        <div className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent
-                                                            ${isDarkMode ? 'border-t-slate-900/95' : 'border-t-white/95'}
-                                                        `}></div>
+                                                            {/* Text */}
+                                                            <span className="relative z-10 text-sm font-semibold">ส่งอีเมล</span>
+
+                                                            {/* Pulse effect */}
+                                                            <div className="absolute inset-0 rounded-xl bg-emerald-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
+                                                        </button>
+
+                                                        {/* Status indicator */}
+                                                        <div className={`absolute -top-2 -right-2 w-4 h-4 rounded-full border-2 ${isDarkMode ? 'border-slate-800 bg-orange-400' : 'border-white bg-orange-500'}`}>
+                                                            <div className="w-full h-full rounded-full bg-current animate-pulse"></div>
+                                                        </div>
                                                     </div>
+                                                )}
+
+                                                {/* Request Edit Button - แสดงเสมอเมื่ออนุมัติแล้ว */}
+                                                <div className="relative group">
+                                                    <button
+                                                        type="button"
+                                                        className={`relative px-4 py-2.5 rounded-xl font-medium transition-all duration-300 transform group hover:scale-105 flex items-center gap-2 overflow-hidden
+                                                            ${isDarkMode
+                                                                ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-amber-500/25 hover:from-amber-500 hover:to-orange-500'
+                                                                : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:shadow-amber-500/30 hover:from-amber-600 hover:to-orange-600'}
+                                                        `}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setShowRequestEditModal(true);
+                                                        }}
+                                                    >
+                                                        {/* Animated background overlay */}
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+
+                                                        {/* Icon */}
+                                                        <div className="relative z-10 flex items-center justify-center w-5 h-5">
+                                                            <BiQuestionMark className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                                                        </div>
+
+                                                        {/* Text */}
+                                                        <span className="relative z-10 text-sm font-semibold">ขอแก้ไข</span>
+
+                                                        {/* Pulse effect */}
+                                                        <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
+                                                    </button>
                                                 </div>
                                             </div>
                                         )}
-                                        {poData.mail_out_date && (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    className={`w-10 h-10 rounded-lg cursor-pointer flex items-center justify-center font-semibold transition-colors duration-200
-                                                        ${isDarkMode
-                                                            ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                                                            : 'bg-rose-500 hover:bg-rose-600 text-white'}
-                                                    `}
-                                                    title="ร้องขอการแก้ไขรายละเอียด"
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        setShowRequestEditModal(true);
-                                                    }}
-                                                >
-                                                    <BiQuestionMark className="h-8 w-8" />
-                                                </button>
-                                                <RequestEditPOModal
-                                                    open={showRequestEditModal}
-                                                    onClose={() => setShowRequestEditModal(false)}
-                                                    onSubmit={detail => {
-                                                        setShowRequestEditModal(false);
-                                                        // TODO: ส่ง detail ไปยัง API หรือแสดง toast ตามต้องการ
-                                                    }}
-                                                />
-                                            </>
-                                        )}
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -747,15 +731,15 @@ export default function ReviewedPOPage() {
                                                     className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-900/50  border-l-orange-400' : 'bg-white border-l-orange-400/70'}
                                                         ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'hover:bg-slate-800/90 hover:shadow-md hover:shadow-sky-400/30' : 'hover:bg-teal-100/50 hover:shadow-md hover:shadow-sky-400/30') : 'cursor-not-allowed opacity-60'}
                                                     `}
-                                                    // className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400' : 'bg-white border-l-orange-400/70'}
-                                                    //     ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-pointer hover:bg-amber-100 hover:shadow-xl hover:shadow-orange-200/30') : 'cursor-not-allowed opacity-60'}
-                                                    // `}
-                                                    // onClick={() => {
-                                                    //     if (!(poData.approved_by || poData.rejected_by)) {
-                                                    //         setSelectedPart(part);
-                                                    //         setShowPOModal(true);
-                                                    //     }
-                                                    // }}
+                                                // className={`transition-all duration-200 ${isDarkMode ? 'bg-slate-700/80 border-l-orange-400' : 'bg-white border-l-orange-400/70'}
+                                                //     ${!(poData.approved_by || poData.rejected_by) ? (isDarkMode ? 'cursor-pointer hover:bg-slate-600/90 hover:shadow-xl hover:shadow-orange-400/30' : 'cursor-pointer hover:bg-amber-100 hover:shadow-xl hover:shadow-orange-200/30') : 'cursor-not-allowed opacity-60'}
+                                                // `}
+                                                // onClick={() => {
+                                                //     if (!(poData.approved_by || poData.rejected_by)) {
+                                                //         setSelectedPart(part);
+                                                //         setShowPOModal(true);
+                                                //     }
+                                                // }}
                                                 >
                                                     <td className={`px-4 py-4 text-center text-sm font-bold ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
                                                         {(page - 1) * rowsPerPage + idx + 1}
@@ -937,19 +921,7 @@ export default function ReviewedPOPage() {
                     </div>
                 )}
             </main>
-
-            {/* Modal สำหรับรายละเอียดสินค้าและเพิ่ม remark/ของแถม */}
-            {/* <POModal
-                open={showPOModal}
-                onClose={() => setShowPOModal(false)}
-                part={selectedPart}
-                // onSubmit={() => {
-                //     setShowPOModal(false);
-                // }}
-                onSuccess={() => {
-                    fetchData();
-                }}
-            /> */}
+            
             {showEditVendor && (
                 <EditVendor
                     vendorData={editVendorData ? {
@@ -966,6 +938,17 @@ export default function ReviewedPOPage() {
                         setShowEditVendor(false);
                         if (typeof fetchData === 'function') fetchData();
                         // setActiveTab('compare'); // ถ้ามี tab ให้ใช้งาน
+                    }}
+                />
+            )}
+
+            {/* Modal Components - วางไว้นอก container */}
+            {showRequestEditModal && (
+                <RequestEditPOModal
+                    open={showRequestEditModal}
+                    onClose={() => setShowRequestEditModal(false)}
+                    onSubmit={detail => {
+                        setShowRequestEditModal(false);
                     }}
                 />
             )}

@@ -2692,7 +2692,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             // Find matching purchase row for this vendor - use current pr_list_id
                             const matchingPurchase = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id && item.po_no && item.po_no.trim() !== '');
                             const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
-                            
+
                             // Debug log สำหรับทุก vendor row
                             console.log(`Row ${index + 1} - Vendor: ${vendor.vendor_name}`);
                             console.log(`Status: "${prItem?.status}"`);
@@ -3212,7 +3212,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           type="button"
                                           className={`ml-2 px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
                                           onClick={() => setEditingQty(true)}
-                                          style={{marginLeft: 8}}
+                                          style={{ marginLeft: 8 }}
                                         >
                                           แก้ไข
                                         </button>
@@ -3225,7 +3225,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           value={qtyValue}
                                           onChange={e => setQtyValue(e.target.value)}
                                           className={`w-20 px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-100' : 'border-gray-300 bg-white text-gray-900'}`}
-                                          style={{marginRight: 8}}
+                                          style={{ marginRight: 8 }}
                                         />
                                         {/* <button
                                           type="button"

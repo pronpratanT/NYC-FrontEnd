@@ -16,6 +16,7 @@ import { useUser } from "@/app/context/UserContext";
 import { useSidebar } from "../../../context/SidebarContext";
 import Sidebar from "../../../components/sidebar";
 import Header from "../../../components/header";
+
 import PRModal from '../../../components/Modal/PRModal';
 import GroupPRModal from "@/app/components/Modal/Group_PR";
 import FreeItemsModal from "@/app/components/Modal/Free_Item_Modal";
@@ -199,7 +200,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     };
 
     // Use grouped data only
-    const hasComparedParts = allParts.some(part => part.status === 'Compared');
+    const hasActionableParts = allParts.some(part => part.status === 'Compared' || part.status === 'pending' || part.status === 'Rejected') && (prData?.manager_approve && prData?.supervisor_approve && user?.Department?.ID === 10086) && !(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at);
 
     // Handle checkbox selection
     const handlePartSelection = (pclId: number, checked: boolean) => {
@@ -738,7 +739,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         </div>
                                         <div className="flex items-center gap-3">
                                             {/* Multi Approval Button - Show only when parts are selected */}
-                                            {selectedParts.length > 0 && (
+                                            {selectedParts.length > 0 && allParts.some(part => part.status === 'Compared') && (
                                                 <button
                                                     type="button"
                                                     className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-sky-400 bg-sky-900/30 border-sky-600/30 hover:bg-sky-800/50' : 'text-sky-700 bg-sky-50 border-sky-300 hover:bg-sky-100'}`}
@@ -765,7 +766,10 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             {/* Group PR Modal */}
                                             <GroupPRModal
                                                 open={groupPRModalOpen}
-                                                onClose={() => setGroupPRModalOpen(false)}
+                                                onClose={() => {
+                                                    setGroupPRModalOpen(false);
+                                                    handleRefreshData();
+                                                }}
                                                 pr_id={prId ?? ''}
                                                 pr_no={prData?.pr_no ?? ''}
                                                 onSuccess={handleRefreshData}
@@ -793,8 +797,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 <table className="w-full text-sm table-auto">
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
-                                            {/* Show split/checkbox column only if at least one row is 'Compared' or 'pending' */}
-                                            {allParts.some(part => part.status === 'Compared' || part.status === 'pending') && (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
+                                            {/* Show action column only if there are actionable items (Compared, pending, Rejected) */}
+                                            {hasActionableParts && (
                                                 <th className={`px-1 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                                                     {/* Header: show select all only if there is at least one Compared row */}
                                                     {allParts.some(part => part.status === 'Compared') ? (
@@ -861,7 +865,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className={`shadow-sm ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100 backdrop-blur-sm'}`}
                                                         >
                                                             <td colSpan={
-                                                                (hasComparedParts ? 1 : 0) +
+                                                                (hasActionableParts ? 1 : 0) +
                                                                 (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
                                                                 12
                                                             } className="py-2.5 px-6 font-bold text-base align-middle">
@@ -891,8 +895,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             }
                                                         }}
                                                     >
-                                                        {/* Show split/checkbox cell only if at least one row is 'Compared' or 'pending' */}
-                                                        {allParts.some(p => p.status === 'Compared' || p.status === 'pending') && (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
+                                                        {/* Show action cell only if there are actionable items (Compared, pending, Rejected) */}
+                                                        {hasActionableParts && (
                                                             <td className={`px-1 py-3 text-center w-12`}>
                                                                 {part.status === 'Compared' ? (
                                                                     <input
@@ -907,7 +911,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                             handlePartSelection(part.pcl_id, e.target.checked);
                                                                         }}
                                                                     />
-                                                                ) : (part.status === 'pending' || part.status === 'Rejected') && (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) ? (
+                                                                ) : (part.status === 'pending' || part.status === 'Rejected') ? (
                                                                     <div className="relative inline-block">
                                                                         <button
                                                                             ref={el => { buttonRef.current[part.pcl_id] = el; }}
@@ -1097,13 +1101,19 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     part.free_item.forEach((item, i) => {
                                                         rows.push(
                                                             <tr key={`${part.part_no}-freebie-${item.part_no || ''}-${i}-${idx}`} className={`${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-50/80'}`}>
+                                                                {/* Add empty action cell only if hasActionableParts is true */}
+                                                                {hasActionableParts && (
+                                                                    <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                )}
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
-                                                                        <GoGift className="w-4.5 h-4.5"/>
-                                                                    </span>
-                                                                </td>
-                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                {/* Add empty status cell only if status column is visible */}
+                                                                {prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve && (
+                                                                    <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+                                                                            <GoGift className="w-4.5 h-4.5"/>
+                                                                        </span>
+                                                                    </td>
+                                                                )}
                                                                 <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                                     {(() => {
                                                                         // แยก part_no จาก format: part_no|part_name|prod_code
@@ -1113,6 +1123,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                         return item.part_no;
                                                                     })()}
                                                                 </td>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                                 {/* <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                     {(() => {
                                                                         // แยก prod_code จาก format: part_no|part_name|prod_code
@@ -1150,10 +1161,15 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                     {part.unit}
                                                                 </td>
+                                                                {/* Add empty vendor cell only if vendor column is visible */}
+                                                                {(departmentId === 10086 && prData?.manager_approve && prData?.supervisor_approve && user?.Department?.ID === 10086) && (
+                                                                    <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                )}
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                {/* Add empty price/unit cell only if price column is visible */}
+                                                                {(departmentId === 10086 && prData?.manager_approve && prData?.supervisor_approve && user?.Department?.ID === 10086) && (
+                                                                    <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                )}
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                             </tr>
                                                         );
@@ -1167,7 +1183,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className={`${isDarkMode ? 'border-b-1 border-blue-500/50 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100 backdrop-blur-sm'}`}
                                                         >
                                                             <td colSpan={
-                                                                (hasComparedParts ? 1 : 0) +
+                                                                (hasActionableParts ? 1 : 0) +
                                                                 (prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve ? 1 : 0) +
                                                                 12
                                                             } className={`px-8.5 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -1187,7 +1203,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         {totalRows > rowsPerPage && (
                                             <tr>
                                                 <td colSpan={
-                                                    (hasComparedParts ? 1 : 0) +
+                                                    (hasActionableParts ? 1 : 0) +
                                                     (prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve ? 1 : 0) +
                                                     12
                                                 } className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>

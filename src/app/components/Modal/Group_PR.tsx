@@ -8,6 +8,7 @@ import { IoTrashBinOutline } from "react-icons/io5";
 import { SlOptionsVertical } from "react-icons/sl";
 import { BiEditAlt } from "react-icons/bi";
 import { LuNotebookPen } from "react-icons/lu";
+import { MdLockOutline } from "react-icons/md";
 
 type Data = {
     id: number;
@@ -417,6 +418,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                 setOpenDropdown(null);
                 setEditingNote(null);
                 setEditingNoteItem(null);
+                onClose();
             }}>
             <div className={`rounded-2xl shadow-2xl border p-8 max-w-7xl w-full mx-6 h-[85vh] flex flex-col ${isDarkMode
                 ? 'bg-gray-800 border-gray-600'
@@ -579,6 +581,10 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                                 e.preventDefault();
                                                 e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
                                                 if (draggedItem) {
+                                                    // เช็คสถานะก่อน - ถ้าไม่ใช่ pending ห้ามย้าย
+                                                    if (draggedItem.status !== 'pending') {
+                                                        return;
+                                                    }
                                                     // หา group ปัจจุบันของ item ที่ลาก
                                                     const currentGroup = data.find(g =>
                                                         g.list && g.list.some(item => item.id === draggedItem.id)
@@ -695,25 +701,42 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
 
                                             {group.list && group.list.length > 0 ? (
                                                 <div className="space-y-3 mb-4">
-                                                    {group.list.map((item) => (
-                                                        <div
-                                                            key={item.id}
-                                                            className={`p-3 rounded-xl border-l-4 border-blue-400 hover:border-blue-500 cursor-grab transition-all duration-200 hover:shadow-md hover:scale-[1.01] ${isDarkMode
-                                                                ? 'bg-gradient-to-r from-blue-900/20 to-indigo-900/20'
-                                                                : 'bg-gradient-to-r from-blue-50 to-indigo-50'
-                                                                }`}
-                                                            draggable
-                                                            onDragStart={() => setDraggedItem(item)}
-                                                            onDragEnd={() => setDraggedItem(null)}
-                                                        >
-                                                            <div className={`font-semibold text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                                                                }`}>{item.part_no} - {item.part_name}</div>
-                                                            <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                                                                }`}>จำนวน: {item.qty} {item.unit}</div>
-                                                            <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                                                                }`}>{item.objective}</div>
-                                                        </div>
-                                                    ))}
+                                                    {group.list.map((item) => {
+                                                        const isLocked = item.status !== 'pending';
+                                                        return (
+                                                            <div
+                                                                key={item.id}
+                                                                className={`p-3 rounded-xl border-l-4 transition-all duration-200 relative ${isLocked
+                                                                        ? `border-gray-400 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100/50'} cursor-not-allowed opacity-75`
+                                                                        : `border-blue-400 hover:border-blue-500 cursor-grab hover:shadow-md hover:scale-[1.01] ${isDarkMode
+                                                                            ? 'bg-gradient-to-r from-blue-900/20 to-indigo-900/20'
+                                                                            : 'bg-gradient-to-r from-blue-50 to-indigo-50'
+                                                                        }`
+                                                                    }`}
+                                                                draggable={!isLocked}
+                                                                onDragStart={() => !isLocked && setDraggedItem(item)}
+                                                                onDragEnd={() => setDraggedItem(null)}
+                                                            >
+                                                                <div className={`font-semibold text-sm flex items-center justify-between ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                                                                    <span>{item.part_no} - {item.part_name}</span>
+                                                                    {isLocked && (
+                                                                        <MdLockOutline className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                                    )}
+                                                                </div>
+                                                                <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                                    จำนวน: {item.qty} {item.unit}
+                                                                </div>
+                                                                <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                                    {item.objective}
+                                                                </div>
+                                                                {isLocked && (
+                                                                    <div className={`text-xs mt-1 font-medium ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                                                                        สถานะ: {item.status} (ไม่สามารถย้ายได้)
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             ) : (
                                                 <div className={`text-sm text-center py-8 rounded-xl mb-4 ${isDarkMode
@@ -899,6 +922,10 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                 e.preventDefault();
                                 e.currentTarget.classList.remove('border-red-400', 'bg-red-50');
                                 if (draggedItem && ungroupedData) {
+                                    // เช็คสถานะก่อน - ถ้าไม่ใช่ pending ห้ามย้าย
+                                    if (draggedItem.status !== 'pending') {
+                                        return;
+                                    }
                                     // หา group ปัจจุบันของ item ที่ลาก
                                     const currentGroup = data.find(g =>
                                         g.list && g.list.some(item => item.id === draggedItem.id)
@@ -912,55 +939,72 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                         >
                             {ungroupedData && ungroupedData.list && ungroupedData.list.length > 0 ? (
                                 <div className="space-y-4">
-                                    {ungroupedData.list.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            className={`p-4 rounded-2xl border-2 shadow-md hover:shadow-lg transition-all duration-300 cursor-grab relative group hover:scale-[1.02] ${isDarkMode
-                                                ? 'bg-gray-700 border-gray-600 hover:border-orange-400'
-                                                : 'bg-white border-gray-100 hover:border-orange-200'
-                                                }`}
-                                            draggable
-                                            onDragStart={() => setDraggedItem(item)}
-                                            onDragEnd={() => setDraggedItem(null)}
-                                        >
-                                            <div className={`font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                                                }`}>{item.part_no} - {item.part_name}</div>
-                                            <div className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                                                }`}>
-                                                <div>จำนวน: {item.qty} {item.unit}</div>
-                                                <div>วัตถุประสงค์: {item.objective}</div>
-                                                <div>ผู้จัดจำหน่าย: {item.vendor}</div>
-                                                <div>Plant: {item.plant}</div>
-                                            </div>
-
-                                            {/* Quick Move Buttons */}
-                                            {groupedData.length > 0 && (
-                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <select
-                                                        className={`text-xs border rounded px-2 py-1 ${isDarkMode
-                                                            ? 'bg-blue-900/30 border-blue-600 text-gray-100'
-                                                            : 'bg-blue-50 border-blue-200 text-gray-800'
-                                                            }`}
-                                                        onChange={(e) => {
-                                                            if (e.target.value) {
-                                                                // เพิ่มจาก ungrouped เข้า group
-                                                                handleAddToGroup(item.member_id, parseInt(e.target.value));
-                                                                e.target.value = '';
-                                                            }
-                                                        }}
-                                                        defaultValue=""
-                                                    >
-                                                        <option value="" disabled>เลือก Group</option>
-                                                        {groupedData.map(group => (
-                                                            <option key={group.id} value={group.id}>
-                                                                {group.group_name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                    {ungroupedData.list.map((item) => {
+                                        const isLocked = item.status !== 'pending';
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className={`p-4 rounded-2xl border-2 shadow-md transition-all duration-300 relative group ${isLocked
+                                                        ? `cursor-not-allowed opacity-75 ${isDarkMode
+                                                            ? 'bg-gray-800 border-gray-600'
+                                                            : 'bg-gray-100 border-gray-300'
+                                                        }`
+                                                        : `cursor-grab hover:shadow-lg hover:scale-[1.02] ${isDarkMode
+                                                            ? 'bg-gray-700 border-gray-600 hover:border-orange-400'
+                                                            : 'bg-white border-gray-100 hover:border-orange-200'
+                                                        }`
+                                                    }`}
+                                                draggable={!isLocked}
+                                                onDragStart={() => !isLocked && setDraggedItem(item)}
+                                                onDragEnd={() => setDraggedItem(null)}
+                                            >
+                                                <div className={`font-medium flex items-center justify-between ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                                                    <span>{item.part_no} - {item.part_name}</span>
+                                                    {isLocked && (
+                                                        <MdLockOutline className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                <div className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                    <div>จำนวน: {item.qty} {item.unit}</div>
+                                                    {/* <div>วัตถุประสงค์: {item.objective}</div> */}
+                                                    {/* <div>ผู้จัดจำหน่าย: {item.vendor}</div> */}
+                                                    <div>Plant: {item.plant}</div>
+                                                    {isLocked && (
+                                                        <div className={`font-medium mt-1 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                                                            สถานะ: {item.status} (ไม่สามารถย้ายได้)
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Quick Move Buttons - Show only for unlocked items */}
+                                                {!isLocked && groupedData.length > 0 && (
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <select
+                                                            className={`text-xs border rounded px-2 py-1 ${isDarkMode
+                                                                ? 'bg-blue-900/30 border-blue-600 text-gray-100'
+                                                                : 'bg-blue-50 border-blue-200 text-gray-800'
+                                                                }`}
+                                                            onChange={(e) => {
+                                                                if (e.target.value) {
+                                                                    // เพิ่มจาก ungrouped เข้า group
+                                                                    handleAddToGroup(item.member_id, parseInt(e.target.value));
+                                                                    e.target.value = '';
+                                                                }
+                                                            }}
+                                                            defaultValue=""
+                                                        >
+                                                            <option value="" disabled>เลือก Group</option>
+                                                            {groupedData.map(group => (
+                                                                <option key={group.id} value={group.id}>
+                                                                    {group.group_name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                     {(ungroupedData?.note && ungroupedData.note.length > 0) && (
                                         <div className={`mt-4 p-3 border-l-4 border-yellow-300 rounded ${isDarkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'
                                             }`}>
