@@ -4,7 +4,7 @@ import { HiOutlinePencilSquare, HiXMark, HiOutlineExclamationTriangle } from 're
 import { BiMessageEdit } from 'react-icons/bi';
 import { useToken } from '@/app/context/TokenContext';
 
-interface RequestEditPOModalProps {
+interface ResponseEditPOModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit?: (detail: string) => void;
@@ -68,7 +68,7 @@ type FreeItems = {
   remark: string;
 }
 
-const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, onSubmit, poNo }) => {
+const ResponseEditPOModal: React.FC<ResponseEditPOModalProps> = ({ open, onClose, onSubmit, poNo }) => {
   const { isDarkMode } = useTheme();
   const [error, setError] = useState('');
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
@@ -135,10 +135,11 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
       // เตรียม payload สำหรับส่งข้อมูล
       const payload = {
         po_id: poData?.po_id || null,
+        pcl_id: selectedItems,
         note: reason,
       };
       console.log('Payload for request edit PO:', payload);
-      await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/edited-req`, {
+      await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/edited-res`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +147,28 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
         },
         body: JSON.stringify(payload)
       });
-      alert('ส่งคำร้องแล้วเรียบร้อยแล้ว');
+
+      // เรียก reject-pcl ทีละอัน
+    //   for (const pclId of selectedItems) {
+    //     try {
+    //       const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/reject-pcl?pclId=${pclId}&reason=${encodeURIComponent(reason)}`, {
+    //         method: 'PUT',
+    //         headers: {
+    //           'Content-Type': 'application/json',
+    //           Authorization: `Bearer ${token}`
+    //         }
+    //       });
+    //       if (!res.ok) {
+    //         const data = await res.json().catch(() => ({}));
+    //         throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+    //       }
+    //     } catch (err) {
+    //       alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+    //       console.error(err);
+    //     }
+    //   }
+
+      alert('อนุมัติคำร้องเรียบร้อยแล้ว');
       if (onClose) onClose();
       setSelectedItems([]);
       setReason('');
@@ -201,7 +223,7 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
               <div>
                 <h2 className={`text-xl font-bold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'
                   }`}>
-                  ร้องขอการแก้ไข
+                  อนุมัติการแก้ไข
                 </h2>
                 <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'
                   }`}>
@@ -216,14 +238,14 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
               <div className="space-y-4">
                 {poData && poData.po_lists && poData.po_lists.length > 0 ? (
                   <div className="space-y-4">
-                    {/* <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3">
                       <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
                       <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                        เลือกรายการที่ต้องการขอแก้ไข
+                        เลือกรายการที่ต้องการอนุมัติการแก้ไข
                       </label>
-                    </div> */}
+                    </div>
 
-                    {/* <div className="relative">
+                    <div className="relative">
                       <div className={`w-full rounded-xl border-2 ${isDarkMode
                         ? 'border-slate-600 bg-slate-900/50'
                         : 'border-gray-200 bg-gray-50/50'
@@ -294,14 +316,14 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                             ))}
                         </div>
                       </div>
-                    </div> */}
+                    </div>
 
-                    {/* {selectedItems.length > 0 && (
+                    {selectedItems.length > 0 && (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 mb-3">
                           <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
                           <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                            เหตุผลในการขอแก้ไข (สำหรับทั้งหมด {selectedItems.length} รายการ)
+                            Note เพิ่มเติม (สำหรับทั้งหมด {selectedItems.length} รายการ)
                           </label>
                         </div>
                         <textarea
@@ -315,13 +337,12 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                           onChange={e => setReason(e.target.value)}
                         />
                       </div>
-                    )} */}
-                    <div className="space-y-3">
+                    )}
+                    {/* <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-3">
                         <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
                         <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                           เหตุผลในการขอแก้ไข
-                          {/* เหตุผลในการขอแก้ไข (สำหรับทั้งหมด {selectedItems.length} รายการ) */}
                         </label>
                       </div>
                       <textarea
@@ -334,7 +355,7 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                         value={reason}
                         onChange={e => setReason(e.target.value)}
                       />
-                    </div>
+                    </div> */}
                   </div>
                 ) : (
                   <div className="text-gray-500 dark:text-gray-400">ไม่พบรายการสินค้าใน PO</div>
@@ -369,7 +390,7 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                     : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
                     }`}
                 >
-                  ส่งคำร้องขอ
+                  อนุมัติการแก้ไข
                 </button>
               </div>
             </form>
@@ -380,4 +401,4 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
   );
 };
 
-export default RequestEditPOModal;
+export default ResponseEditPOModal;

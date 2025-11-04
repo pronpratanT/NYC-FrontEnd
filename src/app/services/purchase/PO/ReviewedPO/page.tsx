@@ -15,6 +15,8 @@ import EditVendor from '@/app/components/Modal/EditVendor';
 import RejectPOModal from "@/app/components/Modal/Reject_PO";
 import SendMailModal from "@/app/components/Modal/SendMailModal";
 import RequestEditPOModal from "@/app/components/Modal/Request_Edit_PO";
+import ResponseEditPOModal from "@/app/components/Modal/Response_Edit_PO";
+import ResponseEditPO from "@/app/components/Modal/Response_Edit_PO";
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -53,7 +55,9 @@ type ReviewedPO = {
     issued_by: string;
     approved_by: string;
     rejected_by: string;
+    edit_reason: string;
     po_lists: POList[];
+    pcl_id?: number;
 };
 
 type POList = {
@@ -98,6 +102,7 @@ type VendorSelected = {
 
 export default function ReviewedPOPage() {
     const [showRequestEditModal, setShowRequestEditModal] = useState(false);
+    const [showResponseEditModal, setShowResponseEditModal] = useState(false);
     // components
     // const { user } = useUser(); // Removed unused variable
     const token = useToken();
@@ -407,35 +412,52 @@ export default function ReviewedPOPage() {
                                                     </div>
                                                 )}
 
-                                                {/* Request Edit Button - แสดงเสมอเมื่ออนุมัติแล้ว */}
-                                                <div className="relative group">
-                                                    <button
-                                                        type="button"
-                                                        className={`relative px-4 py-2.5 rounded-xl font-medium transition-all duration-300 transform group hover:scale-105 flex items-center gap-2 overflow-hidden
-                                                            ${isDarkMode
-                                                                ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-amber-500/25 hover:from-amber-500 hover:to-orange-500'
-                                                                : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:shadow-amber-500/30 hover:from-amber-600 hover:to-orange-600'}
-                                                        `}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setShowRequestEditModal(true);
-                                                        }}
-                                                    >
-                                                        {/* Animated background overlay */}
-                                                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-
-                                                        {/* Icon */}
-                                                        <div className="relative z-10 flex items-center justify-center w-5 h-5">
-                                                            <BiQuestionMark className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                                                        </div>
-
-                                                        {/* Text */}
-                                                        <span className="relative z-10 text-sm font-semibold">ขอแก้ไข</span>
-
-                                                        {/* Pulse effect */}
-                                                        <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
-                                                    </button>
-                                                </div>
+                                                {/* Request Edit Button หรือ Response Edit Button */}
+                                                {poData.edit_reason ? (
+                                                    <div className="relative group">
+                                                        <button
+                                                            type="button"
+                                                            className={`relative px-4 py-2.5 rounded-xl font-medium transition-all duration-300 transform group hover:scale-105 flex items-center gap-2 overflow-hidden
+                                                                ${isDarkMode
+                                                                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-amber-500/25 hover:from-amber-500 hover:to-orange-500'
+                                                                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:shadow-amber-500/30 hover:from-amber-600 hover:to-orange-600'}
+                                                            `}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShowResponseEditModal(true);
+                                                            }}
+                                                        >
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                                                            <div className="relative z-10 flex items-center justify-center w-5 h-5">
+                                                                <BiQuestionMark className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                                                            </div>
+                                                            <span className="relative z-10 text-sm font-semibold">อนุมัติการแก้ไข</span>
+                                                            <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="relative group">
+                                                        <button
+                                                            type="button"
+                                                            className={`relative px-4 py-2.5 rounded-xl font-medium transition-all duration-300 transform group hover:scale-105 flex items-center gap-2 overflow-hidden
+                                                                ${isDarkMode
+                                                                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-amber-500/25 hover:from-amber-500 hover:to-orange-500'
+                                                                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:shadow-amber-500/30 hover:from-amber-600 hover:to-orange-600'}
+                                                            `}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShowRequestEditModal(true);
+                                                            }}
+                                                        >
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                                                            <div className="relative z-10 flex items-center justify-center w-5 h-5">
+                                                                <BiQuestionMark className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                                                            </div>
+                                                            <span className="relative z-10 text-sm font-semibold">ขอแก้ไข</span>
+                                                            <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -443,6 +465,20 @@ export default function ReviewedPOPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {poData.edit_reason && (
+                            <div className={`px-4 py-3 mb-3 ml-5 mr-5 rounded-lg border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-800/50 text-yellow-200' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
+                                <div className="flex items-start gap-2">
+                                    <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div>
+                                        <span className={`font-semibold ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>เหตุผลในการขอแก้ไข : </span>
+                                        <span className={isDarkMode ? 'text-yellow-100' : 'text-yellow-700'}>{poData.edit_reason}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Two-Section Layout: Info Cards + Financial Summary */}
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -921,7 +957,7 @@ export default function ReviewedPOPage() {
                     </div>
                 )}
             </main>
-            
+
             {showEditVendor && (
                 <EditVendor
                     vendorData={editVendorData ? {
@@ -943,6 +979,7 @@ export default function ReviewedPOPage() {
             )}
 
             {/* Modal Components - วางไว้นอก container */}
+
             {showRequestEditModal && (
                 <RequestEditPOModal
                     open={showRequestEditModal}
@@ -950,6 +987,17 @@ export default function ReviewedPOPage() {
                     onSubmit={detail => {
                         setShowRequestEditModal(false);
                     }}
+                    poNo={poData?.po_no}
+                />
+            )}
+            {showResponseEditModal && (
+                <ResponseEditPOModal
+                    open={showResponseEditModal}
+                    onClose={() => setShowResponseEditModal(false)}
+                    onSubmit={detail => {
+                        setShowResponseEditModal(false);
+                    }}
+                    poNo={poData?.po_no}
                 />
             )}
 
