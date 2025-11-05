@@ -582,7 +582,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                                 e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
                                                 if (draggedItem) {
                                                     // เช็คสถานะก่อน - ถ้าไม่ใช่ pending หรือ Rejected ห้ามย้าย
-                                                    if (draggedItem.status !== 'pending' && draggedItem.status !== 'Rejected') {
+                                                    if (draggedItem.status !== 'pending' && draggedItem.status !== 'Rejected' && draggedItem.status !== 'Recheck') {
                                                         return;
                                                     }
                                                     // หา group ปัจจุบันของ item ที่ลาก
@@ -702,7 +702,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                             {group.list && group.list.length > 0 ? (
                                                 <div className="space-y-3 mb-4">
                                                     {group.list.map((item) => {
-                                                        const isLocked = item.status !== 'pending' && item.status !== 'Rejected';
+                                                        const isLocked = item.status !== 'pending' && item.status !== 'Rejected' && item.status !== 'Recheck';
                                                         return (
                                                             <div
                                                                 key={item.id}
@@ -923,7 +923,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                 e.currentTarget.classList.remove('border-red-400', 'bg-red-50');
                                 if (draggedItem && ungroupedData) {
                                     // เช็คสถานะก่อน - ถ้าไม่ใช่ pending หรือ Rejected ห้ามย้าย
-                                    if (draggedItem.status !== 'pending' && draggedItem.status !== 'Rejected') {
+                                    if (draggedItem.status !== 'pending' && draggedItem.status !== 'Rejected' && draggedItem.status !== 'Recheck') {
                                         return;
                                     }
                                     // หา group ปัจจุบันของ item ที่ลาก
@@ -940,7 +940,7 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                             {ungroupedData && ungroupedData.list && ungroupedData.list.length > 0 ? (
                                 <div className="space-y-4">
                                     {ungroupedData.list.map((item) => {
-                                        const isLocked = item.status !== 'pending' && item.status !== 'Rejected';
+                                        const isLocked = item.status !== 'pending' && item.status !== 'Rejected' && item.status !== 'Recheck';
                                         return (
                                             <div
                                                 key={item.id}

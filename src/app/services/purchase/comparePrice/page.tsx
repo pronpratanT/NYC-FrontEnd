@@ -911,7 +911,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                             handlePartSelection(part.pcl_id, e.target.checked);
                                                                         }}
                                                                     />
-                                                                ) : (part.status === 'pending' || part.status === 'Rejected') ? (
+                                                                ) : (part.status === 'pending' || part.status === 'Rejected' || part.status === 'Po Rejected' || part.status === 'Recheck') ? (
                                                                     <div className="relative inline-block">
                                                                         <button
                                                                             ref={el => { buttonRef.current[part.pcl_id] = el; }}
@@ -1007,6 +1007,13 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
                                                                                         <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>rejected</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'Recheck':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-orange-900/60 via-orange-800/50 to-orange-900/60 border-orange-700/60' : 'from-orange-50 via-orange-100 to-orange-50 border-orange-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-orange-400' : 'bg-orange-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>recheck</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'PO Created':

@@ -172,7 +172,10 @@ type EditedPrice = {
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
   // --- State for editing qty in summary tab ---
   const [editingQty, setEditingQty] = useState(false);
-  const [qtyValue, setQtyValue] = useState(qty || '');
+  const [qtyValue, setQtyValue] = useState(() => {
+    // ดึงข้อมูล qty จาก compareData ที่ตรงกับ pr_list_id หรือใช้ qty จาก props
+    return qty !== undefined ? qty.toString() : '';
+  });
   // console.log("PRModal rendered with props:", { partNo, prNumber, pr_list_id });
 
   const router = useRouter();
@@ -292,8 +295,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       // เรียงข้อมูลตาม pr_list_id จากมากไปน้อย (รายการล่าสุดก่อน)
       const sortedItems = [...compareData.part_inventory_and_pr].sort((a, b) => b.pr_list_id - a.pr_list_id);
 
-      // ข้อมูลล่าสุด (index 0)
-      setLatestInventoryItem(sortedItems.length > 0 ? sortedItems[0] : null);
+      // ข้อมูลล่าสุดที่ตรงกับ pr_list_id
+      const currentItem = sortedItems.find(item => item.pr_list_id === pr_list_id);
+      setLatestInventoryItem(currentItem || (sortedItems.length > 0 ? sortedItems[0] : null));
+
+      // อัปเดต qtyValue จากข้อมูลที่ตรงกับ pr_list_id หรือใช้ qty จาก props
+      if (currentItem && currentItem.qty !== undefined) {
+        setQtyValue(currentItem.qty.toString());
+      } else if (qty !== undefined) {
+        setQtyValue(qty.toString());
+      }
 
       // หาประวัติการซื้อเดิม โดยนำจำนวนทั้งหมดลบ 1
       const totalCount = sortedItems.length;
@@ -315,8 +326,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         // console.log("Not enough items for previous purchase history. Total count:", totalCount);
       }
 
-      // ถ้ามี po_no สำหรับ prNumber ให้แสดงผลสรุปทันที
-      const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no);
+      // ถ้ามี po_no สำหรับ prNumber และ pr_list_id ให้แสดงผลสรุปทันที
+      const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no && item.pr_list_id === pr_list_id);
       if (prWithPO && compareData?.compare_vendors) {
         // ...existing code...
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -376,6 +387,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     try {
       const partNoToUse = fetchPartNo ?? partNo;
       const prListIdToUse = fetchPrListId ?? pr_list_id;
+      // console.log("2.Fetching compare data for partNo:", partNoToUse, "pr_list_id:", prListIdToUse);
       if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
       const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/list?part_no=${partNoToUse}&pr_list_id=${prListIdToUse}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -398,6 +410,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       setLoading(false);
       return;
     }
+    // console.log("1.Fetching compare data for partNo:", partNo, "pr_list_id:", pr_list_id);
     fetchCompareData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partNo, pr_list_id, token]);
@@ -832,21 +845,48 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       // fallback: single item selected
       selectedPclIds = selectedToPO.map(sel => ({ pcl_id: sel.pcl_id }));
     }
+
+    // ตรวจสอบว่ามี po_no หรือไม่ใน multipleOrderDetails
+    const po_no = multipleOrderDetails.length > 0
+      ? (() => {
+        const firstItem = multipleOrderDetails[0];
+        const prItem = compareData?.part_inventory_and_pr?.find(pr => pr.pr_list_id === firstItem.pr_list_id);
+        return prItem?.po_no || '';
+      })()
+      : '';
+
     const poCreate = {
       material_type: selectedMaterialType,
       remark: remark,
       ext_discount: lastDiscount,
       po_list: selectedPclIds
     };
-    console.log("Creating PO with data:", poCreate);
+
+    const editPO = {
+      po_no: po_no,
+      remark: remark,
+      ext_discount: lastDiscount,
+      po_list: selectedPclIds
+    };
+
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`, {
+      let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`;
+      let body: any = poCreate;
+
+      if (po_no) {
+        url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/repeat-or-new`;
+        body = editPO;
+      }
+
+      console.log("Creating/Editing PO with data:", body, "URL:", url);
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(poCreate)
+        body: JSON.stringify(body)
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -1199,39 +1239,44 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
                       )}
 
-                    {compareData?.part_inventory_and_pr?.[0]?.prod_code &&
-                      compareData.part_inventory_and_pr.every(item => item.prod_code === compareData.part_inventory_and_pr[0].prod_code) && (
-                        <div className={`rounded-lg px-4 py-2 border shadow-sm ${isDarkMode ? 'bg-slate-800/60 border-emerald-700/50' : 'bg-white border-emerald-200'}`}>
-                          <div className="flex items-center space-x-2">
-                            <div className={`p-1 rounded ${isDarkMode ? 'bg-emerald-900/40' : 'bg-emerald-50'}`}>
-                              <svg className={`w-3 h-3 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                              </svg>
+                    {(() => {
+                      const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
+                      if (!prItem) return null;
+                      return (
+                        <>
+                          {prItem.prod_code && (
+                            <div className={`rounded-lg px-4 py-2 border shadow-sm ${isDarkMode ? 'bg-slate-800/60 border-emerald-700/50' : 'bg-white border-emerald-200'}`}>
+                              <div className="flex items-center space-x-2">
+                                <div className={`p-1 rounded ${isDarkMode ? 'bg-emerald-900/40' : 'bg-emerald-50'}`}>
+                                  <svg className={`w-3 h-3 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>รหัสสินค้า</span>
+                                  <div className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{prItem.prod_code}</div>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>รหัสสินค้า</span>
-                              <div className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{compareData.part_inventory_and_pr[0].prod_code}</div>
+                          )}
+                          {prItem.prod_detail && (
+                            <div className={`rounded-lg px-4 py-2 border shadow-sm max-w-sm ${isDarkMode ? 'bg-slate-800/60 border-amber-700/50' : 'bg-white border-amber-200'}`}>
+                              <div className="flex items-center space-x-2">
+                                <div className={`p-1 rounded ${isDarkMode ? 'bg-amber-900/40' : 'bg-amber-50'}`}>
+                                  <svg className={`w-3 h-3 ${isDarkMode ? 'text-amber-300' : 'text-amber-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m-1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>รายละเอียด</span>
+                                  <div className={`font-semibold text-sm truncate ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{prItem.prod_detail}</div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      )}
-
-                    {compareData?.part_inventory_and_pr?.[0]?.prod_detail &&
-                      compareData.part_inventory_and_pr.every(item => item.prod_detail === compareData.part_inventory_and_pr[0].prod_detail) && (
-                        <div className={`rounded-lg px-4 py-2 border shadow-sm max-w-sm ${isDarkMode ? 'bg-slate-800/60 border-amber-700/50' : 'bg-white border-amber-200'}`}>
-                          <div className="flex items-center space-x-2">
-                            <div className={`p-1 rounded ${isDarkMode ? 'bg-amber-900/40' : 'bg-amber-50'}`}>
-                              <svg className={`w-3 h-3 ${isDarkMode ? 'text-amber-300' : 'text-amber-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m-1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>รายละเอียด</span>
-                              <div className={`font-semibold text-sm truncate ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{compareData.part_inventory_and_pr[0].prod_detail}</div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1314,10 +1359,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     return (
                       <button type="button" onClick={() => setActiveTab('approve')}
                         className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
-                          ? 'bg-gradient-to-r from-green-500 to-lime-600 text-white shadow-md shadow-green-200/50 transform scale-105'
+                          ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-md shadow-yellow-200/50 transform scale-105'
                           : isDarkMode
-                            ? 'text-slate-300 hover:text-green-400 hover:bg-green-900/30 hover:shadow-md'
-                            : 'text-slate-600 hover:text-green-700 hover:bg-green-50/80 hover:shadow-md'
+                            ? 'text-slate-300 hover:text-yellow-400 hover:bg-yellow-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-yellow-700 hover:bg-yellow-50/80 hover:shadow-md'
                           }`}
                       >
                         <div className="flex items-center space-x-2">
@@ -1363,10 +1408,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     return (
                       <button type="button" onClick={() => setActiveTab('summary')}
                         className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200/50 transform scale-105'
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
                           : isDarkMode
-                            ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
-                            : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
+                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
                           }`}
                       >
                         <div className="flex items-center space-x-2">
@@ -1405,7 +1450,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               {!loading && !error && compareData && activeTab === 'approve' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   {(() => {
-                    const prWithPO = latestInventoryItem;
+                    const prWithPO = latestInventoryItem && latestInventoryItem.pr_list_id === pr_list_id ? latestInventoryItem : compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
                     if (!prWithPO) return <div className="p-6">ไม่พบข้อมูล</div>;
 
                     // หา vendor_id จาก recent_purchase
@@ -1705,7 +1750,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               {!loading && !error && compareData && activeTab === 'completed-summary' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   {(() => {
-                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber);
+                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
                     if (!prWithPO) return <div className="p-6">ไม่พบข้อมูล</div>;
 
                     // หา vendor_id จาก recent_purchase เหมือนกับใน left column
@@ -1722,8 +1767,98 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     return (
                       <div className="flex flex-col h-full">
                         {/* Header */}
-                        <div className={`bg-gradient-to-r px-8 py-4 border-b ${isDarkMode ? 'from-blue-900/60 to-indigo-900/60 border-blue-700/60' : 'from-blue-50 to-indigo-50 border-blue-200/60'}`}>
-                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>ผลสรุปรายละเอียดการสั่งซื้อ</h3>
+                        <div className={`bg-gradient-to-r px-6 py-5 border-b ${isDarkMode ? 'from-blue-900/80 via-indigo-900/70 to-purple-900/80 border-blue-700/60' : 'from-blue-50 via-indigo-50 to-purple-50 border-blue-200/60'}`}>
+                          <div className="flex items-center justify-between">
+                            {/* Left Section - Title and Status */}
+                            <div className="flex items-center space-x-4">
+                              <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-blue-800/60' : 'bg-blue-100'}`}>
+                                <svg className={`w-6 h-6 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <h3 className={`text-xl font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                                  ผลสรุปรายละเอียดการสั่งซื้อ
+                                </h3>
+                                <p className={`text-sm ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                  PR: {prWithPO.pr_no} • PO: {prWithPO.po_no || 'รออนุมัติ'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Right Section - Status Badge and Action Button */}
+                            <div className="flex items-center space-x-4">
+                              {/* Status Badge */}
+                              {/* <div className={`px-4 py-2 rounded-full border ${
+                                prWithPO.status === 'Po Created' 
+                                  ? isDarkMode 
+                                    ? 'bg-green-900/60 border-green-700 text-green-300' 
+                                    : 'bg-green-100 border-green-300 text-green-700'
+                                  : prWithPO.status === 'Approved'
+                                    ? isDarkMode 
+                                      ? 'bg-orange-900/60 border-orange-700 text-orange-300'
+                                      : 'bg-orange-100 border-orange-300 text-orange-700'
+                                    : isDarkMode 
+                                      ? 'bg-slate-800/60 border-slate-600 text-slate-300'
+                                      : 'bg-slate-100 border-slate-300 text-slate-700'
+                              }`}>
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    prWithPO.status === 'Po Created' 
+                                      ? 'bg-green-500' 
+                                      : prWithPO.status === 'Approved'
+                                        ? 'bg-orange-500'
+                                        : 'bg-slate-500'
+                                  }`}></div>
+                                  <span className="text-sm font-semibold">
+                                    {prWithPO.status === 'Po Created' ? 'PO สร้างแล้ว' : 
+                                     prWithPO.status === 'Approved' ? 'อนุมัติแล้ว' : 
+                                     prWithPO.status}
+                                  </span>
+                                </div>
+                              </div> */}
+
+                              {/* Action Button */}
+                              {prWithPO.status !== 'Po Created' && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if ((!purchaseType && !prWithPO.po_no) || isSaving) return;
+                                    setIsSaving(true);
+                                    try {
+                                      await handleSubmitPOCreate();
+                                    } finally {
+                                      setIsSaving(false);
+                                    }
+                                  }}
+                                  className={`px-6 py-2.5 cursor-pointer rounded-xl font-semibold shadow-lg transition-all duration-300 border text-sm focus:outline-none focus:ring-2 flex items-center space-x-2 ${(!purchaseType && !prWithPO.po_no) || isSaving
+                                      ? 'bg-slate-400 text-slate-200 border-slate-300 cursor-not-allowed opacity-60'
+                                      : isDarkMode
+                                        ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-emerald-500 hover:from-emerald-700 hover:to-green-700 hover:shadow-xl focus:ring-emerald-400 transform hover:scale-105'
+                                        : 'bg-gradient-to-r from-emerald-500 to-green-500 text-white border-emerald-400 hover:from-emerald-600 hover:to-green-600 hover:shadow-xl focus:ring-emerald-400 transform hover:scale-105'
+                                    }`}
+                                  disabled={(!purchaseType && !prWithPO.po_no) || isSaving}
+                                >
+                                  {isSaving ? (
+                                    <>
+                                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      <span>กำลังบันทึก...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      <span>{prWithPO.po_no ? 'อัปเดต PO' : 'สร้าง PO'}</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
                         {/* Content */}
@@ -2088,7 +2223,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   )}
                                 </div>
                               </div>
-                              {prWithPO.status !== 'Po Created' && (
+                              {/* {prWithPO.status !== 'Po Created' && (
                                 <>
                                   <div className={`p-4`}>
                                     <div className="flex justify-center gap-4">
@@ -2112,7 +2247,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     </div>
                                   </div>
                                 </>
-                              )}
+                              )} */}
                             </div>
                           </div>
                         </div>
@@ -2366,20 +2501,162 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   <div className="flex flex-col h-full">
                     {/* Header */}
-                    <div className={`px-6 py-4 border-b-2 ${isDarkMode ? 'border-orange-600/50 bg-gradient-to-r from-orange-900/80 to-red-900/80' : 'border-orange-300/50 bg-gradient-to-r from-orange-50 to-red-50'}`}>
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-900/50' : 'bg-orange-200'}`}>
-                          <svg className={`w-6 h-6 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
+                    <div className={`relative px-8 py-6 border-b ${isDarkMode 
+                      ? 'border-orange-500/30 bg-gradient-to-br from-slate-900 via-orange-950/50 to-red-950/50' 
+                      : 'border-orange-200/50 bg-gradient-to-br from-orange-50/80 via-white to-red-50/80'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        {/* Left Section - Title and Info */}
+                        <div className="flex items-center space-x-4">
+                          <div className={`relative p-3 rounded-xl backdrop-blur-sm border shadow-lg ${isDarkMode 
+                            ? 'bg-gradient-to-br from-orange-900/60 to-red-900/60 border-orange-700/50' 
+                            : 'bg-gradient-to-br from-orange-100 to-red-100 border-orange-300/50'
+                          }`}>
+                            <svg className={`w-7 h-7 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                            </svg>
+                            <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode 
+                              ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg' 
+                              : 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
+                            }`}>
+                              {multipleOrderDetails.length}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-3">
+                              <h3 className={`text-xl font-bold ${isDarkMode ? 'text-orange-200' : 'text-orange-800'}`}>
+                                รายละเอียดการขอซื้อหลายรายการ
+                              </h3>
+                              <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDarkMode 
+                                ? 'bg-gradient-to-r from-orange-600/80 to-red-600/80 text-orange-100 border border-orange-500/50' 
+                                : 'bg-gradient-to-r from-orange-500/80 to-red-500/80 text-white border border-orange-400/50'
+                              }`}>
+                                Multiple Orders
+                              </div>
+                            </div>
+                            <p className={`text-sm font-medium ${isDarkMode ? 'text-orange-300/80' : 'text-orange-700/80'}`}>
+                              จัดการและสร้างใบสั่งซื้อสำหรับรายการทั้งหมด • {multipleOrderDetails.length} รายการ
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className={`text-lg font-bold ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>
-                            รายละเอียดการขอซื้อหลายรายการ
-                          </h3>
-                          <p className={`text-sm ${isDarkMode ? 'text-red-200' : 'text-red-600'}`}>
-                            จัดการข้อมูลการสั่งซื้อสำหรับ {multipleOrderDetails.length} รายการ
-                          </p>
+
+                        {/* Right Section - Actions */}
+                        <div className="flex items-center space-x-4">
+                          {/* Status Indicator */}
+                          <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg backdrop-blur-sm border ${(() => {
+                            const hasPO = multipleOrderDetails.some(item => {
+                              const prItem = compareData?.part_inventory_and_pr?.find(
+                                pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                              );
+                              return !!prItem;
+                            });
+                            if (hasPO) {
+                              return isDarkMode 
+                                ? 'bg-green-900/30 border-green-600/50 text-green-300' 
+                                : 'bg-green-100/80 border-green-300/50 text-green-700';
+                            }
+                            return multipleOrderDetails[0]?.purchaseType 
+                              ? isDarkMode ? 'bg-blue-900/30 border-blue-600/50 text-blue-300' : 'bg-blue-100/80 border-blue-300/50 text-blue-700'
+                              : isDarkMode ? 'bg-amber-900/30 border-amber-600/50 text-amber-300' : 'bg-amber-100/80 border-amber-300/50 text-amber-700';
+                          })()}`}>
+                            {(() => {
+                              const hasPO = multipleOrderDetails.some(item => {
+                                const prItem = compareData?.part_inventory_and_pr?.find(
+                                  pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                                );
+                                return !!prItem;
+                              });
+                              if (hasPO) {
+                                return (
+                                  <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-sm font-semibold">มี PO แล้ว</span>
+                                  </>
+                                );
+                              }
+                              return multipleOrderDetails[0]?.purchaseType ? (
+                                <>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span className="text-sm font-semibold">พร้อมสร้าง PO</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.99-.833-2.75 0L4.064 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                  </svg>
+                                  <span className="text-sm font-semibold">ต้องเลือกประเภทการซื้อ</span>
+                                </>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Save Button */}
+                          <button
+                            type="button"
+                            onClick={handleSubmitPOCreateMultiplePart}
+                            disabled={(() => {
+                              const hasPO = multipleOrderDetails.some(item => {
+                                const prItem = compareData?.part_inventory_and_pr?.find(
+                                  pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                                );
+                                return !!prItem;
+                              });
+                              if (hasPO) return false;
+                              return !multipleOrderDetails[0]?.purchaseType;
+                            })()}
+                            className={`group relative flex items-center space-x-3 px-8 py-3 rounded-xl font-bold shadow-xl transition-all duration-300 border-2 text-sm focus:outline-none focus:ring-4 overflow-hidden ${(() => {
+                              const hasPO = multipleOrderDetails.some(item => {
+                                const prItem = compareData?.part_inventory_and_pr?.find(
+                                  pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                                );
+                                return !!prItem;
+                              });
+                              if (hasPO) {
+                                return isDarkMode
+                                  ? 'bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-700 text-white border-emerald-500 hover:from-emerald-700 hover:via-green-700 hover:to-emerald-800 hover:shadow-2xl hover:scale-105 focus:ring-emerald-500/50'
+                                  : 'bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 text-white border-emerald-400 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700 hover:shadow-2xl hover:scale-105 focus:ring-emerald-400/50';
+                              }
+                              return !multipleOrderDetails[0]?.purchaseType
+                                ? 'bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
+                                : isDarkMode
+                                  ? 'bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 text-white border-orange-500 hover:from-orange-700 hover:via-red-700 hover:to-orange-800 hover:shadow-2xl hover:scale-105 focus:ring-orange-500/50'
+                                  : 'bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 text-white border-orange-400 hover:from-orange-600 hover:via-red-600 hover:to-orange-700 hover:shadow-2xl hover:scale-105 focus:ring-orange-400/50';
+                            })()}`}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                            
+                            <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              {(() => {
+                                const hasPO = multipleOrderDetails.some(item => {
+                                  const prItem = compareData?.part_inventory_and_pr?.find(
+                                    pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                                  );
+                                  return !!prItem;
+                                });
+                                return hasPO ? (
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                ) : (
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                );
+                              })()}
+                            </svg>
+                            <span className="relative z-10 font-bold">
+                              {(() => {
+                                const hasPO = multipleOrderDetails.some(item => {
+                                  const prItem = compareData?.part_inventory_and_pr?.find(
+                                    pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                                  );
+                                  return !!prItem;
+                                });
+                                return hasPO ? 'อัพเดท PO' : 'สร้าง PO';
+                              })()}
+                            </span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -2431,173 +2708,223 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
 
                         {/* ประเภทการซื้อ */}
-                        <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                          <div className="flex items-center space-x-3 mb-4">
-                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-red-700' : 'bg-red-100'}`}>
-                              <svg className={`w-5 h-5 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                              </svg>
-                            </div>
-                            <h4 className={`text-base font-bold ${isDarkMode ? 'text-red-100' : 'text-red-800'}`}>
-                              ประเภทการซื้อ
-                            </h4>
-                          </div>
+                        {(() => {
+                          // ตรวจสอบว่ามีรายการใดที่มี po_no แล้วหรือไม่
+                          console.log('=== Debug PO Check ===');
+                          console.log('multipleOrderDetails:', multipleOrderDetails);
+                          console.log('compareData?.part_inventory_and_pr:', compareData?.part_inventory_and_pr);
 
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {/* DIRECT Option */}
-                              <div
-                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                  ? isDarkMode
-                                    ? 'bg-green-900/30 border-green-500'
-                                    : 'bg-green-50 border-green-400'
-                                  : isDarkMode
-                                    ? 'bg-slate-800/50 border-slate-600 hover:border-green-500/50'
-                                    : 'bg-white border-slate-200 hover:border-green-300'
-                                  }`}
-                                onClick={() => {
-                                  setMultipleOrderDetails(prev =>
-                                    prev.map(item => ({ ...item, purchaseType: 'D' }))
-                                  );
-                                }}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                    ? isDarkMode
-                                      ? 'border-green-400 bg-green-500'
-                                      : 'border-green-500 bg-green-500'
-                                    : isDarkMode
-                                      ? 'border-slate-500'
-                                      : 'border-slate-300'
-                                    }`}>
-                                    {multipleOrderDetails[0]?.purchaseType === 'D' && (
-                                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                      ? isDarkMode ? 'text-green-300' : 'text-green-700'
-                                      : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                      }`}>
-                                      DIRECT
-                                    </div>
-                                    <div className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                                      : isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                                      }`}>
-                                      วัตถุดิบที่เกี่ยวข้องกับการผลิต (D)
-                                    </div>
-                                  </div>
-                                  <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                    ? isDarkMode ? 'bg-green-900/50' : 'bg-green-100'
-                                    : isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100'
-                                    }`}>
-                                    <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                      ? isDarkMode ? 'text-green-300' : 'text-green-600'
-                                      : isDarkMode ? 'text-slate-400' : 'text-slate-500'
-                                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                          const hasExistingPO = multipleOrderDetails.some(item => {
+                            const prItem = compareData?.part_inventory_and_pr?.find(
+                              pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                            );
+                            console.log(`Checking pr_list_id: ${item.pr_list_id}`);
+                            console.log('Found prItem:', prItem);
+                            console.log('po_no:', prItem?.po_no);
+                            return !!prItem;
+                          });
+
+                          console.log('hasExistingPO:', hasExistingPO);
+                          console.log('======================');
+
+                          // ถ้ามีรายการที่มี po_no แล้ว ให้ซ่อนส่วนนี้
+                          if (hasExistingPO) {
+                            return (
+                              <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-yellow-900/20 border-yellow-600/40' : 'bg-yellow-50 border-yellow-300'}`}>
+                                <div className="flex items-center space-x-3">
+                                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-yellow-900/50' : 'bg-yellow-200'}`}>
+                                    <svg className={`w-5 h-5 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.99-.833-2.75 0L4.064 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                     </svg>
                                   </div>
-                                </div>
-                              </div>
-
-                              {/* INTERNATIONAL Option */}
-                              <div
-                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${multipleOrderDetails[0]?.purchaseType === 'I'
-                                  ? isDarkMode
-                                    ? 'bg-blue-900/30 border-blue-500'
-                                    : 'bg-blue-50 border-blue-400'
-                                  : isDarkMode
-                                    ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500/50'
-                                    : 'bg-white border-slate-200 hover:border-blue-300'
-                                  }`}
-                                onClick={() => {
-                                  setMultipleOrderDetails(prev =>
-                                    prev.map(item => ({ ...item, purchaseType: 'I' }))
-                                  );
-                                }}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${multipleOrderDetails[0]?.purchaseType === 'I'
-                                    ? isDarkMode
-                                      ? 'border-blue-400 bg-blue-500'
-                                      : 'border-blue-500 bg-blue-500'
-                                    : isDarkMode
-                                      ? 'border-slate-500'
-                                      : 'border-slate-300'
-                                    }`}>
-                                    {multipleOrderDetails[0]?.purchaseType === 'I' && (
-                                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'I'
-                                      ? isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                                      : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                      }`}>
-                                      INDIRECT
-                                    </div>
-                                    <div className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'I'
-                                      ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                      : isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                                      }`}>
-                                      วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (I)
-                                    </div>
-                                  </div>
-                                  <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'I'
-                                    ? isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'
-                                    : isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100'
-                                    }`}>
-                                    <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'I'
-                                      ? isDarkMode ? 'text-blue-300' : 'text-blue-600'
-                                      : isDarkMode ? 'text-slate-400' : 'text-slate-500'
-                                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {multipleOrderDetails[0]?.purchaseType && (
-                              <div className={`p-3 rounded-lg border ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                ? isDarkMode ? 'bg-green-900/20 border-green-600/40' : 'bg-green-50 border-green-200'
-                                : isDarkMode ? 'bg-blue-900/20 border-blue-600/40' : 'bg-blue-50 border-blue-200'
-                                }`}>
-                                <div className="flex items-center space-x-2">
-                                  <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                    ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                                    : isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <div className="flex-1">
-                                    <span className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                      ? isDarkMode ? 'text-green-300' : 'text-green-700'
-                                      : isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                                      }`}>
-                                      {multipleOrderDetails[0]?.purchaseType === 'D' ? 'วัตถุดิบที่เกี่ยวข้องกับการผลิต (DIRECT)' : 'วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (INDIRECT)'}
-                                    </span>
-                                    <p className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                                      : isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                      }`}>
-                                      ใช้สำหรับ {multipleOrderDetails.length} รายการ
+                                  <div>
+                                    <h4 className={`text-base font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
+                                      ไม่สามารถแก้ไขประเภทการซื้อได้
+                                    </h4>
+                                    <p className={`text-sm ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                                      มีรายการที่ได้รับการอนุมัติและสร้าง PO แล้ว ไม่สามารถเปลี่ยนแปลงประเภทการซื้อได้
                                     </p>
                                   </div>
-                                  <div className={`px-2 py-1 rounded text-xs font-bold ${multipleOrderDetails[0]?.purchaseType === 'D'
-                                    ? isDarkMode ? 'bg-green-800 text-green-200' : 'bg-green-600 text-white'
-                                    : isDarkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-600 text-white'
-                                    }`}>
-                                    {multipleOrderDetails[0]?.purchaseType}
-                                  </div>
                                 </div>
                               </div>
-                            )}
-                          </div>
+                            );
+                          }
+
+                          // ถ้าไม่มีรายการที่มี po_no ให้แสดงส่วนเลือกประเภทการซื้อปกติ
+                          return (
+                            <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className="flex items-center space-x-3 mb-4">
+                                <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-red-700' : 'bg-red-100'}`}>
+                                  <svg className={`w-5 h-5 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                  </svg>
+                                </div>
+                                <h4 className={`text-base font-bold ${isDarkMode ? 'text-red-100' : 'text-red-800'}`}>
+                                  ประเภทการซื้อ
+                                </h4>
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {/* DIRECT Option */}
+                                  <div
+                                    className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                      ? isDarkMode
+                                        ? 'bg-green-900/30 border-green-500'
+                                        : 'bg-green-50 border-green-400'
+                                      : isDarkMode
+                                        ? 'bg-slate-800/50 border-slate-600 hover:border-green-500/50'
+                                        : 'bg-white border-slate-200 hover:border-green-300'
+                                      }`}
+                                    onClick={() => {
+                                      setMultipleOrderDetails(prev =>
+                                        prev.map(item => ({ ...item, purchaseType: 'D' }))
+                                      );
+                                    }}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                        ? isDarkMode
+                                          ? 'border-green-400 bg-green-500'
+                                          : 'border-green-500 bg-green-500'
+                                        : isDarkMode
+                                          ? 'border-slate-500'
+                                          : 'border-slate-300'
+                                        }`}>
+                                        {multipleOrderDetails[0]?.purchaseType === 'D' && (
+                                          <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                        )}
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                          ? isDarkMode ? 'text-green-300' : 'text-green-700'
+                                          : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                          }`}>
+                                          DIRECT
+                                        </div>
+                                        <div className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                          ? isDarkMode ? 'text-green-400' : 'text-green-600'
+                                          : isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                                          }`}>
+                                          วัตถุดิบที่เกี่ยวข้องกับการผลิต (D)
+                                        </div>
+                                      </div>
+                                      <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                        ? isDarkMode ? 'bg-green-900/50' : 'bg-green-100'
+                                        : isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100'
+                                        }`}>
+                                        <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                          ? isDarkMode ? 'text-green-300' : 'text-green-600'
+                                          : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* INDIRECT Option */}
+                                  <div
+                                    className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                      ? isDarkMode
+                                        ? 'bg-blue-900/30 border-blue-500'
+                                        : 'bg-blue-50 border-blue-400'
+                                      : isDarkMode
+                                        ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500/50'
+                                        : 'bg-white border-slate-200 hover:border-blue-300'
+                                      }`}
+                                    onClick={() => {
+                                      setMultipleOrderDetails(prev =>
+                                        prev.map(item => ({ ...item, purchaseType: 'I' }))
+                                      );
+                                    }}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                        ? isDarkMode
+                                          ? 'border-blue-400 bg-blue-500'
+                                          : 'border-blue-500 bg-blue-500'
+                                        : isDarkMode
+                                          ? 'border-slate-500'
+                                          : 'border-slate-300'
+                                        }`}>
+                                        {multipleOrderDetails[0]?.purchaseType === 'I' && (
+                                          <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                        )}
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                          ? isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                                          : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                          }`}>
+                                          INDIRECT
+                                        </div>
+                                        <div className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                          ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                          : isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                                          }`}>
+                                          วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (I)
+                                        </div>
+                                      </div>
+                                      <div className={`p-1.5 rounded ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                        ? isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'
+                                        : isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100'
+                                        }`}>
+                                        <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'I'
+                                          ? isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                                          : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {multipleOrderDetails[0]?.purchaseType && (
+                                  <div className={`p-3 rounded-lg border ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                    ? isDarkMode ? 'bg-green-900/20 border-green-600/40' : 'bg-green-50 border-green-200'
+                                    : isDarkMode ? 'bg-blue-900/20 border-blue-600/40' : 'bg-blue-50 border-blue-200'
+                                    }`}>
+                                    <div className="flex items-center space-x-2">
+                                      <svg className={`w-4 h-4 ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                        ? isDarkMode ? 'text-green-400' : 'text-green-600'
+                                        : isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      <div className="flex-1">
+                                        <span className={`font-semibold text-sm ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                          ? isDarkMode ? 'text-green-300' : 'text-green-700'
+                                          : isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                                          }`}>
+                                          {multipleOrderDetails[0]?.purchaseType === 'D' ? 'วัตถุดิบที่เกี่ยวข้องกับการผลิต (DIRECT)' : 'วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต (INDIRECT)'}
+                                        </span>
+                                        <p className={`text-xs ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                          ? isDarkMode ? 'text-green-400' : 'text-green-600'
+                                          : isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                          }`}>
+                                          ใช้สำหรับ {multipleOrderDetails.length} รายการ
+                                        </p>
+                                      </div>
+                                      <div className={`px-2 py-1 rounded text-xs font-bold ${multipleOrderDetails[0]?.purchaseType === 'D'
+                                        ? isDarkMode ? 'bg-green-800 text-green-200' : 'bg-green-600 text-white'
+                                        : isDarkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-600 text-white'
+                                        }`}>
+                                        {multipleOrderDetails[0]?.purchaseType}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Remark และ Last Discount - แสดงเสมอ */}
+                        <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                           {/* Remark input field */}
-                          <div className="mt-6">
+                          <div className="mb-6">
                             <label htmlFor="remark" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Remark</label>
                             <input
                               id="remark"
@@ -2609,7 +2936,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             />
                           </div>
                           {/* last discount input field */}
-                          <div className="mt-6">
+                          <div>
                             <label htmlFor="last_discount" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>ส่วนลดท้ายบิล</label>
                             <input
                               id="last_discount"
@@ -2626,17 +2953,39 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
                       </div>
 
-                      {/* ปุ่มบันทึก */}
-                      <div className="flex justify-end pt-4">
+                      {/* ปุ่มบันทึก - แสดงเสมอ และทำงานได้เสมอ */}
+                      {/* <div className="flex justify-end pt-4">
                         <button
                           type="button"
                           onClick={handleSubmitPOCreateMultiplePart}
-                          disabled={!multipleOrderDetails[0]?.purchaseType}
-                          className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all duration-200 border text-sm focus:outline-none focus:ring-2 cursor-pointer ${!multipleOrderDetails[0]?.purchaseType
-                            ? 'bg-gray-300 text-gray-500 border-gray-200 cursor-not-allowed'
-                            : isDarkMode
-                              ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white border-orange-500 hover:from-orange-700 hover:to-red-700 hover:shadow-lg focus:ring-orange-500'
-                              : 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-orange-400 hover:from-orange-600 hover:to-red-600 hover:shadow-lg focus:ring-orange-400'
+                          disabled={(() => {
+                            // ถ้ามี po_no ไม่ต้องตรวจสอบ purchaseType
+                            const hasPO = multipleOrderDetails.some(item => {
+                              const prItem = compareData?.part_inventory_and_pr?.find(
+                                pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                              );
+                              return !!prItem;
+                            });
+                            if (hasPO) return false;
+                            // ถ้าไม่มี po_no ต้องเลือก purchaseType
+                            return !multipleOrderDetails[0]?.purchaseType;
+                          })()}
+                          className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all duration-200 border text-sm focus:outline-none focus:ring-2 cursor-pointer ${(() => {
+                              const hasPO = multipleOrderDetails.some(item => {
+                                const prItem = compareData?.part_inventory_and_pr?.find(
+                                  pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                                );
+                                return !!prItem;
+                              });
+                              if (hasPO) return isDarkMode
+                                ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white border-orange-500 hover:from-orange-700 hover:to-red-700 hover:shadow-lg focus:ring-orange-500'
+                                : 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-orange-400 hover:from-orange-600 hover:to-red-600 hover:shadow-lg focus:ring-orange-400';
+                              return !multipleOrderDetails[0]?.purchaseType
+                                ? 'bg-gray-300 text-gray-500 border-gray-200 cursor-not-allowed'
+                                : isDarkMode
+                                  ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white border-orange-500 hover:from-orange-700 hover:to-red-700 hover:shadow-lg focus:ring-orange-500'
+                                  : 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-orange-400 hover:from-orange-600 hover:to-red-600 hover:shadow-lg focus:ring-orange-400';
+                            })()
                             }`}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2644,7 +2993,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           </svg>
                           <span>บันทึกข้อมูล</span>
                         </button>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 </div>
@@ -2710,7 +3059,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             const statusRaw = prItem?.status;
                             const status = statusRaw ? statusRaw.trim().toLowerCase() : '';
                             let isDisabled = false;
-                            if (status === 'po rejected' || status === 'rejected' || status === 'pending' || !status) {
+                            if (status === 'po rejected' || status === 'rejected' || status === 'pending' || status === 'recheck' || !status) {
                               isDisabled = false;
                             } else {
                               isDisabled = true;
@@ -3251,7 +3600,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           type="button"
                                           className={`px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
                                           onClick={() => {
-                                            setQtyValue(qty || '');
+                                            // รีเซ็ตจากข้อมูลที่ตรงกับ pr_list_id
+                                            const currentItem = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
+                                            setQtyValue(currentItem?.qty?.toString() || qty?.toString() || '');
                                             setEditingQty(false);
                                           }}
                                         >

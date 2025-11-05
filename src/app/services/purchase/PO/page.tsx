@@ -311,14 +311,20 @@ export default function PurchaseOrderPage() {
 
                 // ถ้ามี search ให้ใช้ API search
                 if (search && search.trim() !== "") {
-                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}`;
+                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}&page=${currentPage}&limit=${itemsPerPage}`;
                     fetchOptions = {
                         ...fetchOptions,
+                        headers: {
+                            ...(fetchOptions.headers || {}),
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                        },
                         cache: "no-store" as RequestCache
                     };
                 }
 
                 const responsePO = await fetch(url, fetchOptions);
+                const responseText = await responsePO.clone().text();
 
                 if (responsePO.status === 401) {
                     setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
@@ -332,8 +338,14 @@ export default function PurchaseOrderPage() {
 
                 const data = await responsePO.json();
                 console.log("Fetched PO data:", data);
-                // data.poDocs.po_all เป็น array ของ PO
-                let posArray = Array.isArray(data.poDocs?.po_all) ? data.poDocs.po_all : [];
+                // รองรับทั้ง API /all (data.poDocs.po_all) และ API /search (data.poDocs)
+                let posArray = [];
+                if (Array.isArray(data.poDocs?.po_all)) {
+                    posArray = data.poDocs.po_all; // API /all
+                } else if (Array.isArray(data.poDocs)) {
+                    posArray = data.poDocs; // API /search
+                }
+                console.log("posArray after mapping:", posArray);
 
                 //Filter by date range BEFORE setPoCards
                 if (dateRange && dateRange.start && dateRange.end) {
@@ -348,9 +360,19 @@ export default function PurchaseOrderPage() {
                     });
                 }
                 setPoCards(posArray);
-                // Set totalItems from amount_po in response
-                setTotalItems(data.poDocs?.amount_po || 0);
-                console.log("Filtered PO cards:", posArray.length, "items");
+                // Set totalItems - รองรับทั้ง API /all และ /search
+                let totalCount = 0;
+                if (data.poDocs?.amount_po) {
+                    totalCount = data.poDocs.amount_po; // API /all
+                } else if (Array.isArray(data.poDocs)) {
+                    totalCount = data.poDocs.length; // API /search - ใช้จำนวนข้อมูลที่ได้
+                } else if (data.total || data.count) {
+                    totalCount = data.total || data.count; // fallback หาก API ส่ง field อื่น
+                } else {
+                    totalCount = posArray.length; // fallback ใช้จำนวนข้อมูลที่ได้จริง
+                }
+                setTotalItems(totalCount);
+                console.log("Filtered PO cards:", posArray.length, "items, totalItems:", totalCount);
             } catch (error: unknown) {
                 console.error("Failed to fetch PO cards:", error);
                 if (error instanceof Error) {
