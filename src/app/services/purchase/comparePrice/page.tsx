@@ -1099,7 +1099,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             </td>
                                                         )}
                                                         <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                            <span className="text-sm font-semibold">{part.plant}</span>
+                                                            <span className="text-sm font-semibold">{part.plant === 'Plant 1' ? 'P1' : part.plant === 'Plant 2' ? 'P2' : part.plant}</span>
                                                         </td>
                                                     </tr>
                                                 );

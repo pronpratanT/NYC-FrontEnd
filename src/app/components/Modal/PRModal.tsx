@@ -16,6 +16,8 @@ import CreateVendor from "./CreateVendor";
 import EditVendor from "./EditVendor";
 import RejectCompare from "./Reject_Compare";
 import { Tooltip } from "@heroui/react";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { GoDownload } from "react-icons/go";
 
 
 // Custom scrollbar styles
@@ -1172,7 +1174,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                   <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.prod_code || '-'}</span>
                                                 </div>
                                                 <div>
-                                                  <span className={`font-semi ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.part_name || '-'}</span>
+                                                  <span
+                                                    className={`font-semi ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} inline-block max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap align-middle`}
+                                                    title={item.part_name || '-'}
+                                                  >
+                                                    {item.part_name || '-'}
+                                                  </span>
                                                 </div>
                                               </div>
                                             </div>
@@ -1285,7 +1292,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
           {/* Tab Navigation */}
           <div className={`bg-gradient-to-r px-8 py-2 border-b ${isDarkMode ? 'from-slate-800/60 via-slate-900/60 to-slate-800/60 border-slate-700/60' : 'from-slate-50 via-white to-slate-50 border-slate-200/60'}`}>
-            <nav className="flex space-x-1">
+            <nav className="flex justify-between items-center">
+              <div className="flex space-x-1">
               <button type="button" onClick={() => setActiveTab('purchase')}
                 className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'purchase'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200/50 transform scale-105'
@@ -1422,6 +1430,40 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     );
                 }
               })()}
+              </div>
+              
+              {/* PDF Action Buttons - ฝั่งขวาสุด */}
+              <div className="flex">
+                <button
+                  className={`flex items-center cursor-pointer justify-center rounded-l-lg px-3 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // ทดสอบเปิดไฟล์ PDF เฉพาะ PO_D2510035.pdf
+                    // const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
+                    // window.open(pdfPath, '_blank', 'noopener');
+                  }}
+                >
+                  <MdOutlineRemoveRedEye className="w-6 h-6" />
+                </button>
+                <button
+                  className={`flex items-center cursor-pointer justify-center rounded-r-lg px-3 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
+                  onClick={e => {
+                    e.stopPropagation();
+                    // ดาวน์โหลด PDF จาก public/generated-pdf/PO_{po.po_no}.pdf
+                    // const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
+                    const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
+                    const a = document.createElement('a');
+                    a.href = pdfPath;
+                    // a.download = `PO_${po.po_no}.pdf`;
+                    a.download = `PO_D2510035.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                  }}
+                >
+                  <GoDownload className="w-6 h-6" />
+                </button>
+              </div>
             </nav>
           </div>
           {/* Modal body */}
@@ -2609,7 +2651,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               if (hasPO) return false;
                               return !multipleOrderDetails[0]?.purchaseType;
                             })()}
-                            className={`group relative flex items-center space-x-3 px-8 py-3 rounded-xl font-bold shadow-xl transition-all duration-300 border-2 text-sm focus:outline-none focus:ring-4 overflow-hidden ${(() => {
+                            className={`group relative cursor-pointer flex items-center space-x-3 px-8 py-3 rounded-xl font-bold shadow-xl transition-all duration-300 border-2 text-sm focus:outline-none focus:ring-4 overflow-hidden ${(() => {
                               const hasPO = multipleOrderDetails.some(item => {
                                 const prItem = compareData?.part_inventory_and_pr?.find(
                                   pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
