@@ -324,7 +324,7 @@ export default function PurchaseOrderPage() {
                 }
 
                 const responsePO = await fetch(url, fetchOptions);
-                const responseText = await responsePO.clone().text();
+                // const responseText = await responsePO.clone().text();
 
                 if (responsePO.status === 401) {
                     setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");

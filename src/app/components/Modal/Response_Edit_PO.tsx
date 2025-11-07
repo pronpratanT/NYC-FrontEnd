@@ -7,7 +7,7 @@ import { useToken } from '@/app/context/TokenContext';
 interface ResponseEditPOModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit?: (detail: string) => void;
+  // Removed unused onSubmit prop to resolve ESLint warning
   poNo?: string;
 }
 
@@ -68,7 +68,7 @@ type FreeItems = {
   remark: string;
 }
 
-const ResponseEditPOModal: React.FC<ResponseEditPOModalProps> = ({ open, onClose, onSubmit, poNo }) => {
+const ResponseEditPOModal: React.FC<ResponseEditPOModalProps> = ({ open, onClose, poNo }) => {
   const { isDarkMode } = useTheme();
   const [error, setError] = useState('');
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
@@ -77,7 +77,7 @@ const ResponseEditPOModal: React.FC<ResponseEditPOModalProps> = ({ open, onClose
   const token = useToken();
   const [poData, setPoData] = useState<ReviewedPO | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     if (!poNo) {
       setError("ไม่พบ PO ID");
       return;
@@ -101,13 +101,13 @@ const ResponseEditPOModal: React.FC<ResponseEditPOModalProps> = ({ open, onClose
     } catch {
       setError("เกิดข้อผิดพลาด");
     }
-  };
+  }, [poNo, token]);
 
   useEffect(() => {
     if (open && poNo) {
       fetchData();
     }
-  }, [open, poNo, token]);
+  }, [open, poNo, token, fetchData]);
 
   const handleSelect = (pcl_id: number) => {
     setSelectedItems(prev =>

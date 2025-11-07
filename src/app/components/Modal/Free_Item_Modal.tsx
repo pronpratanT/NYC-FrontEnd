@@ -68,17 +68,7 @@ import CreatPartNo from "./CreatPartNo";
 // };
 
 // type Data = {
-//     id: number;
-//     group_name: string;
-//     pr_id: number;
-//     note: Note[];
-//     list: List[];
-// }
-
-type Note = {
-    id: number;
-    note: string;
-}
+// Removed unused Note type to resolve ESLint warning
 
 type List = {
     id: number;
@@ -374,7 +364,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
             alert('บันทึกข้อมูลของแถมเรียบร้อยแล้ว');
             if (onSuccess) onSuccess();
             onClose();
-        } catch (error) {
+        } catch {
             alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลของแถม');
         }
         setEditingQty(null);
@@ -571,7 +561,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                                                 <h4 className="text-sm font-medium">รายการของแถม ({part.free_item.length} รายการ)</h4>
                                             </div>
                                             <div className="divide-y divide-slate-600 max-h-48 overflow-y-auto custom-scrollbar">
-                                                {part.free_item.map((freeItem, idx) => {
+                                                {part.free_item.map((freeItem) => {
                                                     const partNo = freeItem.part_no.trim();
                                                     const isEditing = editingQty === freeItem.free_item_id;
                                                     return (

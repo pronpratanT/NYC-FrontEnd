@@ -7,7 +7,7 @@ import { useToken } from '@/app/context/TokenContext';
 interface RequestEditPOModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit?: (detail: string) => void;
+  // Removed unused onSubmit prop to resolve ESLint warning
   poNo?: string;
 }
 
@@ -68,7 +68,7 @@ type FreeItems = {
   remark: string;
 }
 
-const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, onSubmit, poNo }) => {
+const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, poNo }) => {
   const { isDarkMode } = useTheme();
   const [error, setError] = useState('');
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
@@ -76,8 +76,7 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
   const modalRef = useRef<HTMLDivElement>(null);
   const token = useToken();
   const [poData, setPoData] = useState<ReviewedPO | null>(null);
-
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     if (!poNo) {
       setError("ไม่พบ PO ID");
       return;
@@ -101,43 +100,22 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
     } catch {
       setError("เกิดข้อผิดพลาด");
     }
-  };
-
+  }, [poNo, token]);
   useEffect(() => {
     if (open && poNo) {
       fetchData();
     }
-  }, [open, poNo, token]);
-
-  const handleSelect = (pcl_id: number) => {
-    setSelectedItems(prev =>
-      prev.includes(pcl_id) ? prev.filter(id => id !== pcl_id) : [...prev, pcl_id]
-    );
-  };
-
-
-
+  }, [open, poNo, token, fetchData]);
+  // Removed unused handleSelect to resolve ESLint warning
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // if (!selectedItems.length) {
-    //   setError('กรุณาเลือกรายการที่ต้องการร้องขอและระบุเหตุผล');
-    //   return;
-    // }
-    // for (const pcl_id of selectedItems) {
-    //   const reason = reasons[pcl_id];
-    //   if (!reason || !reason.trim()) {
-    //     setError('กรุณาระบุเหตุผลให้ครบทุกอัน');
-    //     return;
-    //   }
-    // }
     setError('');
     try {
-      // เตรียม payload สำหรับส่งข้อมูล
       const payload = {
         po_id: poData?.po_id || null,
+        pcl_id: selectedItems,
         note: reason,
       };
-      console.log('Payload for request edit PO:', payload);
       await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/edited-req`, {
         method: 'PUT',
         headers: {

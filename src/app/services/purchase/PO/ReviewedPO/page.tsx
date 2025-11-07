@@ -16,7 +16,6 @@ import RejectPOModal from "@/app/components/Modal/Reject_PO";
 import SendMailModal from "@/app/components/Modal/SendMailModal";
 import RequestEditPOModal from "@/app/components/Modal/Request_Edit_PO";
 import ResponseEditPOModal from "@/app/components/Modal/Response_Edit_PO";
-import ResponseEditPO from "@/app/components/Modal/Response_Edit_PO";
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -216,12 +215,12 @@ export default function ReviewedPOPage() {
             //     body: JSON.stringify(sendPayload)
             // });
             // if (!sendResponse.ok) throw new Error('ส่ง PO ไปยัง Vendor ไม่สำเร็จ');
-            alert('อนุมัติ PO และส่งไปยัง Vendor สำเร็จ');
+            alert('อนุมัติ PO สำเร็จ');
             setShowApproveModal(false);
             // reload PO data
             await fetchData();
         } catch {
-            alert('เกิดข้อผิดพลาดในการอนุมัติ PO หรือส่งไปยัง Vendor');
+            alert('เกิดข้อผิดพลาดในการอนุมัติ PO');
         }
     };
 
@@ -984,9 +983,6 @@ export default function ReviewedPOPage() {
                 <RequestEditPOModal
                     open={showRequestEditModal}
                     onClose={() => setShowRequestEditModal(false)}
-                    onSubmit={detail => {
-                        setShowRequestEditModal(false);
-                    }}
                     poNo={poData?.po_no}
                 />
             )}
@@ -994,9 +990,6 @@ export default function ReviewedPOPage() {
                 <ResponseEditPOModal
                     open={showResponseEditModal}
                     onClose={() => setShowResponseEditModal(false)}
-                    onSubmit={detail => {
-                        setShowResponseEditModal(false);
-                    }}
                     poNo={poData?.po_no}
                 />
             )}

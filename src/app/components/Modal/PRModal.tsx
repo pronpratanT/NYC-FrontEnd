@@ -331,26 +331,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       // ถ้ามี po_no สำหรับ prNumber และ pr_list_id ให้แสดงผลสรุปทันที
       const prWithPO = sortedItems.find(item => item.pr_no === prNumber && item.po_no && item.pr_list_id === pr_list_id);
       if (prWithPO && compareData?.compare_vendors) {
-        // ...existing code...
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        let vendorDetail: CompareData | undefined = undefined;
-        const vendorId = prWithPO.recent_purchase?.[0]?.vendor_id;
-        if (vendorId) {
-          vendorDetail = compareData.compare_vendors.find((v: CompareData) => v.vendor_id === vendorId);
-        }
-
-        // คำนวณ previousPurchase สำหรับ PR นี้เฉพาะ
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        let currentPreviousPurchase: RecentPurchase | null = null;
-        if (totalCount > 1) {
-          const previousIndex = totalCount - 1;
-          const previousItem = sortedItems[previousIndex];
-          if (previousItem.recent_purchase && Array.isArray(previousItem.recent_purchase) && previousItem.recent_purchase.length > 0) {
-            currentPreviousPurchase = previousItem.recent_purchase[0];
-          }
-        }
-
-
         // Auto switch to completed summary tab
         // setActiveTab('completed-summary');
       }
@@ -554,7 +534,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             console.error("Error inserting vendor for compare:", e);
           }
         }
-      } catch (_) {
+      } catch {
         setSelectedVendorDetail(null);
       }
     };
@@ -623,7 +603,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         })
         .finally(() => setLoading(false));
     }
-  }, [pr_id, prItem?.status, pr_list_id, partNo, token]);
+  }, [pr_id, prItem?.status, pr_list_id, partNo, token, compareData?.part_inventory_and_pr, prNumber]);
 
   // Handler to open EditVendor modal with vendor data
   const handleEditVendor = (vendor: VendorSelected) => {
@@ -873,7 +853,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
     try {
       let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`;
-      let body: any = poCreate;
+      let body: typeof poCreate | typeof editPO = poCreate;
 
       if (po_no) {
         url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/repeat-or-new`;
@@ -1294,132 +1274,65 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           <div className={`bg-gradient-to-r px-8 py-2 border-b ${isDarkMode ? 'from-slate-800/60 via-slate-900/60 to-slate-800/60 border-slate-700/60' : 'from-slate-50 via-white to-slate-50 border-slate-200/60'}`}>
             <nav className="flex justify-between items-center">
               <div className="flex space-x-1">
-              <button type="button" onClick={() => setActiveTab('purchase')}
-                className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'purchase'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200/50 transform scale-105'
-                  : isDarkMode
-                    ? 'text-slate-300 hover:text-emerald-400 hover:bg-emerald-900/30 hover:shadow-md'
-                    : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/80 hover:shadow-md'
-                  }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                  <span>ประวัติการซื้อและข้อมูล PR</span>
-                </div>
-              </button>
-
-              <button type="button" onClick={() => setActiveTab('compare')}
-                className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
-                  ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md shadow-purple-200/50 transform scale-105'
-                  : isDarkMode
-                    ? 'text-slate-300 hover:text-purple-400 hover:bg-purple-900/30 hover:shadow-md'
-                    : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/80 hover:shadow-md'
-                  }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                  <span>เปรียบเทียบราคา</span>
-                </div>
-              </button>
-
-              {/* Tab รายละเอียดการขอซื้อหลายรายการ */}
-              {multipleOrderDetails.length > 0 && (
-                <button type="button" onClick={() => setActiveTab('multiple-order')}
-                  className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'multiple-order'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-md shadow-orange-200/50 transform scale-105'
+                <button type="button" onClick={() => setActiveTab('purchase')}
+                  className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'purchase'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200/50 transform scale-105'
                     : isDarkMode
-                      ? 'text-slate-300 hover:text-orange-400 hover:bg-orange-900/30 hover:shadow-md'
-                      : 'text-slate-600 hover:text-orange-700 hover:bg-orange-50/80 hover:shadow-md'
+                      ? 'text-slate-300 hover:text-emerald-400 hover:bg-emerald-900/30 hover:shadow-md'
+                      : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/80 hover:shadow-md'
                     }`}
                 >
                   <div className="flex items-center space-x-2">
                     <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                    <span>รายละเอียดการขอซื้อหลายรายการ ({multipleOrderDetails.length})</span>
+                    <span>ประวัติการซื้อและข้อมูล PR</span>
                   </div>
                 </button>
-              )}
 
-              {/* TODO - implement tab logic by status */}
-              {(() => {
-                const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
-                // console.log("Current PR Item for tab logic:", prItem?.status);
-                if (!prItem) {
-                  // ถ้าไม่พบ PR ให้แสดง summary เฉพาะเมื่อข้อมูลโหลดเสร็จ
-                  if (loading || error || !compareData) return null;
-                  return (
-                    <button type="button" onClick={() => setActiveTab('summary')}
-                      className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200/50 transform scale-105'
-                        : isDarkMode
-                          ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
-                          : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
-                        }`}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                        <span>ผลสรุป</span>
-                      </div>
-                    </button>
-                  );
-                }
-                switch (prItem.status) {
-                  case 'Pending Approval':
-                    return (
-                      <button type="button" onClick={() => setActiveTab('approve')}
-                        className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
-                          ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-md shadow-yellow-200/50 transform scale-105'
-                          : isDarkMode
-                            ? 'text-slate-300 hover:text-yellow-400 hover:bg-yellow-900/30 hover:shadow-md'
-                            : 'text-slate-600 hover:text-yellow-700 hover:bg-yellow-50/80 hover:shadow-md'
-                          }`}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                          <span>อนุมัติ</span>
-                        </div>
-                      </button>
-                    );
-                  case 'Approved':
-                    return (
-                      <button type="button" onClick={() => setActiveTab('completed-summary')}
-                        className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
-                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
-                          : isDarkMode
-                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
-                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
-                          }`}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                          <span>รายละเอียดการสั่งซื้อ</span>
-                        </div>
-                      </button>
-                    );
-                  case 'Po Created':
-                    return (
-                      <button type="button" onClick={() => setActiveTab('completed-summary')}
-                        className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
-                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
-                          : isDarkMode
-                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
-                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
-                          }`}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
-                          <span>รายละเอียดการสั่งซื้อ</span>
-                        </div>
-                      </button>
-                    );
-                  default:
-                    // สำหรับ status อื่นๆ ที่ไม่อยู่ใน case ให้แสดง summary
+                <button type="button" onClick={() => setActiveTab('compare')}
+                  className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'compare'
+                    ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md shadow-purple-200/50 transform scale-105'
+                    : isDarkMode
+                      ? 'text-slate-300 hover:text-purple-400 hover:bg-purple-900/30 hover:shadow-md'
+                      : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/80 hover:shadow-md'
+                    }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                    <span>เปรียบเทียบราคา</span>
+                  </div>
+                </button>
+
+                {/* Tab รายละเอียดการขอซื้อหลายรายการ */}
+                {multipleOrderDetails.length > 0 && (
+                  <button type="button" onClick={() => setActiveTab('multiple-order')}
+                    className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'multiple-order'
+                      ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-md shadow-orange-200/50 transform scale-105'
+                      : isDarkMode
+                        ? 'text-slate-300 hover:text-orange-400 hover:bg-orange-900/30 hover:shadow-md'
+                        : 'text-slate-600 hover:text-orange-700 hover:bg-orange-50/80 hover:shadow-md'
+                      }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                      <span>รายละเอียดการขอซื้อหลายรายการ ({multipleOrderDetails.length})</span>
+                    </div>
+                  </button>
+                )}
+
+                {/* TODO - implement tab logic by status */}
+                {(() => {
+                  const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
+                  // console.log("Current PR Item for tab logic:", prItem?.status);
+                  if (!prItem) {
+                    // ถ้าไม่พบ PR ให้แสดง summary เฉพาะเมื่อข้อมูลโหลดเสร็จ
+                    if (loading || error || !compareData) return null;
                     return (
                       <button type="button" onClick={() => setActiveTab('summary')}
                         className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
-                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200/50 transform scale-105'
                           : isDarkMode
-                            ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
-                            : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                            ? 'text-slate-300 hover:text-amber-400 hover:bg-amber-900/30 hover:shadow-md'
+                            : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/80 hover:shadow-md'
                           }`}
                       >
                         <div className="flex items-center space-x-2">
@@ -1428,10 +1341,77 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
                       </button>
                     );
-                }
-              })()}
+                  }
+                  switch (prItem.status) {
+                    case 'Pending Approval':
+                      return (
+                        <button type="button" onClick={() => setActiveTab('approve')}
+                          className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'approve'
+                            ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-md shadow-yellow-200/50 transform scale-105'
+                            : isDarkMode
+                              ? 'text-slate-300 hover:text-yellow-400 hover:bg-yellow-900/30 hover:shadow-md'
+                              : 'text-slate-600 hover:text-yellow-700 hover:bg-yellow-50/80 hover:shadow-md'
+                            }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                            <span>อนุมัติ</span>
+                          </div>
+                        </button>
+                      );
+                    case 'Approved':
+                      return (
+                        <button type="button" onClick={() => setActiveTab('completed-summary')}
+                          className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
+                            : isDarkMode
+                              ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                              : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                            }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                            <span>รายละเอียดการสั่งซื้อ</span>
+                          </div>
+                        </button>
+                      );
+                    case 'Po Created':
+                      return (
+                        <button type="button" onClick={() => setActiveTab('completed-summary')}
+                          className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
+                            : isDarkMode
+                              ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                              : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                            }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                            <span>รายละเอียดการสั่งซื้อ</span>
+                          </div>
+                        </button>
+                      );
+                    default:
+                      // สำหรับ status อื่นๆ ที่ไม่อยู่ใน case ให้แสดง summary
+                      return (
+                        <button type="button" onClick={() => setActiveTab('summary')}
+                          className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'summary'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
+                            : isDarkMode
+                              ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                              : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                            }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                            <span>ผลสรุป</span>
+                          </div>
+                        </button>
+                      );
+                  }
+                })()}
               </div>
-              
+
               {/* PDF Action Buttons - ฝั่งขวาสุด */}
               <div className="flex">
                 <button
@@ -1874,10 +1854,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     }
                                   }}
                                   className={`px-6 py-2.5 cursor-pointer rounded-xl font-semibold shadow-lg transition-all duration-300 border text-sm focus:outline-none focus:ring-2 flex items-center space-x-2 ${(!purchaseType && !prWithPO.po_no) || isSaving
-                                      ? 'bg-slate-400 text-slate-200 border-slate-300 cursor-not-allowed opacity-60'
-                                      : isDarkMode
-                                        ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-emerald-500 hover:from-emerald-700 hover:to-green-700 hover:shadow-xl focus:ring-emerald-400 transform hover:scale-105'
-                                        : 'bg-gradient-to-r from-emerald-500 to-green-500 text-white border-emerald-400 hover:from-emerald-600 hover:to-green-600 hover:shadow-xl focus:ring-emerald-400 transform hover:scale-105'
+                                    ? 'bg-slate-400 text-slate-200 border-slate-300 cursor-not-allowed opacity-60'
+                                    : isDarkMode
+                                      ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-emerald-500 hover:from-emerald-700 hover:to-green-700 hover:shadow-xl focus:ring-emerald-400 transform hover:scale-105'
+                                      : 'bg-gradient-to-r from-emerald-500 to-green-500 text-white border-emerald-400 hover:from-emerald-600 hover:to-green-600 hover:shadow-xl focus:ring-emerald-400 transform hover:scale-105'
                                     }`}
                                   disabled={(!purchaseType && !prWithPO.po_no) || isSaving}
                                 >
@@ -2543,37 +2523,37 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   <div className="flex flex-col h-full">
                     {/* Header */}
-                    <div className={`relative px-8 py-6 border-b ${isDarkMode 
-                      ? 'border-orange-500/30 bg-gradient-to-br from-slate-900 via-orange-950/50 to-red-950/50' 
+                    <div className={`relative px-8 py-6 border-b ${isDarkMode
+                      ? 'border-orange-500/30 bg-gradient-to-br from-slate-900 via-orange-950/50 to-red-950/50'
                       : 'border-orange-200/50 bg-gradient-to-br from-orange-50/80 via-white to-red-50/80'
-                    }`}>
+                      }`}>
                       <div className="flex items-center justify-between">
                         {/* Left Section - Title and Info */}
                         <div className="flex items-center space-x-4">
-                          <div className={`relative p-3 rounded-xl backdrop-blur-sm border shadow-lg ${isDarkMode 
-                            ? 'bg-gradient-to-br from-orange-900/60 to-red-900/60 border-orange-700/50' 
+                          <div className={`relative p-3 rounded-xl backdrop-blur-sm border shadow-lg ${isDarkMode
+                            ? 'bg-gradient-to-br from-orange-900/60 to-red-900/60 border-orange-700/50'
                             : 'bg-gradient-to-br from-orange-100 to-red-100 border-orange-300/50'
-                          }`}>
+                            }`}>
                             <svg className={`w-7 h-7 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                             </svg>
-                            <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode 
-                              ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg' 
+                            <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode
+                              ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
                               : 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
-                            }`}>
+                              }`}>
                               {multipleOrderDetails.length}
                             </div>
                           </div>
-                          
+
                           <div className="space-y-1">
                             <div className="flex items-center space-x-3">
                               <h3 className={`text-xl font-bold ${isDarkMode ? 'text-orange-200' : 'text-orange-800'}`}>
                                 รายละเอียดการขอซื้อหลายรายการ
                               </h3>
-                              <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDarkMode 
-                                ? 'bg-gradient-to-r from-orange-600/80 to-red-600/80 text-orange-100 border border-orange-500/50' 
+                              <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDarkMode
+                                ? 'bg-gradient-to-r from-orange-600/80 to-red-600/80 text-orange-100 border border-orange-500/50'
                                 : 'bg-gradient-to-r from-orange-500/80 to-red-500/80 text-white border border-orange-400/50'
-                              }`}>
+                                }`}>
                                 Multiple Orders
                               </div>
                             </div>
@@ -2594,11 +2574,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               return !!prItem;
                             });
                             if (hasPO) {
-                              return isDarkMode 
-                                ? 'bg-green-900/30 border-green-600/50 text-green-300' 
+                              return isDarkMode
+                                ? 'bg-green-900/30 border-green-600/50 text-green-300'
                                 : 'bg-green-100/80 border-green-300/50 text-green-700';
                             }
-                            return multipleOrderDetails[0]?.purchaseType 
+                            return multipleOrderDetails[0]?.purchaseType
                               ? isDarkMode ? 'bg-blue-900/30 border-blue-600/50 text-blue-300' : 'bg-blue-100/80 border-blue-300/50 text-blue-700'
                               : isDarkMode ? 'bg-amber-900/30 border-amber-600/50 text-amber-300' : 'bg-amber-100/80 border-amber-300/50 text-amber-700';
                           })()}`}>
@@ -2671,7 +2651,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             })()}`}
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                            
+
                             <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               {(() => {
                                 const hasPO = multipleOrderDetails.some(item => {

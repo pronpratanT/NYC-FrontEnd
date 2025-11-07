@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "../../context/SidebarContext";
@@ -80,7 +80,7 @@ const departmentColors: { [key: string]: string } = {
     "ฝ่ายผลิต": "text-blue-700"
 };
 
-export default function PurchasePage() {
+function PurchasePageContent() {
     // Theme context
     const { isDarkMode } = useTheme();
     // อ่านค่าจาก localStorage ตอน mount
@@ -404,7 +404,7 @@ export default function PurchasePage() {
         if (token !== null) {
             fetchPrCards();
         }
-    }, [token, router, search, dateRange, searchParams]);
+    }, [token, router, search, dateRange, searchParams, itemsPerPage]);
 
     {/* departments */ }
     useEffect(() => {
@@ -1375,5 +1375,13 @@ export default function PurchasePage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function PurchasePage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <PurchasePageContent />
+        </Suspense>
     );
 }

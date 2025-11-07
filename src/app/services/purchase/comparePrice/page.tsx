@@ -168,15 +168,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const pagedParts = allParts.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
     // --- Hydration-safe date formatting (must be before any return/conditional) ---
-    const [formattedDate, setFormattedDate] = useState('');
-    const [formattedTime, setFormattedTime] = useState('');
-    useEffect(() => {
-        if (prData?.pr_date) {
-            const date = new Date(prData.pr_date);
-            setFormattedDate(date.toLocaleDateString('th-TH'));
-            setFormattedTime(date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
-        }
-    }, [prData?.pr_date]);
+    // Removed unused formattedDate and formattedTime state to resolve ESLint warnings
 
     // Convert List to Part for modal usage
     const handleItemClick = (part: List & { group: Data }) => {
@@ -507,6 +499,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
             message += `, ล้มเหลว ${errorCount} รายการ\nรายละเอียด:\n${errorDetails.join('\n')}`;
         }
         alert(message);
+        setSelectedParts([]);
         setMultiApprovalModalOpen(false);
         await handleRefreshData();
     }
@@ -745,7 +738,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-sky-400 bg-sky-900/30 border-sky-600/30 hover:bg-sky-800/50' : 'text-sky-700 bg-sky-50 border-sky-300 hover:bg-sky-100'}`}
                                                     onClick={() => setMultiApprovalModalOpen(true)}
                                                 >
-                                                    อนุมัติหลายรายการ ({selectedParts.length})
+                                                    อนุมัติหลายรายการ ({allParts.filter(part => part.status === 'Compared' && selectedParts.includes(part.pcl_id)).length})
                                                 </button>
                                             )}
                                             <button
@@ -1294,7 +1287,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     {/* Content */}
                                     <div className="p-6 max-h-[60vh] overflow-y-auto">
                                         <div className={`text-sm mb-4 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
-                                            รายการที่เลือกสำหรับการอนุมัติ ({selectedParts.length} รายการ)
+                                            รายการที่เลือกสำหรับการอนุมัติ ({allParts.filter(part => part.status === 'Compared' && selectedParts.includes(part.pcl_id)).length} รายการ)
                                         </div>
 
                                         {/* Group selected parts by group */}
@@ -1357,7 +1350,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 className={`px-6 py-2 rounded-lg font-medium text-white ${isDarkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'}`}
                                                 onClick={handleMultiApprove}
                                             >
-                                                อนุมัติ ({selectedParts.length} รายการ)
+                                                อนุมัติ ({allParts.filter(part => part.status === 'Compared' && selectedParts.includes(part.pcl_id)).length} รายการ)
                                             </button>
                                         </div>
                                     </div>
