@@ -116,6 +116,7 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
         pcl_id: selectedItems,
         note: reason,
       };
+      // console.log('Payload for edit request:', payload);
       await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/edited-req`, {
         method: 'PUT',
         headers: {
@@ -132,6 +133,12 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
       alert('เกิดข้อผิดพลาดในการส่งข้อมูล');
       console.error(err);
     }
+  };
+
+  const handleSelect = (pcl_id: number) => {
+    setSelectedItems(prev =>
+      prev.includes(pcl_id) ? prev.filter(id => id !== pcl_id) : [...prev, pcl_id]
+    );
   };
 
   if (!open) return null;
@@ -194,14 +201,14 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
               <div className="space-y-4">
                 {poData && poData.po_lists && poData.po_lists.length > 0 ? (
                   <div className="space-y-4">
-                    {/* <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3">
                       <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
                       <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                         เลือกรายการที่ต้องการขอแก้ไข
                       </label>
-                    </div> */}
+                    </div>
 
-                    {/* <div className="relative">
+                    <div className="relative">
                       <div className={`w-full rounded-xl border-2 ${isDarkMode
                         ? 'border-slate-600 bg-slate-900/50'
                         : 'border-gray-200 bg-gray-50/50'
@@ -272,7 +279,7 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                             ))}
                         </div>
                       </div>
-                    </div> */}
+                    </div>
 
                     {/* {selectedItems.length > 0 && (
                       <div className="space-y-3">

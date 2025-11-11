@@ -56,6 +56,9 @@ type ReviewedPO = {
     rejected_by: string;
     edit_reason: string;
     po_lists: POList[];
+    token: string;
+    edited_at: string;
+    edited_res: string;
     pcl_id?: number;
 };
 
@@ -315,8 +318,55 @@ export default function ReviewedPOPage() {
                                                 <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                     PO #{poData.po_no}
                                                 </h1>
-                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${!poData.issued_by ? (isDarkMode ? 'bg-gray-700 text-gray-300 border border-gray-600' : 'bg-gray-100 text-gray-600 border border-gray-300') : poData.approved_by ? (isDarkMode ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-green-100 text-green-700 border border-green-200') : poData.rejected_by ? (isDarkMode ? 'bg-red-500/20 text-red-200 border border-red-500/30' : 'bg-red-100 text-red-700 border border-red-200') : (isDarkMode ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30' : 'bg-yellow-100 text-yellow-700 border border-yellow-200')}`}>
-                                                    {!poData.issued_by ? 'รอการตรวจสอบ' : poData.approved_by ? 'อนุมัติเสร็จสิ้น' : poData.rejected_by ? 'ปฏิเสธแล้ว' : 'รอดำเนินการ'}
+                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${(() => {
+                                                        // Reject ถ้ามีข้อมูลจะเป็น reject เท่านั้น
+                                                        if (poData.rejected_by) {
+                                                            return isDarkMode ? 'bg-red-500/20 text-red-200 border border-red-500/30' : 'bg-red-100 text-red-700 border border-red-200';
+                                                        }
+                                                        // ถ้ายังไม่มี issued_by = รอการตรวจสอบ
+                                                        if (!poData.issued_by) {
+                                                            return isDarkMode ? 'bg-gray-700 text-gray-300 border border-gray-600' : 'bg-gray-100 text-gray-600 border border-gray-300';
+                                                        }
+                                                        // ถ้ามี edited_res และมี edited_at = แก้ไขเสร็จสิ้น
+                                                        if (poData.edited_res && poData.edited_at) {
+                                                            return isDarkMode ? 'bg-blue-500/20 text-blue-200 border border-blue-500/30' : 'bg-blue-100 text-blue-700 border border-blue-200';
+                                                        }
+                                                        // ถ้ามี edited_res และมี edited_res = อนุมัติแก้ไข
+                                                        if (poData.approved_by && poData.edited_res) {
+                                                            return isDarkMode ? 'bg-orange-500/20 text-orange-200 border border-orange-500/30' : 'bg-orange-100 text-orange-700 border border-orange-200';
+                                                        }
+                                                        // ถ้ามี approved_by = อนุมัติเสร็จสิ้น
+                                                        if (poData.approved_by) {
+                                                            return isDarkMode ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-green-100 text-green-700 border border-green-200';
+                                                        }
+                                                        // Default = รอดำเนินการ
+                                                        return isDarkMode ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30' : 'bg-yellow-100 text-yellow-700 border border-yellow-200';
+                                                    })()
+                                                    }`}>
+                                                    {(() => {
+                                                        // Reject ถ้ามีข้อมูลจะเป็น reject เท่านั้น
+                                                        if (poData.rejected_by) {
+                                                            return 'ปฏิเสธแล้ว';
+                                                        }
+                                                        // ถ้ายังไม่มี issued_by = รอการตรวจสอบ
+                                                        if (!poData.issued_by) {
+                                                            return 'รอการตรวจสอบ';
+                                                        }
+                                                        // ถ้ามี edited_res และมี edited_at = แก้ไขเสร็จสิ้น
+                                                        if (poData.edited_res && poData.edited_at) {
+                                                            return 'แก้ไขเสร็จสิ้น';
+                                                        }
+                                                        // ถ้ามี approved_by และมี edited_res = อนุมัติแก้ไข
+                                                        if (poData.approved_by && poData.edited_res) {
+                                                            return 'ดำเนินการแก้ไข';
+                                                        }
+                                                        // ถ้ามี approved_by = อนุมัติเสร็จสิ้น
+                                                        if (poData.approved_by) {
+                                                            return 'อนุมัติเสร็จสิ้น';
+                                                        }
+                                                        // Default = รอดำเนินการ
+                                                        return 'รอดำเนินการ';
+                                                    })()}
                                                 </div>
                                             </div>
                                             <div className={`flex items-center gap-4 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
@@ -333,8 +383,8 @@ export default function ReviewedPOPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        {/* แสดงปุ่มอนุมัติ เฉพาะเมื่อยังไม่มี approved_by */}
-                                        {!poData.approved_by && !poData.rejected_by && (
+                                        {/* แสดงปุ่มอนุมัติ เฉพาะเมื่อยังไม่มี approved_by หรือเมื่อ edited_res มีข้อมูล */}
+                                        {((!poData.approved_by && !poData.rejected_by) && poData.edited_res) && (
                                             <>
                                                 <button
                                                     type="button"
@@ -369,8 +419,8 @@ export default function ReviewedPOPage() {
                                         {poData.approved_by && (
                                             <div className="flex items-center gap-3 ml-3">
 
-                                                {/* Send Mail Button - แสดงเฉพาะเมื่อยังไม่ได้ส่งเมล */}
-                                                {!poData.mail_out_date && (
+                                                {/* Send Mail Button - แสดงเฉพาะเมื่อยังไม่ได้ส่งเมลและยังไม่มี edited_res */}
+                                                {!poData.edited_res && !poData.mail_out_date && (
                                                     <div className="relative group">
                                                         <button
                                                             type="button"
@@ -411,8 +461,8 @@ export default function ReviewedPOPage() {
                                                     </div>
                                                 )}
 
-                                                {/* Request Edit Button หรือ Response Edit Button */}
-                                                {poData.edit_reason ? (
+                                                {/* Request Edit Button หรือ Response Edit Button - ซ่อนเมื่อ edited_at มีข้อมูลแล้ว */}
+                                                {!poData.edited_res && (poData.edit_reason ? (
                                                     <div className="relative group">
                                                         <button
                                                             type="button"
@@ -456,7 +506,7 @@ export default function ReviewedPOPage() {
                                                             <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
                                                         </button>
                                                     </div>
-                                                )}
+                                                ))}
                                             </div>
                                         )}
                                     </div>
@@ -465,7 +515,7 @@ export default function ReviewedPOPage() {
                             </div>
                         </div>
 
-                        {poData.edit_reason && (
+                        {!poData.edited_at && (poData.edit_reason ? (
                             <div className={`px-4 py-3 mb-3 ml-5 mr-5 rounded-lg border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-800/50 text-yellow-200' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
                                 <div className="flex items-start gap-2">
                                     <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -477,7 +527,7 @@ export default function ReviewedPOPage() {
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        ) : null)}
 
                         {/* Two-Section Layout: Info Cards + Financial Summary */}
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

@@ -115,6 +115,7 @@ function PurchasePageContent() {
 
     // NOTE: Data states
     const [prCards, setPrCards] = useState<PRCard[]>([]);
+    const [totalPrCount, setTotalPrCount] = useState<number>(0);
     const token = useToken();
     const { user } = useUser();
     const departmentId = user?.Department?.ID;
@@ -199,14 +200,14 @@ function PurchasePageContent() {
         return urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
     });
     const totalItems = displayedPrCards.length;
-    
+
     // Calculate pagination correctly considering Create PR card
     // Page 1: Shows Create card + (itemsPerPage - 1) PR cards
     // Page 2+: Shows itemsPerPage PR cards each, starting from where page 1 left off
     const showCreateCard = currentPage === 1;
-    
+
     let actualStartIndex, actualEndIndex, itemsToShow;
-    
+
     if (currentPage === 1) {
         // First page: show Create card + up to (itemsPerPage - 1) PR cards
         actualStartIndex = 0;
@@ -221,15 +222,17 @@ function PurchasePageContent() {
         itemsToShow = itemsPerPage;
         actualEndIndex = actualStartIndex + itemsToShow;
     }
-    
+
     const paginatedPrCards = displayedPrCards.slice(actualStartIndex, actualEndIndex);
-    
-    // Calculate total pages: 
-    // If we have fewer items than can fit on page 1 (after Create card), then 1 page
-    // Otherwise, calculate based on remaining items after page 1
+
+    // Calculate total pages using filtered results (totalItems)
+    // Page 1: Create card + (itemsPerPage - 1) PR cards
+    // Page 2+: itemsPerPage PR cards each
     let totalPages;
-    if (totalItems <= (itemsPerPage - 1)) {
-        totalPages = 1;
+    if (totalItems === 0) {
+        totalPages = 1; // Always show at least 1 page for Create card
+    } else if (totalItems <= (itemsPerPage - 1)) {
+        totalPages = 1; // All filtered PR cards fit on page 1 with Create card
     } else {
         const remainingAfterPage1 = totalItems - (itemsPerPage - 1);
         totalPages = 1 + Math.ceil(remainingAfterPage1 / itemsPerPage);
@@ -331,10 +334,22 @@ function PurchasePageContent() {
                     return;
                 }
 
-                // Calculate API parameters: always fetch a large enough set for client-side pagination
-                // This ensures we have enough data to paginate properly with Create PR card
-                const maxItemsNeeded = Math.max(50, itemsPerPage * 5); // Fetch at least 50 items or 5 pages worth
-                
+                // Fetch total PR count
+                const responseCount = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/count/all`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (responseCount.ok) {
+                    const countData = await responseCount.json();
+                    setTotalPrCount(countData.data || 0);
+                } else {
+                    console.warn("Failed to fetch PR count:", responseCount.statusText);
+                }
+
+                // Calculate API parameters: fetch enough data to ensure proper sorting
+                // Use a larger dataset to ensure we get the actual newest/oldest data
+                const maxItemsNeeded = Math.max(500, itemsPerPage * 20); // Fetch at least 500 items or 20 pages worth
+
                 let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/departments?page=1&limit=${maxItemsNeeded}`;
                 let fetchOptions: RequestInit = {
                     headers: {
@@ -371,6 +386,28 @@ function PurchasePageContent() {
                 const data = await response.json();
                 let prsArray = Array.isArray(data) ? data : data.data || [];
 
+                // Sort by PR number immediately after fetching to ensure proper order
+                // Sort by PR number, format: PR{YY}{Alpha}{NNN}
+                const extractPRNumber = (pr_no: string) => {
+                    const match = pr_no.match(/^PR(\d{2})([A-Z])(\d{3})$/i);
+                    if (match) {
+                        const year = parseInt(match[1]);
+                        const alpha = match[2].toUpperCase();
+                        const alphaNum = alpha.charCodeAt(0) - 65; // 'A' = 0, 'B' = 1, ...
+                        const num = parseInt(match[3]);
+                        // Combine for sorting: year * 10000 + alphaNum * 1000 + num
+                        return year * 10000 + alphaNum * 1000 + num;
+                    }
+                    return 0;
+                };
+                
+                // Default sort: newest first (highest PR number first)
+                prsArray.sort((a: PRCard, b: PRCard) => {
+                    const va = extractPRNumber(a.pr_no);
+                    const vb = extractPRNumber(b.pr_no);
+                    return vb - va; // newest first
+                });
+
                 // Filter by date range
                 if (dateRange && dateRange.start && dateRange.end) {
                     prsArray = prsArray.filter((pr: PRCard) => {
@@ -389,7 +426,7 @@ function PurchasePageContent() {
                     });
                 }
                 setPrCards(prsArray);
-                console.log("Filtered PR cards:", prsArray.length, "items");
+                console.log("Fetched and sorted PR cards:", prsArray.length, "items", prsArray.slice(0, 5).map((p: PRCard) => p.pr_no));
             } catch (error: unknown) {
                 console.error("Failed to fetch PR cards:", error);
                 if (error instanceof Error) {
@@ -664,39 +701,67 @@ function PurchasePageContent() {
                             <span className="text-red-800 font-medium">{error}</span>
                         </div>
                     )}
+
+                    {/* PR Count Summary */}
+                    {/* {totalPrCount > 0 && (
+                        <div className={`mb-6 p-4 rounded-xl shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/30' : 'bg-emerald-100'}`}>
+                                        <HiDocumentText className={`w-6 h-6 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                    </div>
+                                    <div>
+                                        <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>
+                                            รายการ PR ทั้งหมดในระบบ
+                                        </h2>
+                                        <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                                            มีใบขอซื้อทั้งหมด <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{totalPrCount.toLocaleString()}</span> รายการ
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className={`text-right ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                        {totalPrCount.toLocaleString()}
+                                    </div>
+                                    <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                        รายการ PR
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )} */}
+
                     {/* <h1 className="text-2xl font-bold text-green-700 mb-4">รายการ PR สำหรับเปรียบเทียบราคา</h1> */}
                     <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
                         <form className="max-w-2xl w-full flex items-center gap-3">
                             {/* NOTE: Card | List View Toggle */}
                             <button
                                 type="button"
-                                className={`group relative flex items-center cursor-pointer justify-center w-12 h-12 rounded-xl transition-all duration-500 overflow-hidden ${isListView 
-                                    ? (isDarkMode 
-                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:shadow-emerald-500/30 hover:scale-105' 
+                                className={`group relative flex items-center cursor-pointer justify-center w-12 h-12 rounded-xl transition-all duration-500 overflow-hidden ${isListView
+                                    ? (isDarkMode
+                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:shadow-emerald-500/30 hover:scale-105'
                                         : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-600/30 hover:scale-105')
-                                    : (isDarkMode 
-                                        ? 'bg-slate-800/60 text-emerald-400 border border-slate-600/50 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-slate-700/60' 
+                                    : (isDarkMode
+                                        ? 'bg-slate-800/60 text-emerald-400 border border-slate-600/50 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-slate-700/60'
                                         : 'bg-white text-emerald-600 border border-gray-300 hover:text-emerald-600 hover:border-emerald-400 shadow-sm hover:shadow-md')
-                                }`}
+                                    }`}
                                 onClick={() => setIsListView(v => !v)}
                                 aria-label="Toggle view mode"
                             >
                                 <div className="relative w-6 h-6">
                                     {/* Card View Icon */}
-                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${
-                                        isListView 
-                                            ? 'opacity-100 scale-100 rotate-0' 
-                                            : 'opacity-0 scale-75 rotate-180'
-                                    }`}>
+                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${isListView
+                                        ? 'opacity-100 scale-100 rotate-0'
+                                        : 'opacity-0 scale-75 rotate-180'
+                                        }`}>
                                         <TbLayoutCards className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
                                     </div>
-                                    
+
                                     {/* List View Icon */}
-                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${
-                                        !isListView 
-                                            ? 'opacity-100 scale-100 rotate-0' 
-                                            : 'opacity-0 scale-75 rotate-180'
-                                    }`}>
+                                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out ${!isListView
+                                        ? 'opacity-100 scale-100 rotate-0'
+                                        : 'opacity-0 scale-75 rotate-180'
+                                        }`}>
                                         <TbLayoutList className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
                                     </div>
                                 </div>
@@ -968,7 +1033,7 @@ function PurchasePageContent() {
                         </form>
 
                         {/* Pagination Controls - Top */}
-                        {totalItems > 0 && (
+                        {(totalItems > 0 || currentPage === 1) && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
@@ -994,12 +1059,12 @@ function PurchasePageContent() {
 
                                     <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
-                                            const totalItemsWithCreate = totalItems + 1; // Include "Create PR" card
                                             let startItem, endItem;
-                                            
+                                            const totalItemsWithCreate = totalItems + 1; // Filtered PR + Create card
+
                                             if (totalItems === 0) {
-                                                startItem = 0;
-                                                endItem = 0;
+                                                startItem = 1;
+                                                endItem = 1; // Only Create card
                                             } else if (currentPage === 1) {
                                                 // Page 1: Create card + PR cards
                                                 startItem = 1;
@@ -1007,16 +1072,17 @@ function PurchasePageContent() {
                                             } else {
                                                 // Subsequent pages: only PR cards
                                                 const page1PRCards = Math.min(itemsPerPage - 1, totalItems);
-                                                const itemsBeforeThisPage = page1PRCards + ((currentPage - 2) * itemsPerPage);
-                                                startItem = itemsBeforeThisPage + 1 + 1; // +1 for Create card position
-                                                endItem = Math.min(startItem + paginatedPrCards.length - 1, totalItemsWithCreate);
+                                                const itemsBeforeThisPage = 1 + page1PRCards + ((currentPage - 2) * itemsPerPage); // +1 for Create card
+                                                startItem = itemsBeforeThisPage + 1;
+                                                const remainingItems = totalItemsWithCreate - itemsBeforeThisPage;
+                                                endItem = itemsBeforeThisPage + Math.min(itemsPerPage, remainingItems);
                                             }
-                                            
+
                                             return (
                                                 <>
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
                                                     {' '}of{' '}
-                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItemsWithCreate}</span>
+                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItemsWithCreate.toLocaleString()}</span>
                                                 </>
                                             );
                                         })()}
@@ -1058,7 +1124,7 @@ function PurchasePageContent() {
                             </div>
                         )}
                     </div>
-                    
+
                     {/* Content Display - Cards or List View */}
                     {isListView ? (
                         /* Card View (เดิม) */
