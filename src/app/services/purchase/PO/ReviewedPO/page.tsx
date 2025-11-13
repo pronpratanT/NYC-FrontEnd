@@ -16,6 +16,7 @@ import RejectPOModal from "@/app/components/Modal/Reject_PO";
 import SendMailModal from "@/app/components/Modal/SendMailModal";
 import RequestEditPOModal from "@/app/components/Modal/Request_Edit_PO";
 import ResponseEditPOModal from "@/app/components/Modal/Response_Edit_PO";
+import PuValidatedModal from '@/app/components/Modal/Pu_validated';
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -59,6 +60,9 @@ type ReviewedPO = {
     token: string;
     edited_at: string;
     edited_res: string;
+    pu_validated: string;
+    validated_by: string;
+    edit_request: string;
     pcl_id?: number;
 };
 
@@ -129,6 +133,7 @@ export default function ReviewedPOPage() {
 
     // Modal สำหรับอนุมัติ PO
     const [showApproveModal, setShowApproveModal] = useState(false);
+    const [showPuValidatedModal, setShowPuValidatedModal] = useState(false);
     // const [approveReason, setApproveReason] = useState(""); // Removed unused variables
     // Modal สำหรับปฏิเสธ PO
     const [showRejectModal, setShowRejectModal] = useState(false);
@@ -189,6 +194,44 @@ export default function ReviewedPOPage() {
 
 
     // NOTE: Handler
+    const handleValidated = async (reason: string) => {
+        const payload = {
+            po_id: poData?.po_id,
+            reason,
+        };
+        console.log("Validated payload:", payload);
+        try {
+            // Step 1: Approve PO
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/validate-by-pu`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error("ออก PO ไม่สำเร็จ");
+            await response.json();
+            //Step 2: Send PO to vendor
+
+            // const sendResponse = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/send-to-vendor/${poData?.po_id}`, {
+            //     method: 'PUT',
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //         Authorization: `Bearer ${token}`
+            //     },
+            //     body: JSON.stringify(sendPayload)
+            // });
+            // if (!sendResponse.ok) throw new Error('ส่ง PO ไปยัง Vendor ไม่สำเร็จ');
+            alert('ออก PO สำเร็จ');
+            setShowPuValidatedModal(false);
+            // reload PO data
+            await fetchData();
+        } catch {
+            alert('เกิดข้อผิดพลาดในการออก PO');
+        }
+    };
+
     const handleApprove = async (reason: string) => {
         const payload = {
             po_id: poData?.po_id,
@@ -318,56 +361,77 @@ export default function ReviewedPOPage() {
                                                 <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                     PO #{poData.po_no}
                                                 </h1>
-                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${(() => {
-                                                        // Reject ถ้ามีข้อมูลจะเป็น reject เท่านั้น
-                                                        if (poData.rejected_by) {
-                                                            return isDarkMode ? 'bg-red-500/20 text-red-200 border border-red-500/30' : 'bg-red-100 text-red-700 border border-red-200';
-                                                        }
-                                                        // ถ้ายังไม่มี issued_by = รอการตรวจสอบ
-                                                        if (!poData.issued_by) {
-                                                            return isDarkMode ? 'bg-gray-700 text-gray-300 border border-gray-600' : 'bg-gray-100 text-gray-600 border border-gray-300';
-                                                        }
-                                                        // ถ้ามี edited_res และมี edited_at = แก้ไขเสร็จสิ้น
-                                                        if (poData.edited_res && poData.edited_at) {
-                                                            return isDarkMode ? 'bg-blue-500/20 text-blue-200 border border-blue-500/30' : 'bg-blue-100 text-blue-700 border border-blue-200';
-                                                        }
-                                                        // ถ้ามี edited_res และมี edited_res = อนุมัติแก้ไข
-                                                        if (poData.approved_by && poData.edited_res) {
-                                                            return isDarkMode ? 'bg-orange-500/20 text-orange-200 border border-orange-500/30' : 'bg-orange-100 text-orange-700 border border-orange-200';
-                                                        }
-                                                        // ถ้ามี approved_by = อนุมัติเสร็จสิ้น
-                                                        if (poData.approved_by) {
-                                                            return isDarkMode ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-green-100 text-green-700 border border-green-200';
-                                                        }
-                                                        // Default = รอดำเนินการ
-                                                        return isDarkMode ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30' : 'bg-yellow-100 text-yellow-700 border border-yellow-200';
-                                                    })()
-                                                    }`}>
-                                                    {(() => {
-                                                        // Reject ถ้ามีข้อมูลจะเป็น reject เท่านั้น
-                                                        if (poData.rejected_by) {
-                                                            return 'ปฏิเสธแล้ว';
-                                                        }
-                                                        // ถ้ายังไม่มี issued_by = รอการตรวจสอบ
-                                                        if (!poData.issued_by) {
-                                                            return 'รอการตรวจสอบ';
-                                                        }
-                                                        // ถ้ามี edited_res และมี edited_at = แก้ไขเสร็จสิ้น
-                                                        if (poData.edited_res && poData.edited_at) {
-                                                            return 'แก้ไขเสร็จสิ้น';
-                                                        }
-                                                        // ถ้ามี approved_by และมี edited_res = อนุมัติแก้ไข
-                                                        if (poData.approved_by && poData.edited_res) {
-                                                            return 'ดำเนินการแก้ไข';
-                                                        }
-                                                        // ถ้ามี approved_by = อนุมัติเสร็จสิ้น
-                                                        if (poData.approved_by) {
-                                                            return 'อนุมัติเสร็จสิ้น';
-                                                        }
-                                                        // Default = รอดำเนินการ
-                                                        return 'รอดำเนินการ';
-                                                    })()}
-                                                </div>
+                                                {(poData.rejected_by && !poData.edited_at && !poData.edit_reason) ? (
+                                                    // 1. ปฏิเสธ = rejected_by มีข้อมูล
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                        ปฏิเสธ
+                                                    </span>
+                                                ) : (!poData.pu_validated && !poData.edited_res) || (!poData.pu_validated && !poData.edited_res && poData.rejected_by) ? (
+                                                    // 0. รอการตรวจสอบ = ไม่มีข้อมูลใดๆ
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-neutral-900/30 border-neutral-700/60 text-neutral-200' : 'bg-neutral-50 border-neutral-300 text-neutral-800'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-neutral-200' : 'text-neutral-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                        </svg>
+                                                        รอการตรวจสอบ
+                                                    </span>
+                                                ) : (poData.pu_validated && !poData.edited_at && !poData.approved_by) || (poData.pu_validated && poData.edited_at && !poData.approved_by) || (poData.pu_validated && poData.edited_at && !poData.approved_by && poData.rejected_by) ? (
+                                                    // 2. รอดำเนินการ = pu_validated มีข้อมูล
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                        </svg>
+                                                        รอดำเนินการ
+                                                    </span>
+                                                ) : (poData.approved_by && poData.edited_at) || (poData.approved_by && !poData.edited_at && !poData.edit_reason) || (poData.approved_by && poData.edited_at && poData.rejected_by) && (poData.approved_by && poData.edited_at && poData.rejected_by && !poData.edit_reason) ? (
+                                                    // 3. อนุมัติเสร็จสิ้น = approved_by มีข้อมูล
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        อนุมัติเสร็จสิ้น
+                                                    </span>
+                                                ) : (poData.edit_reason && !poData.edited_res) ? (
+                                                    // 4. ดำเนินการแก้ไข = edited_res มีข้อมูล
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-400 text-orange-800'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                        </svg>
+                                                        ร้องขอการแก้ไข
+                                                    </span>
+                                                ) : (poData.edited_res && !poData.edited_at) ? (
+                                                    // 4. ดำเนินการแก้ไข = edited_res มีข้อมูล
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-400 text-orange-800'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                        </svg>
+                                                        ดำเนินการแก้ไข
+                                                    </span>
+                                                ) : poData.edited_at ? (
+                                                    // 5. แก้ไขเสร็จสิ้น = edited_at มีข้อมูล
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-fuchsia-900/30 border-fuchsia-700/60 text-fuchsia-200' : 'bg-fuchsia-50 border-fuchsia-400 text-fuchsia-800'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-fuchsia-200' : 'text-fuchsia-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                        </svg>
+                                                        แก้ไขเสร็จสิ้น
+                                                    </span>
+                                                ) : (
+                                                    // 0. รอการตรวจสอบ = ไม่มีข้อมูลใดๆ
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-gray-900/30 border-gray-700/60 text-gray-200' : 'bg-gray-50 border-gray-300 text-gray-800'}`}>
+                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                        </svg>
+                                                        ERROR
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className={`flex items-center gap-4 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                 <div className="flex items-center gap-2">
@@ -383,8 +447,40 @@ export default function ReviewedPOPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        {/* แสดงปุ่มอนุมัติ เฉพาะเมื่อยังไม่มี approved_by หรือเมื่อ edited_res มีข้อมูล */}
-                                        {((!poData.approved_by && !poData.rejected_by) && poData.edited_res) && (
+                                        {/* 1. แสดงปุ่ม ออก PO และ ยกเลิก เมื่อ pu_validated ไม่มีข้อมูล หรือ เมื่อแก้ไขเสร็จแล้ว (edited_at มีข้อมูล) */}
+                                        {(!poData.pu_validated && !poData.edited_at && !poData.edited_res && !poData.rejected_by) || (!poData.pu_validated && poData.edited_at && poData.edited_res) || (!poData.pu_validated && poData.edited_at && !poData.edited_res && poData.rejected_by) ? (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className={`px-6 py-2.5 rounded-lg cursor-pointer font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-green-400 hover:from-emerald-600 hover:to-green-600 text-white'}`}
+                                                    onClick={() => setShowPuValidatedModal(true)}
+                                                >
+                                                    ออก PO
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`px-6 py-2.5 rounded-lg cursor-pointer font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ml-2 ${isDarkMode ? 'bg-gradient-to-r from-red-700 to-red-500 hover:from-red-600 hover:to-red-400 text-white' : 'bg-gradient-to-r from-red-500 to-red-400 hover:from-red-600 hover:to-red-600 text-white'}`}
+                                                    onClick={() => setShowRejectModal(true)}
+                                                >
+                                                    ยกเลิก
+                                                </button>
+                                                <PuValidatedModal
+                                                    open={showPuValidatedModal}
+                                                    onClose={() => setShowPuValidatedModal(false)}
+                                                    onConfirm={(reason) => handleValidated(reason)}
+                                                    poNo={poNo}
+                                                />
+                                                <RejectPOModal
+                                                    open={showRejectModal}
+                                                    onClose={() => setShowRejectModal(false)}
+                                                    onConfirm={(reason) => handleReject(reason)}
+                                                    poNo={poNo}
+                                                />
+                                            </>
+                                        ) : null}
+
+                                        {/* 2. แสดงปุ่ม อนุมัติ และ ปฏิเสธ เมื่อ pu_validated มีข้อมูลแต่ยังไม่ได้อนุมัติหรือปฏิเสธ */}
+                                        {(poData.pu_validated && !poData.approved_by) ? (
                                             <>
                                                 <button
                                                     type="button"
@@ -413,14 +509,13 @@ export default function ReviewedPOPage() {
                                                     poNo={poNo}
                                                 />
                                             </>
-                                        )}
+                                        ) : null}
 
-                                        {/* Modern Action Buttons Section - แสดงตามสถานะ */}
-                                        {poData.approved_by && (
+                                        {/* 3. แสดงปุ่ม ส่งอีเมล และ ขอแก้ไข/อนุมัติการแก้ไข หลังจากอนุมัติแล้ว */}
+                                        {(poData.approved_by && !poData.rejected_by) || (poData.approved_by && poData.rejected_by) ? (
                                             <div className="flex items-center gap-3 ml-3">
-
                                                 {/* Send Mail Button - แสดงเฉพาะเมื่อยังไม่ได้ส่งเมลและยังไม่มี edited_res */}
-                                                {!poData.edited_res && !poData.mail_out_date && (
+                                                {!poData.mail_out_date ? (
                                                     <div className="relative group">
                                                         <button
                                                             type="button"
@@ -459,10 +554,10 @@ export default function ReviewedPOPage() {
                                                             <div className="w-full h-full rounded-full bg-current animate-pulse"></div>
                                                         </div>
                                                     </div>
-                                                )}
+                                                ) : null}
 
-                                                {/* Request Edit Button หรือ Response Edit Button - ซ่อนเมื่อ edited_at มีข้อมูลแล้ว */}
-                                                {!poData.edited_res && (poData.edit_reason ? (
+                                                {/* Request Edit Button หรือ Response Edit Button */}
+                                                {poData.edit_reason && !poData.edited_res ? (
                                                     <div className="relative group">
                                                         <button
                                                             type="button"
@@ -506,9 +601,9 @@ export default function ReviewedPOPage() {
                                                             <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
                                                         </button>
                                                     </div>
-                                                ))}
+                                                )}
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
 
                                 </div>
@@ -528,6 +623,20 @@ export default function ReviewedPOPage() {
                                 </div>
                             </div>
                         ) : null)}
+
+                        {/* {!poData.rejected_by && (poData.edit_reason ? (
+                            <div className={`px-4 py-3 mb-3 ml-5 mr-5 rounded-lg border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-800/50 text-yellow-200' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
+                                <div className="flex items-start gap-2">
+                                    <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div>
+                                        <span className={`font-semibold ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>เหตุผลในการปฏิเสธ : </span>
+                                        <span className={isDarkMode ? 'text-yellow-100' : 'text-yellow-700'}>{poData.edit_reason}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null)} */}
 
                         {/* Two-Section Layout: Info Cards + Financial Summary */}
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -1019,9 +1128,9 @@ export default function ReviewedPOPage() {
                     } : undefined}
                     source="ReviewedPO"
                     onCancel={() => setShowEditVendor(false)}
-                    onConfirm={() => {
+                    onConfirm={async () => {
                         setShowEditVendor(false);
-                        if (typeof fetchData === 'function') fetchData();
+                        if (typeof fetchData === 'function') await fetchData();
                         // setActiveTab('compare'); // ถ้ามี tab ให้ใช้งาน
                     }}
                 />
@@ -1032,14 +1141,20 @@ export default function ReviewedPOPage() {
             {showRequestEditModal && (
                 <RequestEditPOModal
                     open={showRequestEditModal}
-                    onClose={() => setShowRequestEditModal(false)}
+                    onClose={async () => {
+                        setShowRequestEditModal(false);
+                        await fetchData();
+                    }}
                     poNo={poData?.po_no}
                 />
             )}
             {showResponseEditModal && (
                 <ResponseEditPOModal
                     open={showResponseEditModal}
-                    onClose={() => setShowResponseEditModal(false)}
+                    onClose={async () => {
+                        setShowResponseEditModal(false);
+                        await fetchData();
+                    }}
                     poNo={poData?.po_no}
                 />
             )}

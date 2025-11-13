@@ -1391,6 +1391,22 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           </div>
                         </button>
                       );
+                    case 'Po Updated':
+                      return (
+                        <button type="button" onClick={() => setActiveTab('completed-summary')}
+                          className={`px-6 py-3 cursor-pointer rounded-xl text-sm font-semibold transition-all duration-300 relative ${activeTab === 'completed-summary'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200/50 transform scale-105'
+                            : isDarkMode
+                              ? 'text-slate-300 hover:text-blue-400 hover:bg-blue-900/30 hover:shadow-md'
+                              : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-md'
+                            }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2 h-2 rounded-full bg-current opacity-75"></span>
+                            <span>รายละเอียดการสั่งซื้อ</span>
+                          </div>
+                        </button>
+                      );
                     default:
                       // สำหรับ status อื่นๆ ที่ไม่อยู่ใน case ให้แสดง summary
                       return (
@@ -1841,7 +1857,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               </div> */}
 
                               {/* Action Button */}
-                              {prWithPO.status !== 'Po Created' && (
+                              {prWithPO.status !== 'Po Created' && prWithPO.status !== 'Po Updated' && (
                                 <button
                                   type="button"
                                   onClick={async () => {
@@ -1979,7 +1995,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               </div>
 
                               {/* ประเภทการซื้อ - ซ่อนเมื่อสถานะเป็น Po Created หรือมี po_no */}
-                              {prWithPO.status !== 'Po Created' && (
+                              {prWithPO.status !== 'Po Created' && prWithPO.status !== 'Po Updated' && (
                                 <>
                                   <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>
                                     <div className="flex items-center space-x-2 mb-4">

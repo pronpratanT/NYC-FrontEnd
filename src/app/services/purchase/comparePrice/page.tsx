@@ -105,6 +105,8 @@ type FreeItems = {
     free_item_id: number;
     pcl_id: number;
     part_no: string;
+    prod_code: string;
+    part_name: string;
     qty: number;
     remark: string;
 }
@@ -927,7 +929,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                                     className={`fixed border-2 rounded-xl shadow-xl z-[9999] min-w-[160px] ${isDarkMode
                                                                                         ? 'bg-gray-700 border-gray-600'
                                                                                         : 'bg-white border-slate-200'
-                                                                                    }`}
+                                                                                        }`}
                                                                                     style={{
                                                                                         top: dropdownPosition.top,
                                                                                         left: dropdownPosition.left
@@ -943,7 +945,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                                         className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-t-xl ${isDarkMode
                                                                                             ? 'text-gray-300 hover:bg-blue-900/30'
                                                                                             : 'text-slate-700 hover:bg-blue-50'
-                                                                                        }`}
+                                                                                            }`}
                                                                                     >
                                                                                         <LuSquareSplitHorizontal size={18} className={isDarkMode ? 'text-blue-400' : 'text-blue-600'} /> แบ่งจำนวน
                                                                                     </button>
@@ -957,7 +959,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                                         className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-b-xl ${isDarkMode
                                                                                             ? 'text-gray-300 hover:bg-emerald-900/30'
                                                                                             : 'text-slate-700 hover:bg-emerald-50'
-                                                                                        }`}
+                                                                                            }`}
                                                                                     >
                                                                                         <GoGift size={18} className={isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} /> ของแถม
                                                                                     </button>
@@ -1028,6 +1030,13 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
                                                                                         <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>po rejected</span>
+                                                                                    </div>
+                                                                                );
+                                                                            case 'Po Updated':
+                                                                                return (
+                                                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-fuchsia-900/60 via-fuchsia-800/50 to-fuchsia-900/60 border-fuchsia-700/60' : 'from-fuchsia-50 via-fuchsia-100 to-fuchsia-50 border-fuchsia-300'}`}>
+                                                                                        <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-fuchsia-400' : 'bg-fuchsia-500'}`}></div>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-fuchsia-300' : 'text-fuchsia-700'}`}>po updated</span>
                                                                                     </div>
                                                                                 );
                                                                             default:
@@ -1110,7 +1119,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 {prData?.supervisor_approve && prData?.manager_approve && prData?.pu_operator_approve && (
                                                                     <td className={`px-4 py-2 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-slate-700/70 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
-                                                                            <GoGift className="w-4.5 h-4.5"/>
+                                                                            <GoGift className="w-4.5 h-4.5" />
                                                                         </span>
                                                                     </td>
                                                                 )}
