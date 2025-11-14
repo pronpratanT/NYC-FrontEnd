@@ -111,7 +111,7 @@ export default function SendMailModal({ open, onClose, onConfirm, poNo }: SendMa
                     {sendMail && (
                         <div className="space-y-3">
                             <h4 className={`text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                                เลือกภาษาเอกสาร
+                                เลือกภาษาแบบฟอร์มอีเมล
                             </h4>
                             <div className="grid grid-cols-2 gap-3">
                                 <label className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${documentLanguage === 'thai'

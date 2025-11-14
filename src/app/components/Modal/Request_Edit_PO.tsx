@@ -113,7 +113,7 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
     try {
       const payload = {
         po_id: poData?.po_id || null,
-        pcl_id: selectedItems,
+        po_list_id: selectedItems,
         note: reason,
       };
       // console.log('Payload for edit request:', payload);
@@ -135,9 +135,9 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
     }
   };
 
-  const handleSelect = (pcl_id: number) => {
+  const handleSelect = (po_list_id: number) => {
     setSelectedItems(prev =>
-      prev.includes(pcl_id) ? prev.filter(id => id !== pcl_id) : [...prev, pcl_id]
+      prev.includes(po_list_id) ? prev.filter(id => id !== po_list_id) : [...prev, po_list_id]
     );
   };
 
@@ -219,14 +219,14 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                             <input
                               type="checkbox"
                               className="form-checkbox h-4 w-4 text-amber-600 rounded focus:ring-amber-500"
-                              checked={selectedItems.length === poData.po_lists.filter(item => typeof item.pcl_id === 'number').length}
+                              checked={selectedItems.length === poData.po_lists.filter(item => typeof item.po_list_id === 'number').length}
                               onChange={(e) => {
                                 if (e.target.checked) {
                                   // Select all
-                                  const allPclIds = poData.po_lists
-                                    .filter(item => typeof item.pcl_id === 'number')
-                                    .map(item => item.pcl_id!);
-                                  setSelectedItems(allPclIds);
+                                  const allPoListIds = poData.po_lists
+                                    .filter(item => typeof item.po_list_id === 'number')
+                                    .map(item => item.po_list_id!);
+                                  setSelectedItems(allPoListIds);
                                 } else {
                                   // Deselect all
                                   setSelectedItems([]);
@@ -253,8 +253,8 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                                 <input
                                   type="checkbox"
                                   className="form-checkbox h-4 w-4 text-emerald-600 rounded focus:ring-emerald-500"
-                                  checked={selectedItems.includes(item.pcl_id!)}
-                                  onChange={() => handleSelect(item.pcl_id!)}
+                                  checked={selectedItems.includes(item.po_list_id!)}
+                                  onChange={() => handleSelect(item.po_list_id!)}
                                 />
                                 <div className="flex items-center gap-2 min-w-0 flex-1">
                                   <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode

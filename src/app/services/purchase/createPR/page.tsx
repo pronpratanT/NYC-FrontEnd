@@ -232,7 +232,13 @@ export default function TestPage() {
       try {
         setLoading(true);
         // setError(null); // error state removed
-        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(search)}`, { cache: "no-store" });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(search)}`, { 
+          cache: "no-store",
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        });
         if (!response.ok) {
           throw new Error(`PartNo API error: HTTP ${response.status} ${response.statusText}`);
         }

@@ -63,6 +63,7 @@ type ReviewedPO = {
     pu_validated: string;
     validated_by: string;
     edit_request: string;
+    reject_reason: string;
     pcl_id?: number;
 };
 
@@ -277,7 +278,7 @@ export default function ReviewedPOPage() {
         };
         console.log("Reject payload:", payload);
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/reject/${poData?.po_id}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/reject`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -385,7 +386,7 @@ export default function ReviewedPOPage() {
                                                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
                                                         </svg>
-                                                        รอดำเนินการ
+                                                        รอการอนุมัติ
                                                     </span>
                                                 ) : (poData.approved_by && poData.edited_at) || (poData.approved_by && !poData.edited_at && !poData.edit_reason) || (poData.approved_by && poData.edited_at && poData.rejected_by) && (poData.approved_by && poData.edited_at && poData.rejected_by && !poData.edit_reason) ? (
                                                     // 3. อนุมัติเสร็จสิ้น = approved_by มีข้อมูล
@@ -404,7 +405,7 @@ export default function ReviewedPOPage() {
                                                         </svg>
                                                         ร้องขอการแก้ไข
                                                     </span>
-                                                ) : (poData.edited_res && !poData.edited_at) ? (
+                                                ) : (poData.edited_res && !poData.edited_at && !poData.rejected_by) ? (
                                                     // 4. ดำเนินการแก้ไข = edited_res มีข้อมูล
                                                     <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-400 text-orange-800'}`}>
                                                         <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -624,19 +625,19 @@ export default function ReviewedPOPage() {
                             </div>
                         ) : null)}
 
-                        {/* {!poData.rejected_by && (poData.edit_reason ? (
-                            <div className={`px-4 py-3 mb-3 ml-5 mr-5 rounded-lg border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-800/50 text-yellow-200' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
+                        {poData.reject_reason && !poData.edited_at && poData.edited_res && (poData.reject_reason ? (
+                            <div className={`px-4 py-3 mb-3 ml-5 mr-5 rounded-lg border ${isDarkMode ? 'bg-red-900/30 border-red-800/50 text-red-200' : 'bg-red-50 border-red-200 text-red-700'}`}>
                                 <div className="flex items-start gap-2">
-                                    <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <div>
-                                        <span className={`font-semibold ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>เหตุผลในการปฏิเสธ : </span>
-                                        <span className={isDarkMode ? 'text-yellow-100' : 'text-yellow-700'}>{poData.edit_reason}</span>
+                                        <span className={`font-semibold ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>เหตุผลในการปฏิเสธ : </span>
+                                        <span className={isDarkMode ? 'text-red-100' : 'text-red-700'}>{poData.reject_reason}</span>
                                     </div>
                                 </div>
                             </div>
-                        ) : null)} */}
+                        ) : null)}
 
                         {/* Two-Section Layout: Info Cards + Financial Summary */}
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

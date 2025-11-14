@@ -205,7 +205,13 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                 setLoading(true);
                 const keyword = search; // ใช้ search จาก input เท่านั้น
                 console.log("Searching Part No. with keyword:", keyword);
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(keyword)}`, { cache: "no-store" });
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(keyword)}`, { 
+                    cache: "no-store",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (!response.ok) {
                     throw new Error(`PartNo API error: HTTP ${response.status} ${response.statusText}`);
                 }

@@ -915,7 +915,7 @@ export default function PurchaseOrderPage() {
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'processing' ? (isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800') : (isDarkMode ? 'text-slate-300 hover:bg-yellow-900/20 hover:text-yellow-200' : 'text-gray-700 hover:bg-yellow-50 hover:text-yellow-800')}`}
                                             onClick={() => { setStatusFilter('processing'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอดำเนินการ</span>
+                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอการอนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'edit-process' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
@@ -1081,7 +1081,7 @@ export default function PurchaseOrderPage() {
                                                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
                                                 </svg>
-                                                รอดำเนินการ
+                                                รอการอนุมัติ
                                             </span>
                                         ) : (po.approved_by && po.edit_at) || (po.approved_by && !po.edit_at) ? (
                                             // 3. อนุมัติเสร็จสิ้น = approved_by มีข้อมูล
@@ -1299,7 +1299,7 @@ export default function PurchaseOrderPage() {
                                                         // 2. รอดำเนินการ = issued_by มีข้อมูล
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-100 text-yellow-800'}`}>
                                                             <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#fde68a' : '#fbbf24' }}></span>
-                                                            รอดำเนินการ
+                                                            รอการอนุมัติ
                                                         </span>
                                                     ) : (po.approved_by && po.edit_at) || (po.approved_by && !po.edit_at) ? (
                                                         // 3. อนุมัติเสร็จสิ้น = approved_by มีข้อมูล

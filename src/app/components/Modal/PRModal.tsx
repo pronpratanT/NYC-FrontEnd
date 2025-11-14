@@ -134,6 +134,8 @@ type SelectedToPOGen = {
   vendor: string;
   due_date: string;
   date_shipped: string;
+  group_id?: number;
+  status?: string;
 }
 
 export type PRModalProps = {
@@ -189,6 +191,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Tab state
   const [activeTab, setActiveTab] = useState("purchase");
 
+  // State สำหรับเก็บข้อมูลปัจจุบันที่กำลังแสดง (อาจต่างจาก props)
+  const [currentPartNo, setCurrentPartNo] = useState(partNo);
+  const [currentPrListId, setCurrentPrListId] = useState(pr_list_id);
+
   // State สำหรับ tab รายละเอียดการขอซื้อหลายรายการ
   const [multipleOrderDetails, setMultipleOrderDetails] = useState<Array<{
     pr_list_id: number;
@@ -196,7 +202,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     part_name: string;
     prod_code: string;
     purchaseType: 'D' | 'I' | undefined;
+    group_id?: number;
+    status?: string;
   }>>([]);
+  // console.log("multipleOrderDetails:", multipleOrderDetails);
   const [purchaseType, setPurchaseType] = useState<'D' | 'I' | undefined>(undefined);
   const [remark, setRemark] = useState<string>("");
   const [lastDiscount, setLastDiscount] = useState<number | null>(null);
@@ -367,20 +376,51 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     setError("");
     setLoading(true);
     try {
-      const partNoToUse = fetchPartNo ?? partNo;
-      const prListIdToUse = fetchPrListId ?? pr_list_id;
-      // console.log("2.Fetching compare data for partNo:", partNoToUse, "pr_list_id:", prListIdToUse);
+      const partNoToUse = fetchPartNo ?? currentPartNo ?? partNo;
+      const prListIdToUse = fetchPrListId ?? currentPrListId ?? pr_list_id;
+      console.log("Fetching compare data for partNo:", partNoToUse, "pr_list_id:", prListIdToUse);
+      console.log("Current states - currentPartNo:", currentPartNo, "currentPrListId:", currentPrListId);
+      
       if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/list?part_no=${partNoToUse}&pr_list_id=${prListIdToUse}`, {
+      
+      const apiUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/list?part_no=${partNoToUse}&pr_list_id=${prListIdToUse}`;
+      console.log("API URL:", apiUrl);
+      
+      const response = await fetch(apiUrl, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error("โหลดข้อมูลเปรียบเทียบราคาไม่สำเร็จ");
+      
+      if (!response.ok) {
+        console.error("API Error:", response.status, response.statusText);
+        throw new Error(`โหลดข้อมูลเปรียบเทียบราคาไม่สำเร็จ (${response.status})`);
+      }
+      
       const data = await response.json();
+      console.log("API Response:", data);
+      
       const compareData = data?.data || data;
+      console.log("Setting compareData:", {
+        part_no: compareData?.part_no,
+        part_inventory_count: compareData?.part_inventory_and_pr?.length || 0,
+        vendors_count: compareData?.compare_vendors?.length || 0
+      });
+      
       setCompareData(compareData);
-      // console.log("Fetched compare data:", compareData);
+      
+      // อัพเดท latestInventoryItem สำหรับรายการที่เลือกปัจจุบัน
+      if (compareData?.part_inventory_and_pr && prListIdToUse) {
+        const currentItem = compareData.part_inventory_and_pr.find(item => item.pr_list_id === prListIdToUse);
+        if (currentItem) {
+          console.log("Updating latestInventoryItem:", currentItem);
+          setLatestInventoryItem(currentItem);
+        }
+      }
+      
+      // Return ข้อมูลที่ fetch มาเพื่อให้ caller สามารถใช้ได้ทันที
+      return { compareData, prListIdToUse };
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -398,8 +438,74 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }, [partNo, pr_list_id, token]);
   const handleApprovedDropdownSelect = (item: SelectedToPOGen) => {
     if (!item.part_no || !item.pr_list_id) return;
+    console.log('=== Switching to new item data ===');
+    console.log('From:', { partNo: currentPartNo, pr_list_id: currentPrListId });
+    console.log('To:', { part_no: item.part_no, pr_list_id: item.pr_list_id });
+    
+    // อัพเดต state ปัจจุบัน
+    setCurrentPartNo(item.part_no);
+    setCurrentPrListId(item.pr_list_id);
+    
+    // เปลี่ยน tab เป็น purchase เพื่อแสดงข้อมูลใหม่
+    setActiveTab('purchase');
+    
+    // Reset selected row data เมื่อเปลี่ยนรายการ
+    setSelectedRowData(null);
+    
     fetchCompareData(item.part_no, item.pr_list_id);
     setShowSelectedToPODropdown(false);
+  };
+
+  // ฟังก์ชันจัดการการเลือกรายการใน multiple order tab เพื่อ fetch ข้อมูลใหม่
+  const handleMultipleOrderItemSelect = async (selectedItem: { part_no: string; pr_list_id: number }) => {
+    console.log('Selecting item - part_no:', selectedItem.part_no, 'pr_list_id:', selectedItem.pr_list_id);
+    if (!selectedItem.part_no || !selectedItem.pr_list_id) return;
+    
+    // อัพเดต current state เพื่อให้ปุ่มเป็น Active
+    setCurrentPartNo(selectedItem.part_no);
+    setCurrentPrListId(selectedItem.pr_list_id);
+    
+    // Reset selected row data
+    setSelectedRowData(null);
+    
+    // Fetch ข้อมูลใหม่และรับผลลัพธ์กลับมา
+    const fetchResult = await fetchCompareData(selectedItem.part_no, selectedItem.pr_list_id);
+    
+    if (fetchResult) {
+      const { compareData: newCompareData } = fetchResult;
+      
+      // ตรวจสอบว่ารายการที่เลือกมี PO หรือไม่จากข้อมูลใหม่
+      // ใช้ selectedItem.pr_list_id โดยตรงเพื่อความแม่นยำ
+      console.log('Debug - all part_inventory_and_pr:', newCompareData?.part_inventory_and_pr?.map(item => ({
+        pr_list_id: item.pr_list_id,
+        part_no: item.part_no,
+        po_no: item.po_no
+      })));
+      
+      const prItem = newCompareData?.part_inventory_and_pr?.find(
+        pr => pr.pr_list_id === selectedItem.pr_list_id
+      );
+      
+      console.log('Debug - selectedItem:', selectedItem);
+      console.log('Debug - found prItem:', prItem);
+      console.log('Debug - PO status:', prItem ? 'Has PO: ' + prItem.po_no : 'No PO found for this pr_list_id');
+      
+      // เลือก tab ที่เหมาะสมตามสถานะ PO
+      // ตรวจสอบว่ามี PO หรือไม่ (รวมถึงค่าว่าง null, undefined, หรือ string ว่าง)
+      const hasPO = prItem && prItem.po_no && typeof prItem.po_no === 'string' && prItem.po_no.trim() !== '';
+      
+      if (hasPO) {
+        console.log('Item has PO (' + prItem.po_no + '), going to completed-summary tab (รายละเอียดการสั่งซื้อ)');
+        setActiveTab('completed-summary');
+      } else {
+        console.log('Item has no PO, going to approve tab (อนุมัติ)');
+        setActiveTab('completed-summary');
+      }
+    } else {
+      // ถ้า fetch ไม่สำเร็จ ให้ไปที่ approve เป็นค่าเริ่มต้น
+      console.log('Fetch failed, going to approve tab');
+      setActiveTab('completed-summary');
+    }
   };
 
   // ฟังก์ชันจัดการการคลิกแถวในตารางเปรียบเทียบราคา
@@ -460,7 +566,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const fetchData = async () => {
       try {
         setVendorLoading(true);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-vendor?keyword=${encodeURIComponent(search)}`, { cache: "no-store" });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-vendor?keyword=${encodeURIComponent(search)}`, {
+          cache: "no-store",
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` })
+          }
+        });
         if (!response.ok) {
           throw new Error(`Vendor API error: HTTP ${response.status} ${response.statusText}`);
         }
@@ -506,17 +618,23 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const fetchVendorDetail = async () => {
       const formattedVendorCode = formatPartForFetch(vendorCode);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/vendors?vendorCode=${encodeURIComponent(formattedVendorCode)}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/vendors?vendorCode=${encodeURIComponent(formattedVendorCode)}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` })
+          }
+        });
         if (!res.ok) throw new Error('ไม่พบข้อมูล Vendor');
         const data = await res.json();
         const vendorData = Array.isArray(data) ? data[0] : (data.data ? data.data : data);
         setSelectedVendorDetail(vendorData as VendorSelected);
         if (vendorData && vendorData.vendor_code) {
-          // ตรวจสอบ vendor_id ซ้ำใน compare_vendors ก่อนเพิ่ม
+          // ตรวจสอบ vendor_id ซ้ำใน compare_vendors ก่อนเพิ่ม (เฉพาะเมื่อเพิ่ม vendor ใหม่เท่านั้น)
           const vendorId = vendorData.ID;
           const exists = compareData?.compare_vendors?.some(v => v.vendor_id === vendorId);
           if (exists) {
-            alert('มี Vendor นี้อยู่ในตารางแล้ว ไม่สามารถเพิ่มซ้ำได้');
+            // ไม่แสดง alert เมื่อเป็นการอัปเดตหลังจากลบ vendor
+            console.warn('มี vendor อยู่ในตารางแล้ว ไม่สามารถเพิ่มซ้ำได้');
             return;
           }
           try {
@@ -550,7 +668,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const currentPRItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
     if (currentPRItem?.status === 'Approved') {
       setLoading(true);
-      fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/approved-list?prId=${prIdValue}`, {
+      fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pcl/group?prId=${prIdValue}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -563,17 +681,37 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           // console.log("Raw approved compare data:", data);
           // Handle array response from API
           if (Array.isArray(data) && data.length > 0) {
-            const approvedDataArray: SelectedToPOGen[] = data.map(item => ({
-              pr_list_id: item.pr_list_id || 0,
-              part_no: item.part_no || '',
-              part_name: item.part_name || '',
-              prod_code: item.prod_code || '',
-              pcl_id: item.pcl_id || 0,
-              plant: item.plant || '',
-              vendor: item.vendor || '',
-              due_date: item.due_date || '',
-              date_shipped: item.date_shipped || ''
-            }));
+            const approvedDataArray: SelectedToPOGen[] = [];
+            
+            // Process grouped data structure
+            data.forEach(group => {
+              // console.log("Processing group:", group.group_name, "with", group.list?.length || 0, "items");
+              // Skip "Ungrouped" entries
+              if (group.group_name === "Ungrouped" || !group.list) {
+                console.log("Skipping ungrouped or empty group:", group.group_name);
+                return;
+              }
+              
+              // Process items in group.list
+              if (Array.isArray(group.list)) {
+                group.list.forEach((item: { id: any; part_no: any; part_name: any; prod_code: any; pcl_id: any; plant: any; vendor: any; status: any; }) => {
+                  // console.log("Processing item in group", group.id, ":", item);
+                  approvedDataArray.push({
+                    pr_list_id: item.id || 0, // Using member_id as pr_list_id
+                    part_no: item.part_no || '',
+                    part_name: item.part_name || '',
+                    prod_code: item.prod_code || '',
+                    pcl_id: item.pcl_id || 0,
+                    plant: item.plant || '',
+                    vendor: item.vendor || '',
+                    due_date: '',
+                    date_shipped: '',
+                    group_id: group.id, // Add group ID to track which group this item belongs to
+                    status: item.status || '' // Add status from API response
+                  });
+                });
+              }
+            });
             // console.log("Processed approved data array:", approvedDataArray);
             setSelectedToPO(approvedDataArray);
           } else if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -587,7 +725,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               plant: data.plant || '',
               vendor: data.vendor || '',
               due_date: data.due_date || '',
-              date_shipped: data.date_shipped || ''
+              date_shipped: data.date_shipped || '',
+              group_id: data.group_id || 0, // Add group ID from data
+              status: data.status || '' // Add status from data
             };
             // console.log("Processed single approved data:", approvedData);
             setSelectedToPO([approvedData]);
@@ -693,8 +833,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
 
-    console.log("Submitting payload:", payload);
-    console.log("Edited prices:", edited_prices);
+    // console.log("Submitting payload:", payload);
+    // console.log("Edited prices:", edited_prices);
 
     try {
       // PUT edited_prices to /edit-price-in-clv if there are any edited prices
@@ -789,7 +929,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/repeat-or-new`;
         body = editPO;
       }
-      console.log("Creating PO with data:", body, "URL:", url);
+      // console.log("Creating PO with data:", body, "URL:", url);
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -895,7 +1035,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   const handleConfirmRejectCompare = async () => {
     const reasonToSend = rejectReason || "";
-    console.log("Rejecting PCL ID:", compareData?.pcl_id, "with reason:", reasonToSend);
+    // console.log("Rejecting PCL ID:", compareData?.pcl_id, "with reason:", reasonToSend);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/reject-pcl?pclId=${compareData?.pcl_id}&reason=${encodeURIComponent(reasonToSend)}`, {
         method: 'PUT',
@@ -940,14 +1080,24 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const handleApprovedDropdownSelectMultiple = () => {
     if (!selectedApprovedItems || selectedApprovedItems.length === 0) return;
 
-    // เตรียมข้อมูลสำหรับ tab หลายรายการ
-    const multipleItems = selectedApprovedItems.map(item => ({
-      pr_list_id: item.pr_list_id,
-      part_no: item.part_no,
-      part_name: item.part_name,
-      prod_code: item.prod_code,
-      purchaseType: undefined as 'D' | 'I' | undefined
-    }));
+    // เตรียมข้อมูลสำหรับ tab หลายรายการโดยดึงข้อมูลจาก selectedToPO
+    const multipleItems = selectedApprovedItems.map(item => {
+      // หาข้อมูลเพิ่มเติมจาก selectedToPO
+      const fullItem = selectedToPO.find(tpo => 
+        tpo.pr_list_id === item.pr_list_id && 
+        tpo.part_no === item.part_no
+      );
+      
+      return {
+        pr_list_id: item.pr_list_id,
+        part_no: item.part_no,
+        part_name: item.part_name,
+        prod_code: item.prod_code,
+        purchaseType: undefined as 'D' | 'I' | undefined,
+        group_id: fullItem?.group_id,
+        status: fullItem?.status
+      };
+    });
 
     setMultipleOrderDetails(multipleItems);
     setActiveTab('multiple-order');
@@ -1050,15 +1200,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       {selectedToPO && selectedToPO.length > 0 && (
                         <div className="relative">
                           {(() => {
-                            // กรองเฉพาะรายการที่ part_no, plant, vendor, due_date ตรงกับปัจจุบัน
-                            // หา reference จากรายการแรกที่ part_no ตรงกับ partNo
+                            // กรองเฉพาะรายการที่ group_id ตรงกันและ status = 'Approved'
+                            // หา reference จากรายการแรกที่ part_no ตรงกับ currentPartNo
                             // ANCHOR filtered OPEN multople PO
-                            const refItem = selectedToPO.find(item => item.part_no === partNo);
-                            const filteredToPO = refItem
+                            const refItem = selectedToPO.find(item => item.part_no === currentPartNo);
+                            const filteredToPO = refItem && refItem.group_id
                               ? selectedToPO.filter(item =>
-                                item.plant === refItem.plant &&
-                                item.vendor === refItem.vendor
-                                //item.due_date === refItem.due_date
+                                item.group_id === refItem.group_id &&
+                                item.status === 'Approved'
                               )
                               : [];
                             if (filteredToPO.length <= 1) return null;
@@ -1220,14 +1369,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             </div>
                             <div>
                               <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Part No</span>
-                              <div className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{compareData.part_no}</div>
+                              <div className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{currentPartNo}</div>
                             </div>
                           </div>
                         </div>
                       )}
 
                     {(() => {
-                      const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
+                      const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === currentPrListId);
                       if (!prItem) return null;
                       return (
                         <>
@@ -1321,8 +1470,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
                 {/* TODO - implement tab logic by status */}
                 {(() => {
-                  const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_no === prNumber && item.pr_list_id === pr_list_id);
-                  // console.log("Current PR Item for tab logic:", prItem?.status);
+                  const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === currentPrListId);
+                  console.log("Current PR Item for tab logic:", prItem?.status);
                   if (!prItem) {
                     // ถ้าไม่พบ PR ให้แสดง summary เฉพาะเมื่อข้อมูลโหลดเสร็จ
                     if (loading || error || !compareData) return null;
@@ -1488,7 +1637,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               {!loading && !error && compareData && activeTab === 'approve' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   {(() => {
-                    const prWithPO = latestInventoryItem && latestInventoryItem.pr_list_id === pr_list_id ? latestInventoryItem : compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
+                    const prWithPO = latestInventoryItem && latestInventoryItem.pr_list_id === currentPrListId ? latestInventoryItem : compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === currentPrListId);
                     if (!prWithPO) return <div className="p-6">ไม่พบข้อมูล</div>;
 
                     // หา vendor_id จาก recent_purchase
@@ -1788,7 +1937,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               {!loading && !error && compareData && activeTab === 'completed-summary' && (
                 <div className={`backdrop-blur-sm rounded-2xl shadow-xl border overflow-hidden flex-1 ${isDarkMode ? 'bg-slate-800/90 border-slate-700/60' : 'bg-white/90 border-white/40'}`}>
                   {(() => {
-                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
+                    const prWithPO = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === currentPrListId);
                     if (!prWithPO) return <div className="p-6">ไม่พบข้อมูล</div>;
 
                     // หา vendor_id จาก recent_purchase เหมือนกับใน left column
@@ -2740,6 +2889,21 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     <span className={`font-sans text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{item.part_name}</span>
                                   )}
                                 </div>
+                                <button
+                                  onClick={() => handleMultipleOrderItemSelect({ part_no: item.part_no, pr_list_id: item.pr_list_id })}
+                                  className={`ml-2 px-3 py-1 cursor-pointer text-xs rounded-md font-medium transition-all duration-200 ${
+                                    currentPartNo === item.part_no && currentPrListId === item.pr_list_id
+                                      ? isDarkMode 
+                                        ? 'bg-emerald-600 text-white border border-emerald-500' 
+                                        : 'bg-emerald-500 text-white border border-emerald-400'
+                                      : isDarkMode 
+                                        ? 'bg-slate-700 text-slate-300 hover:bg-orange-600 hover:text-white border border-slate-600 hover:border-orange-500' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-orange-500 hover:text-white border border-gray-300 hover:border-orange-400'
+                                  }`}
+                                  title={`โหลดข้อมูล ${item.part_no}`}
+                                >
+                                  {currentPartNo === item.part_no && currentPrListId === item.pr_list_id ? 'Active' : 'View'}
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -2748,22 +2912,25 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         {/* ประเภทการซื้อ */}
                         {(() => {
                           // ตรวจสอบว่ามีรายการใดที่มี po_no แล้วหรือไม่
-                          console.log('=== Debug PO Check ===');
-                          console.log('multipleOrderDetails:', multipleOrderDetails);
-                          console.log('compareData?.part_inventory_and_pr:', compareData?.part_inventory_and_pr);
+                          // console.log('=== Debug PO Check ===');
+                          // console.log('multipleOrderDetails:', multipleOrderDetails);
+                          // console.log('compareData?.part_inventory_and_pr:', compareData?.part_inventory_and_pr);
 
                           const hasExistingPO = multipleOrderDetails.some(item => {
+                            // ตรวจสอบเฉพาะ pr_list_id เพื่อให้สามารถจัดการ part_no ที่ต่างกันได้
                             const prItem = compareData?.part_inventory_and_pr?.find(
-                              pr => pr.pr_list_id === item.pr_list_id && pr.po_no && pr.po_no.trim() !== ''
+                              pr => pr.pr_list_id === item.pr_list_id &&
+                                    pr.po_no && 
+                                    pr.po_no.trim() !== ''
                             );
-                            console.log(`Checking pr_list_id: ${item.pr_list_id}`);
-                            console.log('Found prItem:', prItem);
-                            console.log('po_no:', prItem?.po_no);
+                            // console.log(`Checking pr_list_id: ${item.pr_list_id}, part_no: ${item.part_no}`);
+                            // console.log('Found prItem:', prItem);
+                            // console.log('po_no:', prItem?.po_no);
                             return !!prItem;
                           });
 
-                          console.log('hasExistingPO:', hasExistingPO);
-                          console.log('======================');
+                          // console.log('hasExistingPO:', hasExistingPO);
+                          // console.log('======================');
 
                           // ถ้ามีรายการที่มี po_no แล้ว ให้ซ่อนส่วนนี้
                           if (hasExistingPO) {
@@ -3102,10 +3269,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             } else {
                               isDisabled = true;
                             }
-                            console.log(`Row ${index + 1} - Vendor: ${vendor.vendor_name}`);
-                            console.log(`Status raw: "${statusRaw}" | Normalized: "${status}" | isDisabled: ${isDisabled}`);
-                            console.log(`Has PO: ${!!matchingPurchase}`);
-                            console.log('---');
+                            // console.log(`Row ${index + 1} - Vendor: ${vendor.vendor_name}`);
+                            // console.log(`Status raw: "${statusRaw}" | Normalized: "${status}" | isDisabled: ${isDisabled}`);
+                            // console.log(`Has PO: ${!!matchingPurchase}`);
+                            // console.log('---');
                             // Visual indicator for editability: underline color
                             const editableBorder = isDisabled
                               ? (isDarkMode ? 'border-b' : 'border-b border-gray-200')
