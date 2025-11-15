@@ -115,7 +115,6 @@ function PurchasePageContent() {
 
     // NOTE: Data states
     const [prCards, setPrCards] = useState<PRCard[]>([]);
-    const [totalPrCount, setTotalPrCount] = useState<number>(0);
     const token = useToken();
     const { user } = useUser();
     const departmentId = user?.Department?.ID;
@@ -332,18 +331,6 @@ function PurchasePageContent() {
                     setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
                     setLoading(false);
                     return;
-                }
-
-                // Fetch total PR count
-                const responseCount = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/count/all`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (responseCount.ok) {
-                    const countData = await responseCount.json();
-                    setTotalPrCount(countData.data || 0);
-                } else {
-                    console.warn("Failed to fetch PR count:", responseCount.statusText);
                 }
 
                 // Calculate API parameters: fetch enough data to ensure proper sorting

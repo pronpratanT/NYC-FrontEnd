@@ -409,7 +409,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       
       // อัพเดท latestInventoryItem สำหรับรายการที่เลือกปัจจุบัน
       if (compareData?.part_inventory_and_pr && prListIdToUse) {
-        const currentItem = compareData.part_inventory_and_pr.find(item => item.pr_list_id === prListIdToUse);
+        const currentItem = compareData.part_inventory_and_pr.find((item: { pr_list_id: number; }) => item.pr_list_id === prListIdToUse);
         if (currentItem) {
           console.log("Updating latestInventoryItem:", currentItem);
           setLatestInventoryItem(currentItem);
@@ -476,14 +476,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       
       // ตรวจสอบว่ารายการที่เลือกมี PO หรือไม่จากข้อมูลใหม่
       // ใช้ selectedItem.pr_list_id โดยตรงเพื่อความแม่นยำ
-      console.log('Debug - all part_inventory_and_pr:', newCompareData?.part_inventory_and_pr?.map(item => ({
-        pr_list_id: item.pr_list_id,
-        part_no: item.part_no,
-        po_no: item.po_no
-      })));
+      // console.log('Debug - all part_inventory_and_pr:', newCompareData?.part_inventory_and_pr?.map((item: { pr_list_id: any; part_no: any; po_no: any; }) => ({
+      //   pr_list_id: item.pr_list_id,
+      //   part_no: item.part_no,
+      //   po_no: item.po_no
+      // })));
       
       const prItem = newCompareData?.part_inventory_and_pr?.find(
-        pr => pr.pr_list_id === selectedItem.pr_list_id
+        (        pr: { pr_list_id: number; }) => pr.pr_list_id === selectedItem.pr_list_id
       );
       
       console.log('Debug - selectedItem:', selectedItem);
@@ -694,7 +694,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
               
               // Process items in group.list
               if (Array.isArray(group.list)) {
-                group.list.forEach((item: { id: any; part_no: any; part_name: any; prod_code: any; pcl_id: any; plant: any; vendor: any; status: any; }) => {
+                group.list.forEach((item: { id: number; part_no: string; part_name: string; prod_code: string; pcl_id: number; plant: string; vendor: string; status: string; }) => {
                   // console.log("Processing item in group", group.id, ":", item);
                   approvedDataArray.push({
                     pr_list_id: item.id || 0, // Using member_id as pr_list_id
