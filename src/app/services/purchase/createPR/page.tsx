@@ -259,7 +259,7 @@ export default function TestPage() {
       }
     };
     fetchData();
-  }, [search, token]);
+  }, [search]);
 
   useEffect(() => {
     if (!showDropdown) return;

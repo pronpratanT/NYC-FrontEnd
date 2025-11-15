@@ -380,33 +380,33 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const prListIdToUse = fetchPrListId ?? currentPrListId ?? pr_list_id;
       console.log("Fetching compare data for partNo:", partNoToUse, "pr_list_id:", prListIdToUse);
       console.log("Current states - currentPartNo:", currentPartNo, "currentPrListId:", currentPrListId);
-      
+
       if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-      
+
       const apiUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/compare/list?part_no=${partNoToUse}&pr_list_id=${prListIdToUse}`;
       console.log("API URL:", apiUrl);
-      
+
       const response = await fetch(apiUrl, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (!response.ok) {
         console.error("API Error:", response.status, response.statusText);
         throw new Error(`โหลดข้อมูลเปรียบเทียบราคาไม่สำเร็จ (${response.status})`);
       }
-      
+
       const data = await response.json();
       console.log("API Response:", data);
-      
+
       const compareData = data?.data || data;
       console.log("Setting compareData:", {
         part_no: compareData?.part_no,
         part_inventory_count: compareData?.part_inventory_and_pr?.length || 0,
         vendors_count: compareData?.compare_vendors?.length || 0
       });
-      
+
       setCompareData(compareData);
-      
+
       // อัพเดท latestInventoryItem สำหรับรายการที่เลือกปัจจุบัน
       if (compareData?.part_inventory_and_pr && prListIdToUse) {
         const currentItem = compareData.part_inventory_and_pr.find((item: { pr_list_id: number; }) => item.pr_list_id === prListIdToUse);
@@ -415,7 +415,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           setLatestInventoryItem(currentItem);
         }
       }
-      
+
       // Return ข้อมูลที่ fetch มาเพื่อให้ caller สามารถใช้ได้ทันที
       return { compareData, prListIdToUse };
     } catch (err) {
@@ -441,17 +441,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     console.log('=== Switching to new item data ===');
     console.log('From:', { partNo: currentPartNo, pr_list_id: currentPrListId });
     console.log('To:', { part_no: item.part_no, pr_list_id: item.pr_list_id });
-    
+
     // อัพเดต state ปัจจุบัน
     setCurrentPartNo(item.part_no);
     setCurrentPrListId(item.pr_list_id);
-    
+
     // เปลี่ยน tab เป็น purchase เพื่อแสดงข้อมูลใหม่
     setActiveTab('purchase');
-    
+
     // Reset selected row data เมื่อเปลี่ยนรายการ
     setSelectedRowData(null);
-    
+
     fetchCompareData(item.part_no, item.pr_list_id);
     setShowSelectedToPODropdown(false);
   };
@@ -460,40 +460,40 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const handleMultipleOrderItemSelect = async (selectedItem: { part_no: string; pr_list_id: number }) => {
     console.log('Selecting item - part_no:', selectedItem.part_no, 'pr_list_id:', selectedItem.pr_list_id);
     if (!selectedItem.part_no || !selectedItem.pr_list_id) return;
-    
+
     // อัพเดต current state เพื่อให้ปุ่มเป็น Active
     setCurrentPartNo(selectedItem.part_no);
     setCurrentPrListId(selectedItem.pr_list_id);
-    
+
     // Reset selected row data
     setSelectedRowData(null);
-    
+
     // Fetch ข้อมูลใหม่และรับผลลัพธ์กลับมา
     const fetchResult = await fetchCompareData(selectedItem.part_no, selectedItem.pr_list_id);
-    
+
     if (fetchResult) {
       const { compareData: newCompareData } = fetchResult;
-      
+
       // ตรวจสอบว่ารายการที่เลือกมี PO หรือไม่จากข้อมูลใหม่
       // ใช้ selectedItem.pr_list_id โดยตรงเพื่อความแม่นยำ
-      // console.log('Debug - all part_inventory_and_pr:', newCompareData?.part_inventory_and_pr?.map((item: { pr_list_id: any; part_no: any; po_no: any; }) => ({
+      // console.log('Debug - all part_inventory_and_pr:', newCompareData?.part_inventory_and_pr?.map(item => ({
       //   pr_list_id: item.pr_list_id,
       //   part_no: item.part_no,
       //   po_no: item.po_no
       // })));
-      
+
       const prItem = newCompareData?.part_inventory_and_pr?.find(
-        (        pr: { pr_list_id: number; }) => pr.pr_list_id === selectedItem.pr_list_id
+        (pr: { pr_list_id: number; }) => pr.pr_list_id === selectedItem.pr_list_id
       );
-      
+
       console.log('Debug - selectedItem:', selectedItem);
       console.log('Debug - found prItem:', prItem);
       console.log('Debug - PO status:', prItem ? 'Has PO: ' + prItem.po_no : 'No PO found for this pr_list_id');
-      
+
       // เลือก tab ที่เหมาะสมตามสถานะ PO
       // ตรวจสอบว่ามี PO หรือไม่ (รวมถึงค่าว่าง null, undefined, หรือ string ว่าง)
       const hasPO = prItem && prItem.po_no && typeof prItem.po_no === 'string' && prItem.po_no.trim() !== '';
-      
+
       if (hasPO) {
         console.log('Item has PO (' + prItem.po_no + '), going to completed-summary tab (รายละเอียดการสั่งซื้อ)');
         setActiveTab('completed-summary');
@@ -682,7 +682,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           // Handle array response from API
           if (Array.isArray(data) && data.length > 0) {
             const approvedDataArray: SelectedToPOGen[] = [];
-            
+
             // Process grouped data structure
             data.forEach(group => {
               // console.log("Processing group:", group.group_name, "with", group.list?.length || 0, "items");
@@ -691,10 +691,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 console.log("Skipping ungrouped or empty group:", group.group_name);
                 return;
               }
-              
+
               // Process items in group.list
               if (Array.isArray(group.list)) {
-                group.list.forEach((item: { id: number; part_no: string; part_name: string; prod_code: string; pcl_id: number; plant: string; vendor: string; status: string; }) => {
+                group.list.forEach((item: { id: any; part_no: any; part_name: any; prod_code: any; pcl_id: any; plant: any; vendor: any; status: any; }) => {
                   // console.log("Processing item in group", group.id, ":", item);
                   approvedDataArray.push({
                     pr_list_id: item.id || 0, // Using member_id as pr_list_id
@@ -1083,11 +1083,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // เตรียมข้อมูลสำหรับ tab หลายรายการโดยดึงข้อมูลจาก selectedToPO
     const multipleItems = selectedApprovedItems.map(item => {
       // หาข้อมูลเพิ่มเติมจาก selectedToPO
-      const fullItem = selectedToPO.find(tpo => 
-        tpo.pr_list_id === item.pr_list_id && 
+      const fullItem = selectedToPO.find(tpo =>
+        tpo.pr_list_id === item.pr_list_id &&
         tpo.part_no === item.part_no
       );
-      
+
       return {
         pr_list_id: item.pr_list_id,
         part_no: item.part_no,
@@ -2891,15 +2891,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </div>
                                 <button
                                   onClick={() => handleMultipleOrderItemSelect({ part_no: item.part_no, pr_list_id: item.pr_list_id })}
-                                  className={`ml-2 px-3 py-1 cursor-pointer text-xs rounded-md font-medium transition-all duration-200 ${
-                                    currentPartNo === item.part_no && currentPrListId === item.pr_list_id
-                                      ? isDarkMode 
-                                        ? 'bg-emerald-600 text-white border border-emerald-500' 
-                                        : 'bg-emerald-500 text-white border border-emerald-400'
-                                      : isDarkMode 
-                                        ? 'bg-slate-700 text-slate-300 hover:bg-orange-600 hover:text-white border border-slate-600 hover:border-orange-500' 
-                                        : 'bg-gray-100 text-gray-700 hover:bg-orange-500 hover:text-white border border-gray-300 hover:border-orange-400'
-                                  }`}
+                                  className={`ml-2 px-3 py-1 cursor-pointer text-xs rounded-md font-medium transition-all duration-200 ${currentPartNo === item.part_no && currentPrListId === item.pr_list_id
+                                    ? isDarkMode
+                                      ? 'bg-emerald-600 text-white border border-emerald-500'
+                                      : 'bg-emerald-500 text-white border border-emerald-400'
+                                    : isDarkMode
+                                      ? 'bg-slate-700 text-slate-300 hover:bg-orange-600 hover:text-white border border-slate-600 hover:border-orange-500'
+                                      : 'bg-gray-100 text-gray-700 hover:bg-orange-500 hover:text-white border border-gray-300 hover:border-orange-400'
+                                    }`}
                                   title={`โหลดข้อมูล ${item.part_no}`}
                                 >
                                   {currentPartNo === item.part_no && currentPrListId === item.pr_list_id ? 'Active' : 'View'}
@@ -2920,8 +2919,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                             // ตรวจสอบเฉพาะ pr_list_id เพื่อให้สามารถจัดการ part_no ที่ต่างกันได้
                             const prItem = compareData?.part_inventory_and_pr?.find(
                               pr => pr.pr_list_id === item.pr_list_id &&
-                                    pr.po_no && 
-                                    pr.po_no.trim() !== ''
+                                pr.po_no &&
+                                pr.po_no.trim() !== ''
                             );
                             // console.log(`Checking pr_list_id: ${item.pr_list_id}, part_no: ${item.part_no}`);
                             // console.log('Found prItem:', prItem);
