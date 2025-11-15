@@ -28,6 +28,12 @@ import { LuMail } from "react-icons/lu";
 import { RiMailSendLine } from "react-icons/ri";
 import { MdOutlineEdit } from "react-icons/md";
 import { BiQuestionMark } from "react-icons/bi";
+import { FaRegCircleQuestion } from "react-icons/fa6";
+import { BsExclamationDiamond } from "react-icons/bs";
+import { IoSettingsOutline } from "react-icons/io5";
+import { TbProgressCheck } from "react-icons/tb";
+import { TbSettingsCheck } from "react-icons/tb";
+import { TbSettingsQuestion } from "react-icons/tb";
 
 type ReviewedPO = {
     po_id: number;
@@ -373,20 +379,20 @@ export default function ReviewedPOPage() {
                                                 ) : (!poData.pu_validated && !poData.edited_res) || (!poData.pu_validated && !poData.edited_res && poData.rejected_by) ? (
                                                     // 0. รอการตรวจสอบ = ไม่มีข้อมูลใดๆ
                                                     <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-neutral-900/30 border-neutral-700/60 text-neutral-200' : 'bg-neutral-50 border-neutral-300 text-neutral-800'}`}>
-                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-neutral-200' : 'text-neutral-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-neutral-200' : 'text-neutral-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                        </svg>
-                                                        รอการตรวจสอบ
+                                                        </svg> */}
+                                                        <FaRegCircleQuestion className={`w-4 h-4`} />รอการตรวจสอบ
                                                     </span>
                                                 ) : (poData.pu_validated && !poData.edited_at && !poData.approved_by) || (poData.pu_validated && poData.edited_at && !poData.approved_by) || (poData.pu_validated && poData.edited_at && !poData.approved_by && poData.rejected_by) ? (
                                                     // 2. รอดำเนินการ = pu_validated มีข้อมูล
                                                     <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
-                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                        </svg>
-                                                        รอการอนุมัติ
+                                                        </svg> */}
+                                                        <TbProgressCheck className={`w-4 h-4`} />รอการอนุมัติ
                                                     </span>
                                                 ) : (poData.approved_by && poData.edited_at) || (poData.approved_by && !poData.edited_at && !poData.edit_reason) || (poData.approved_by && poData.edited_at && poData.rejected_by) && (poData.approved_by && poData.edited_at && poData.rejected_by && !poData.edit_reason) ? (
                                                     // 3. อนุมัติเสร็จสิ้น = approved_by มีข้อมูล
@@ -399,38 +405,38 @@ export default function ReviewedPOPage() {
                                                 ) : (poData.edit_reason && !poData.edited_res) ? (
                                                     // 4. ดำเนินการแก้ไข = edited_res มีข้อมูล
                                                     <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-400 text-orange-800'}`}>
-                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                        </svg>
-                                                        ร้องขอการแก้ไข
+                                                        </svg> */}
+                                                        <TbSettingsQuestion className={`w-4 h-4`} />ร้องขอการแก้ไข
                                                     </span>
                                                 ) : (poData.edited_res && !poData.edited_at && !poData.rejected_by) ? (
                                                     // 4. ดำเนินการแก้ไข = edited_res มีข้อมูล
-                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-400 text-orange-800'}`}>
-                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-rose-900/30 border-rose-700/60 text-rose-200' : 'bg-rose-50 border-rose-400 text-rose-800'}`}>
+                                                        {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                        </svg>
-                                                        ดำเนินการแก้ไข
+                                                        </svg> */}
+                                                        <IoSettingsOutline className={`w-4 h-4`} />ดำเนินการแก้ไข
                                                     </span>
                                                 ) : poData.edited_at ? (
                                                     // 5. แก้ไขเสร็จสิ้น = edited_at มีข้อมูล
-                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-fuchsia-900/30 border-fuchsia-700/60 text-fuchsia-200' : 'bg-fuchsia-50 border-fuchsia-400 text-fuchsia-800'}`}>
-                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-fuchsia-200' : 'text-fuchsia-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-violet-900/30 border-violet-700/60 text-violet-200' : 'bg-violet-50 border-violet-400 text-violet-800'}`}>
+                                                        {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-fuchsia-200' : 'text-fuchsia-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                        </svg>
-                                                        แก้ไขเสร็จสิ้น
+                                                        </svg> */}
+                                                        <TbSettingsCheck className={`w-4 h-4`} />แก้ไขเสร็จสิ้น
                                                     </span>
                                                 ) : (
                                                     // 0. รอการตรวจสอบ = ไม่มีข้อมูลใดๆ
                                                     <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-gray-900/30 border-gray-700/60 text-gray-200' : 'bg-gray-50 border-gray-300 text-gray-800'}`}>
-                                                        <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                        </svg>
-                                                        ERROR
+                                                        </svg> */}
+                                                        <BsExclamationDiamond className={`w-4 h-4`} />ERROR
                                                     </span>
                                                 )}
                                             </div>
@@ -769,7 +775,14 @@ export default function ReviewedPOPage() {
                                             <div className="flex items-center justify-between">
                                                 <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>วันที่จัดส่ง</span>
                                                 <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                                                    {poData.delivery_date ? new Date(poData.delivery_date).toLocaleDateString('th-TH') : '-'}
+                                                    {(() => {
+                                                        if (!poData.po_lists || poData.po_lists.length === 0) return '-';
+                                                        const latestDeliDate = poData.po_lists
+                                                            .filter(item => item.deli_date)
+                                                            .map(item => new Date(item.deli_date))
+                                                            .sort((a, b) => b.getTime() - a.getTime())[0];
+                                                        return latestDeliDate ? latestDeliDate.toLocaleDateString('th-TH') : '-';
+                                                    })()}
                                                 </span>
                                             </div>
                                         </div>
@@ -799,14 +812,20 @@ export default function ReviewedPOPage() {
                                                 <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{poData.approved_by || '-'}</span>
                                             </div>
                                         </div>
-                                        {poData.remark && (
+                                        <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/50 border border-amber-600/30' : 'bg-amber-50/70 border border-amber-200'}`}>
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>หมายเหตุ</span>
+                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.remark}</span>
+                                                </div>
+                                            </div>
+                                        {/* {poData.remark && (
                                             <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/50 border border-amber-600/30' : 'bg-amber-50/70 border border-amber-200'}`}>
                                                 <div className="flex items-center justify-between">
                                                     <span className={`text-xs font-medium ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>หมายเหตุ</span>
                                                     <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.remark}</span>
                                                 </div>
                                             </div>
-                                        )}
+                                        )} */}
                                     </div>
                                 </div>
                             </div>

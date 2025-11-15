@@ -25,6 +25,7 @@ import { GoDownload, GoSearch } from "react-icons/go";
 import { FaRegClock } from "react-icons/fa6";
 import { HiDocumentText } from "react-icons/hi2";
 import { TbLayoutList, TbLayoutCards } from "react-icons/tb";
+import { TbProgressCheck } from "react-icons/tb";
 
 type PRCard = {
     id: number;
@@ -400,7 +401,7 @@ function PurchasePageContent() {
                     }
                     return 0;
                 };
-                
+
                 // Default sort: newest first (highest PR number first)
                 prsArray.sort((a: PRCard, b: PRCard) => {
                     const va = extractPRNumber(a.pr_no);
@@ -982,21 +983,21 @@ function PurchasePageContent() {
                                             onClick={() => { setStatusFilter('supervisor'); }}
                                         >
                                             <span className="inline-flex items-center gap-2">
-                                                <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />รอหัวหน้าแผนกอนุมัติ</span>
+                                                <TbProgressCheck className={`w-4.5 h-4.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />รอหัวหน้าแผนกอนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'manager' ? (isDarkMode ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-50 text-purple-800') : (isDarkMode ? 'text-slate-300 hover:bg-purple-900/20 hover:text-purple-200' : 'text-gray-700 hover:bg-purple-50 hover:text-purple-800')}`}
                                             onClick={() => { setStatusFilter('manager'); }}
                                         >
                                             <span className="inline-flex items-center gap-2">
-                                                <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />รอผู้จัดการแผนกอนุมัติ</span>
+                                                <TbProgressCheck className={`w-4.5 h-4.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />รอผู้จัดการแผนกอนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'pu' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
                                             onClick={() => { setStatusFilter('pu'); }}
                                         >
                                             <span className="inline-flex items-center gap-2">
-                                                <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />รอแผนกจัดซื้ออนุมัติ</span>
+                                                <TbProgressCheck className={`w-4.5 h-4.5 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />รอแผนกจัดซื้ออนุมัติ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'processing' ? (isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800') : (isDarkMode ? 'text-slate-300 hover:bg-yellow-900/20 hover:text-yellow-200' : 'text-gray-700 hover:bg-yellow-50 hover:text-yellow-800')}`}
@@ -1174,26 +1175,26 @@ function PurchasePageContent() {
                                         ) : !pr.supervisor_approved ? (
                                             // Blue - รอหัวหน้าแผนกอนุมัติ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                รอหัวหน้าแผนกอนุมัติ
+                                                </svg> */}
+                                                <TbProgressCheck className={`w-4 h-4`} />รอหัวหน้าแผนกอนุมัติ
                                             </span>
                                         ) : !pr.manager_approved ? (
                                             // Purple - รอผู้จัดการแผนกอนุมัติ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-200' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                รอผู้จัดการแผนกอนุมัติ
+                                                </svg> */}
+                                                <TbProgressCheck className={`w-4 h-4`} />รอผู้จัดการแผนกอนุมัติ
                                             </span>
                                         ) : !pr.pu_operator_approved ? (
                                             // Orange - รอแผนกจัดซื้ออนุมัติ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                รอแผนกจัดซื้ออนุมัติ
+                                                </svg> */}
+                                                <TbProgressCheck className={`w-4 h-4`} />รอแผนกจัดซื้ออนุมัติ
                                             </span>
                                         ) : pr.waiting === 0 ? (
                                             // Green - Complete (เสร็จสมบูรณ์)
@@ -1206,10 +1207,10 @@ function PurchasePageContent() {
                                         ) : (
                                             // Yellow/Amber - รอดำเนินการ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                รอดำเนินการ
+                                                </svg> */}
+                                                <FaRegClock className={`w-4 h-4`} />รอดำเนินการ
                                             </span>
                                         )}
                                     </div>

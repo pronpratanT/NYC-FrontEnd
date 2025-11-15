@@ -34,6 +34,7 @@ import { LuUngroup } from "react-icons/lu";
 import { LuGroup } from "react-icons/lu";
 import { PiNotepadBold } from "react-icons/pi";
 import { FiFolder } from "react-icons/fi";
+import { TbProgressCheck } from "react-icons/tb";
 
 type Part = {
     pcl_id: number;
@@ -659,19 +660,19 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     ) : !prData.supervisor_approve ? (
                                         // Blue - รอหัวหน้าแผนกอนุมัติ
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50 text-blue-300' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
-                                            <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`} />
+                                            <TbProgressCheck className={`w-4 h-4 ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`} />
                                             รอหัวหน้าแผนกอนุมัติ
                                         </span>
                                     ) : !prData.manager_approve ? (
                                         // Purple - รอผู้จัดการแผนกอนุมัติ
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/50 text-purple-300' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
-                                            <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-300' : 'text-purple-500'}`} />
+                                            <TbProgressCheck className={`w-4 h-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-500'}`} />
                                             รอผู้จัดการแผนกอนุมัติ
                                         </span>
                                     ) : !prData.pu_operator_approve ? (
                                         // Orange - รอแผนกจัดซื้ออนุมัติ
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/50 text-orange-300' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
-                                            <FaRegClock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-orange-300 text-bold' : 'text-orange-500'}`} />
+                                            <TbProgressCheck className={`w-4 h-4 ${isDarkMode ? 'text-orange-300 text-bold' : 'text-orange-500'}`} />
                                             รอแผนกจัดซื้ออนุมัติ
                                         </span>
                                     ) : prData.count_ordered === allParts.length ? (

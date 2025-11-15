@@ -25,6 +25,12 @@ import { GoDownload, GoSearch } from "react-icons/go";
 import { HiDocumentText } from "react-icons/hi2";
 import { TbLayoutList, TbLayoutCards } from "react-icons/tb";
 import { SiMinutemailer } from "react-icons/si";
+import { FaRegCircleQuestion } from "react-icons/fa6";
+import { BsExclamationDiamond } from "react-icons/bs";
+import { IoSettingsOutline } from "react-icons/io5";
+import { TbProgressCheck } from "react-icons/tb";
+import { TbSettingsCheck } from "react-icons/tb";
+import { TbSettingsQuestion } from "react-icons/tb";
 
 // Types
 // ปรับ type ให้ตรงกับโครงสร้างใหม่
@@ -54,7 +60,7 @@ type POCard = {
     pu_validated_at: string | null;
     pu_validator: string | null;
     edit_reason: string | null;
-    edit_requset: string | null;
+    edit_request: string | null;
     edit_response: string | null;
     edit_response_reason: string | null;
     edit_response_by: string | null;
@@ -181,30 +187,36 @@ export default function PurchaseOrderPage() {
             return extract(a.po_no) - extract(b.po_no);
         });
     }
-    // NOTE: Status filter
-    if (statusFilter) {
-        displayedPoCards = displayedPoCards.filter(po => {
-            if (statusFilter === 'rejected') {
-                return po.rejected_by;
-            } else if (statusFilter === 'waiting-validated') {
-                // รอการตรวจสอบ = pu_validated_at ไม่มีข้อมูล
-                return !po.pu_validated_at && !po.edit_response && !po.rejected_by;
-            } else if (statusFilter === 'processing') {
-                // รอดำเนินการ = pu_validated_at มีข้อมูลแต่ยังไม่ได้อนุมัติ
-                return po.pu_validated_at && !po.approved_by && !po.rejected_by || !po.edit_at && !po.edit_response;
-            } else if (statusFilter === 'complete') {
-                // อนุมัติเสร็จสิ้น = approved_by มีข้อมูลและไม่อยู่ในขั้นตอนแก้ไข
-                return po.approved_by && !po.edit_at && !po.rejected_by;
-            } else if (statusFilter === 'edit-process') {
-                // ดำเนินการแก้ไข = มี edit_reason แต่ยังไม่มี edit_at
-                return po.edit_response && !po.edit_at && !po.approved_at;
-            } else if (statusFilter === 'edit-success') {
-                // แก้ไขเสร็จสิ้น = edit_at มีข้อมูล
-                return po.edit_at && po.edit_response && !po.approved_by && !po.rejected_by && !po.pu_validated_at;
-            }
-            return true;
-        });
-    }
+
+    // ANCHOR Helper function to determine PO status (matches badge display logic exactly)
+    const getPOStatus = (po: POCard): string => {
+        if (po.rejected_by && !po.edit_at && !po.edit_reason) {
+            return 'rejected'; // ปฏิเสธ (แดง)
+        } else if ((!po.pu_validated_at && !po.edit_response) || (!po.pu_validated_at && !po.edit_response && po.rejected_by)) {
+            return 'waiting-validated'; // รอการตรวจสอบ (เทา)
+        } else if ((po.pu_validated_at && !po.edit_at && !po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by && po.rejected_by)) {
+            return 'processing'; // รอการอนุมัติ (เหลือง)
+        } else if ((po.approved_by && po.edit_at) || (po.approved_by && !po.edit_at && !po.edit_reason) || (po.approved_by && po.edit_at && po.rejected_by) && (po.approved_by && po.edit_at && po.rejected_by) && (po.approved_at && po.edit_at && po.rejected_by && !po.edit_reason)) {
+            return 'complete'; // อนุมัติเสร็จสิ้น (เขียว)
+        } else if (po.edit_reason && !po.edit_response) {
+            return 'edit-request'; // ร้องขอการแก้ไข (ส้ม)
+        } else if (po.edit_response && !po.edit_at && !po.rejected_by) {
+            return 'edit-process'; // ดำเนินการแก้ไข (ส้ม)
+        } else if (po.edit_at) {
+            return 'edit-success'; // แก้ไขเสร็จสิ้น (ม่วง)
+        } else {
+            return 'waiting-validated'; // Default: รอการตรวจสอบ
+        }
+    };
+
+    // NOTE: Count filtered items for pagination (like purchase page)
+    const filteredPoCards = statusFilter ? displayedPoCards.filter(po => {
+        const currentStatus = getPOStatus(po);
+        return currentStatus === statusFilter;
+    }) : displayedPoCards;
+
+    // NOTE: Show all items but use filtered count for pagination
+    const filteredCount = filteredPoCards.length;
 
     // NOTE: Pagination states (sync with URL)
     const [itemsPerPage, setItemsPerPage] = useState(() => {
@@ -215,11 +227,16 @@ export default function PurchaseOrderPage() {
         const urlPage = typeof window !== 'undefined' ? getSearchParam('page') : null;
         return urlPage && Number(urlPage) > 0 ? Number(urlPage) : 1;
     });
-    // Use totalItems from API (amount_po) for pagination
+    // Use filtered count for pagination (like purchase page)
     const [totalItems, setTotalItems] = useState(0);
+    const effectiveTotalItems = statusFilter ? filteredCount : totalItems;
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const paginatedPoCards = displayedPoCards;
+    const totalPages = Math.ceil(effectiveTotalItems / itemsPerPage);
+    
+    // Show all items but paginate based on filtered count
+    const paginatedPoCards = statusFilter ? 
+        filteredPoCards.slice(startIndex, startIndex + itemsPerPage) : 
+        displayedPoCards.slice(startIndex, startIndex + itemsPerPage);
 
     // Function to update URL parameters
     const updateUrlParams = React.useCallback((newPage?: number, newPerPage?: number) => {
@@ -318,8 +335,8 @@ export default function PurchaseOrderPage() {
                     return;
                 }
 
-                // กำหนด URL และ options สำหรับ fetch
-                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=${currentPage}&limit=${itemsPerPage}`;
+                // กำหนด URL และ options สำหรับ fetch - ดึงข้อมูลทั้งหมดเพื่อให้กรองได้ครบ
+                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=1&limit=1000`;
                 let fetchOptions: RequestInit = {
                     headers: {
                         'Content-Type': 'application/json',
@@ -329,7 +346,7 @@ export default function PurchaseOrderPage() {
 
                 // ถ้ามี search ให้ใช้ API search
                 if (search && search.trim() !== "") {
-                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}&page=${currentPage}&limit=${itemsPerPage}`;
+                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}&page=1&limit=1000`;
                     fetchOptions = {
                         ...fetchOptions,
                         headers: {
@@ -405,7 +422,7 @@ export default function PurchaseOrderPage() {
         if (token !== null) {
             fetchPoCards();
         }
-    }, [token, router, search, dateRange, currentPage, itemsPerPage]);
+    }, [token, router, search, dateRange]); // ลบ currentPage และ itemsPerPage ออกจาก dependency เพื่อไม่ให้ fetch ใหม่ทุกครั้งที่เปลี่ยนหน้า
 
     {/* departments */ }
     useEffect(() => {
@@ -909,25 +926,31 @@ export default function PurchaseOrderPage() {
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'waiting-validated' ? (isDarkMode ? 'bg-neutral-900/30 text-neutral-200' : 'bg-neutral-50 text-neutral-800') : (isDarkMode ? 'text-neutral-300 hover:bg-neutral-900/20 hover:text-neutral-200' : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-800')}`}
                                             onClick={() => { setStatusFilter('waiting-validated'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอการตรวจสอบ</span>
+                                            <span className="inline-flex items-center gap-2"><FaRegCircleQuestion className={`w-4 h-4 ${isDarkMode ? 'text-neutral-400' : 'text-neutral-600'}`} />รอการตรวจสอบ</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'processing' ? (isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800') : (isDarkMode ? 'text-slate-300 hover:bg-yellow-900/20 hover:text-yellow-200' : 'text-gray-700 hover:bg-yellow-50 hover:text-yellow-800')}`}
                                             onClick={() => { setStatusFilter('processing'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>รอการอนุมัติ</span>
+                                            <span className="inline-flex items-center gap-2"><TbProgressCheck className={`w-4 h-4 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />รอการอนุมัติ</span>
                                         </li>
                                         <li
-                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'edit-process' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'edit-request' ? (isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-50 text-orange-800') : (isDarkMode ? 'text-slate-300 hover:bg-orange-900/20 hover:text-orange-200' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-800')}`}
+                                            onClick={() => { setStatusFilter('edit-request'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2"><TbSettingsQuestion className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />ร้องขอการแก้ไข</span>
+                                        </li>
+                                        <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'edit-process' ? (isDarkMode ? 'bg-rose-900/30 text-rose-200' : 'bg-rose-50 text-rose-800') : (isDarkMode ? 'text-slate-300 hover:bg-rose-900/20 hover:text-rose-200' : 'text-gray-700 hover:bg-rose-50 hover:text-rose-800')}`}
                                             onClick={() => { setStatusFilter('edit-process'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>ดำเนินการแก้ไข</span>
+                                            <span className="inline-flex items-center gap-2"><IoSettingsOutline className={`w-4 h-4 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`} />ดำเนินการแก้ไข</span>
                                         </li>
                                         <li
-                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'edit-success' ? (isDarkMode ? 'bg-fuchsia-900/30 text-fuchsia-200' : 'bg-fuchsia-50 text-fuchsia-800') : (isDarkMode ? 'text-slate-300 hover:bg-fuchsia-900/20 hover:text-fuchsia-200' : 'text-gray-700 hover:bg-fuchsia-50 hover:text-fuchsia-800')}`}
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'edit-success' ? (isDarkMode ? 'bg-violet-900/30 text-violet-200' : 'bg-violet-50 text-violet-800') : (isDarkMode ? 'text-slate-300 hover:bg-violet-900/20 hover:text-violet-200' : 'text-gray-700 hover:bg-violet-50 hover:text-violet-800')}`}
                                             onClick={() => { setStatusFilter('edit-success'); }}
                                         >
-                                            <span className="inline-flex items-center gap-2"><svg className="w-4 h-4 text-fuchsia-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l2 2 4-4" /></svg>แก้ไขเสร็จสิ้น</span>
+                                            <span className="inline-flex items-center gap-2"><TbSettingsCheck className={`w-4 h-4 ${isDarkMode ? 'text-violet-400' : 'text-violet-600'}`} />แก้ไขเสร็จสิ้น</span>
                                         </li>
                                         <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'complete' ? (isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-50 text-green-900') : (isDarkMode ? 'text-slate-300 hover:bg-green-900/20 hover:text-green-200' : 'text-gray-700 hover:bg-green-50 hover:text-green-900')}`}
@@ -961,7 +984,7 @@ export default function PurchaseOrderPage() {
                         </form>
 
                         {/* Pagination Controls - Top */}
-                        {totalItems > 0 && (
+                        {effectiveTotalItems > 0 && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
@@ -987,13 +1010,19 @@ export default function PurchaseOrderPage() {
 
                                     <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
-                                            const startItem = totalItems === 0 ? 0 : startIndex + 1;
-                                            const endItem = Math.min(startIndex + itemsPerPage, totalItems);
+                                            const currentTotal = effectiveTotalItems;
+                                            const startItem = currentTotal === 0 ? 0 : startIndex + 1;
+                                            const endItem = Math.min(startIndex + itemsPerPage, currentTotal);
                                             return (
                                                 <>
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
                                                     {' '}จาก{' '}
-                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalItems}</span>
+                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentTotal}</span>
+                                                    {statusFilter && (
+                                                        <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                                            (กรองจาก {totalItems} รายการ)
+                                                        </span>
+                                                    )}
                                                 </>
                                             );
                                         })()}
@@ -1057,7 +1086,7 @@ export default function PurchaseOrderPage() {
                                     </div>
                                     {/* Status badge top right */}
                                     <div className="absolute top-2 right-2 z-10">
-                                        {po.rejected_by ? (
+                                        {(po.rejected_by && !po.edit_at && !po.edit_reason) ? (
                                             // 1. ปฏิเสธ = rejected_by มีข้อมูล
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
                                                 <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1065,25 +1094,25 @@ export default function PurchaseOrderPage() {
                                                 </svg>
                                                 ปฏิเสธ
                                             </span>
-                                        ) : !po.pu_validated_at && !po.edit_response ? (
+                                        ) : (!po.pu_validated_at && !po.edit_response) || (!po.pu_validated_at && !po.edit_response && !po.rejected_by) ? (
                                             // 0. รอการตรวจสอบ = ไม่มีข้อมูลใดๆ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-neutral-900/30 border-neutral-700/60 text-neutral-200' : 'bg-neutral-50 border-neutral-300 text-neutral-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-neutral-200' : 'text-neutral-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-neutral-200' : 'text-neutral-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                </svg>
-                                                รอการตรวจสอบ
+                                                </svg> */}
+                                                <FaRegCircleQuestion className={`w-4 h-4`} />รอการตรวจสอบ
                                             </span>
-                                        ) : (po.pu_validated_at && po.edit_at && po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by) ? (
+                                        ) : (po.pu_validated_at && !po.edit_at && !po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by && po.rejected_by) ? (
                                             // 2. รอดำเนินการ = issued_by มีข้อมูล
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/60 text-yellow-200' : 'bg-yellow-50 border-yellow-400 text-yellow-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                </svg>
-                                                รอการอนุมัติ
+                                                </svg> */}
+                                                <TbProgressCheck className={`w-4 h-4`} />รอการอนุมัติ
                                             </span>
-                                        ) : (po.approved_by && po.edit_at) || (po.approved_by && !po.edit_at) ? (
+                                        ) : (po.approved_by && po.edit_at) || (po.approved_by && !po.edit_at && !po.edit_reason) || (po.approved_by && po.edit_at && po.rejected_by) && (po.approved_by && po.edit_at && po.rejected_by) && (po.approved_at && po.edit_at && po.rejected_by && !po.edit_reason) ? (
                                             // 3. อนุมัติเสร็จสิ้น = approved_by มีข้อมูล
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-green-900/30 border-green-700/60 text-green-200' : 'bg-green-50 border-green-500 text-green-900'}`}>
                                                 <svg className={`w-4 h-4 ${isDarkMode ? 'text-green-200' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1091,32 +1120,42 @@ export default function PurchaseOrderPage() {
                                                 </svg>
                                                 อนุมัติเสร็จสิ้น
                                             </span>
-                                        ) : po.edit_response && !po.edit_at ? (
+                                        ) : (po.edit_reason && !po.edit_response) ? (
                                             // 4. ดำเนินการแก้ไข = edit_response มีข้อมูล
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-400 text-orange-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
                                                 </svg>
-                                                ดำเนินการแก้ไข
+                                                ร้องขอการแก้ไข */}
+                                                <TbSettingsQuestion className={`w-4 h-4`} />ร้องขอการแก้ไข
+                                            </span>
+                                        ) : (po.edit_response && !po.edit_at && !po.rejected_by) ? (
+                                            // 4. ดำเนินการแก้ไข = edit_response มีข้อมูล
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-rose-900/30 border-rose-700/60 text-rose-200' : 'bg-rose-50 border-rose-400 text-rose-800'}`}>
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                                                </svg> */}
+                                                <IoSettingsOutline className={`w-4 h-4`} />ดำเนินการแก้ไข
                                             </span>
                                         ) : po.edit_at ? (
                                             // 5. แก้ไขเสร็จสิ้น = edit_at มีข้อมูล
-                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-fuchsia-900/30 border-fuchsia-700/60 text-fuchsia-200' : 'bg-fuchsia-50 border-fuchsia-400 text-fuchsia-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-fuchsia-200' : 'text-fuchsia-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-violet-900/30 border-violet-700/60 text-violet-200' : 'bg-violet-50 border-violet-400 text-violet-800'}`}>
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-fuchsia-200' : 'text-fuchsia-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                </svg>
-                                                แก้ไขเสร็จสิ้น
+                                                </svg> */}
+                                                <TbSettingsCheck className={`w-4 h-4`} />แก้ไขเสร็จสิ้น
                                             </span>
                                         ) : (
                                             // 0. รอการตรวจสอบ = ไม่มีข้อมูลใดๆ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-gray-900/30 border-gray-700/60 text-gray-200' : 'bg-gray-50 border-gray-300 text-gray-800'}`}>
-                                                <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
-                                                </svg>
-                                                ERROR
+                                                </svg> */}
+                                                <BsExclamationDiamond className={`w-4 h-4`} />ERROR
                                             </span>
                                         )}
                                     </div>
@@ -1283,40 +1322,46 @@ export default function PurchaseOrderPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {po.rejected_by ? (
+                                                    {po.rejected_by && !po.edit_at && !po.edit_reason ? (
                                                         // 1. ปฏิเสธ = rejected_by มีข้อมูล
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-100 text-red-800'}`}>
                                                             <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#f87171' : '#dc2626' }}></span>
                                                             ปฏิเสธ
                                                         </span>
-                                                    ) : !po.pu_validated_at && !po.edit_response ? (
+                                                    ) : (!po.pu_validated_at && !po.edit_response) || (!po.pu_validated_at && !po.edit_response && !po.rejected_by) ? (
                                                         // 0. รอการตรวจสอบ = ไม่มีข้อมูลใดๆ
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-neutral-900/30 text-neutral-200' : 'bg-neutral-100 text-neutral-800'}`}>
                                                             <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#a3a3a3' : '#525252' }}></span>
                                                             รอการตรวจสอบ
                                                         </span>
-                                                    ) : (po.pu_validated_at && !po.edit_at && !po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by) ? (
+                                                    ) : (po.pu_validated_at && !po.edit_at && !po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by) || (po.pu_validated_at && po.edit_at && !po.approved_by && po.rejected_by) ? (
                                                         // 2. รอดำเนินการ = issued_by มีข้อมูล
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-100 text-yellow-800'}`}>
                                                             <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#fde68a' : '#fbbf24' }}></span>
                                                             รอการอนุมัติ
                                                         </span>
-                                                    ) : (po.approved_by && po.edit_at) || (po.approved_by && !po.edit_at) ? (
+                                                    ) : (po.approved_by && po.edit_at) || (po.approved_by && !po.edit_at && !po.edit_reason) || (po.approved_by && po.edit_at && po.rejected_by) && (po.approved_by && po.edit_at && po.rejected_by) && (po.approved_at && po.edit_at && po.rejected_by && !po.edit_reason) ? (
                                                         // 3. อนุมัติเสร็จสิ้น = approved_by มีข้อมูล
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-green-900/30 text-green-200' : 'bg-green-100 text-green-800'}`}>
                                                             <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#6ee7b7' : '#059669' }}></span>
                                                             อนุมัติเสร็จสิ้น
                                                         </span>
-                                                    ) : po.edit_response && !po.edit_at ? (
+                                                    ) : (po.edit_reason && !po.edit_response) ? (
                                                         // 4. ดำเนินการแก้ไข = edit_response มีข้อมูล
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-100 text-orange-800'}`}>
                                                             <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#fb923c' : '#ea580c' }}></span>
+                                                            ร้องขอการแก้ไข
+                                                        </span>
+                                                    ) : (po.edit_response && !po.edit_at && !po.rejected_by) ? (
+                                                        // 4. ดำเนินการแก้ไข = edit_response มีข้อมูล
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-rose-900/30 text-rose-200' : 'bg-rose-100 text-rose-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#fb7185' : '#e11d48' }}></span>
                                                             ดำเนินการแก้ไข
                                                         </span>
                                                     ) : po.edit_at ? (
                                                         // 5. แก้ไขเสร็จสิ้น = edit_at มีข้อมูล
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-fuchsia-900/30 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-800'}`}>
-                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#e879f9' : '#c026d3' }}></span>
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-violet-900/30 text-violet-200' : 'bg-violet-100 text-violet-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#c084fc' : '#9333ea' }}></span>
                                                             แก้ไขเสร็จสิ้น
                                                         </span>
                                                     ) : (

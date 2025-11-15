@@ -249,6 +249,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // State for selected vendor details
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedVendorDetail, setSelectedVendorDetail] = useState<VendorSelected | null>(null);
+  const [isInsertingVendor, setIsInsertingVendor] = useState(false);
   // State for extra vendors in compare table
   const [extraCompareVendors, setExtraCompareVendors] = useState<CompareData[]>([]);
 
@@ -608,7 +609,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
     // Only fetch for the last selected vendor
     const vendorCode = selectedVendors[selectedVendors.length - 1];
-    if (!vendorCode) return;
+    if (!vendorCode || isInsertingVendor) return;
 
     function formatPartForFetch(part: string) {
       const vendorCode = part.indexOf(' |');
@@ -628,28 +629,40 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         const data = await res.json();
         const vendorData = Array.isArray(data) ? data[0] : (data.data ? data.data : data);
         setSelectedVendorDetail(vendorData as VendorSelected);
-        if (vendorData && vendorData.vendor_code) {
+        if (vendorData && vendorData.vendor_code && compareData) {
           // ตรวจสอบ vendor_id ซ้ำใน compare_vendors ก่อนเพิ่ม (เฉพาะเมื่อเพิ่ม vendor ใหม่เท่านั้น)
           const vendorId = vendorData.ID;
-          const exists = compareData?.compare_vendors?.some(v => v.vendor_id === vendorId);
+          const exists = compareData.compare_vendors?.some(v => v.vendor_id === vendorId);
           if (exists) {
             // ไม่แสดง alert เมื่อเป็นการอัปเดตหลังจากลบ vendor
             console.warn('มี vendor อยู่ในตารางแล้ว ไม่สามารถเพิ่มซ้ำได้');
+            // ลบ vendor ออกจาก selectedVendors เพื่อป้องกันการเลือกซ้ำ
+            setSelectedVendors(prev => prev.filter(v => v !== vendorCode));
             return;
           }
           try {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            setIsInsertingVendor(true);
             const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/insert-vendor-for-compare`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ vendor_id: vendorId, pcl_id: compareData?.pcl_id })
+              body: JSON.stringify({ vendor_id: vendorId, pcl_id: compareData.pcl_id })
             });
+            if (!response.ok) {
+              const data = await response.json().catch(() => ({}));
+              throw new Error(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+            }
             // รีโหลดข้อมูล vendor ในตารางทันทีหลัง POST
             if (typeof fetchCompareData === 'function') {
               await fetchCompareData();
             }
+            // ล้าง selectedVendors หลังจาก insert สำเร็จ
+            setSelectedVendors([]);
           } catch (e) {
             console.error("Error inserting vendor for compare:", e);
+            // ลบ vendor ออกจาก selectedVendors หากเกิดข้อผิดพลาด
+            setSelectedVendors(prev => prev.filter(v => v !== vendorCode));
+          } finally {
+            setIsInsertingVendor(false);
           }
         }
       } catch {
@@ -657,7 +670,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       }
     };
     fetchVendorDetail();
-  }, [compareData, pr_id, prNumber, pr_list_id, fetchCompareData, token]);
+  }, [selectedVendors, pr_id, prNumber, pr_list_id, fetchCompareData, token, isInsertingVendor]);
 
   // ANCHOR fetch approved compare data
   // Fetch approved compare data only if status is Approved
@@ -3606,21 +3619,21 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <div
                                     key={vendor + '-' + idx}
                                     className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 
-                                      ${isAlreadyAdded
+                                      ${isAlreadyAdded || isInsertingVendor
                                         ? (isDarkMode ? 'bg-purple-900/40 border-l-4 border-purple-500 font-semibold text-purple-300 cursor-not-allowed opacity-70' : 'bg-purple-100 border-l-4 border-purple-500 font-semibold text-purple-800 cursor-not-allowed opacity-70')
                                         : (selectedVendors.includes(vendor)
                                           ? (isDarkMode ? 'bg-slate-700/50 border-l-4 border-purple-500 font-semibold text-purple-300' : 'bg-purple-100 border-l-4 border-purple-500 font-semibold text-purple-800')
                                           : (isDarkMode ? 'hover:bg-slate-800/50 text-slate-300 cursor-pointer' : 'hover:bg-purple-50 cursor-pointer'))
                                       }`}
                                     onClick={() => {
-                                      if (isAlreadyAdded) return;
+                                      if (isAlreadyAdded || isInsertingVendor) return;
                                       if (selectedVendors.includes(vendor)) {
                                         setSelectedVendors(selectedVendors.filter(p => p !== vendor));
                                       } else {
                                         setSelectedVendors([...selectedVendors, vendor]);
                                       }
                                     }}
-                                    style={isAlreadyAdded ? { pointerEvents: 'none' } : {}}
+                                    style={(isAlreadyAdded || isInsertingVendor) ? { pointerEvents: 'none' } : {}}
                                   >
                                     {isAlreadyAdded ? (
                                       <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`} title="มีในตารางแล้ว"></span>
