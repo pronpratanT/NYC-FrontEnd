@@ -598,7 +598,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       }
     };
     fetchData();
-  }, [search]);
+  }, [search, token]);
 
   {/* input vendor selected to table */ }
   useEffect(() => {
@@ -657,7 +657,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       }
     };
     fetchVendorDetail();
-  }, [selectedVendors]);
+  }, [compareData, pr_id, prNumber, pr_list_id, fetchCompareData, token]);
 
   // ANCHOR fetch approved compare data
   // Fetch approved compare data only if status is Approved
@@ -694,7 +694,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
               // Process items in group.list
               if (Array.isArray(group.list)) {
-                group.list.forEach((item: { id: any; part_no: any; part_name: any; prod_code: any; pcl_id: any; plant: any; vendor: any; status: any; }) => {
+                group.list.forEach((item: { id: number; part_no: string; part_name: string; prod_code: string; pcl_id: number; plant: string; vendor: string; status: string; }) => {
                   // console.log("Processing item in group", group.id, ":", item);
                   approvedDataArray.push({
                     pr_list_id: item.id || 0, // Using member_id as pr_list_id

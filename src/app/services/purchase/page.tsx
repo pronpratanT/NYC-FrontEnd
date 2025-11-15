@@ -115,7 +115,7 @@ function PurchasePageContent() {
 
     // NOTE: Data states
     const [prCards, setPrCards] = useState<PRCard[]>([]);
-    const [totalPrCount, setTotalPrCount] = useState<number>(0);
+    // const [totalPrCount, setTotalPrCount] = useState<number>(0);
     const token = useToken();
     const { user } = useUser();
     const departmentId = user?.Department?.ID;
@@ -340,8 +340,8 @@ function PurchasePageContent() {
                 });
 
                 if (responseCount.ok) {
-                    const countData = await responseCount.json();
-                    setTotalPrCount(countData.data || 0);
+                    // const countData = await responseCount.json();
+                    // setTotalPrCount(countData.data || 0);
                 } else {
                     console.warn("Failed to fetch PR count:", responseCount.statusText);
                 }

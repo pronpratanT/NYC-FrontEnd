@@ -230,7 +230,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
             }
         };
         fetchData();
-    }, [search]);
+    }, [search, token]);
 
     // ปิด dropdown เมื่อคลิกนอก input หรือ dropdown
     useEffect(() => {
