@@ -4,7 +4,7 @@ module.exports = {
   async rewrites() {
     return [
       {
-        source: '/nycsystem/:path*',
+        source: '/:path*',
         destination: `${legacyBaseUrl}/:path*`,
       },
     ];

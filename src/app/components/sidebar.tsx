@@ -16,7 +16,7 @@ import { useTheme } from './ThemeProvider';
 import { useSidebar } from '../context/SidebarContext';
 
 const menu = [
-  { label: 'Dashboard', icon: RiDashboardFill, href: process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || '/nycsystem' },
+  { label: 'Dashboard', icon: RiDashboardFill, href: process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT },
   { label: 'คู่มือการใช้งาน', icon: FaBook, href: process.env.NEXT_PUBLIC_MANUAL_REDIRECT || '/manual' },
 ];
 
@@ -38,7 +38,7 @@ const programs = [
     icon: FaShoppingCart,
     subItems: [
       { label: 'Purchase Request (PR)', icon: FaClipboardList, href: process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase' },
-      { label: 'Purchase Order (PO)', icon: FaFileInvoice, href: process.env.NEXT_PUBLIC_PURCHASE_PO_REDIRECT || '/nycsystem/services/purchase/PO' },
+      { label: 'Purchase Order (PO)', icon: FaFileInvoice, href: process.env.NEXT_PUBLIC_PURCHASE_PO_REDIRECT || '/services/purchase/PO' },
     ]
   },
   { label: 'เชื่อมโยงแอปฯ', icon: FaLink },
@@ -71,7 +71,7 @@ export default function Sidebar() {
       return item.subItems.some((sub) => isPathActive(sub));
     }
     if (!item.href) return false;
-    const dashboardRootPath = process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || '/nycsystem';
+    const dashboardRootPath = process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT;
     // กำหนด path ที่จะ active สำหรับ PR
     const prActivePaths = [
       '/services/purchase',
