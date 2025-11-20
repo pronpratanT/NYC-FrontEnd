@@ -10,6 +10,7 @@ import { IoTrashBinOutline } from "react-icons/io5";
 import { CiEdit } from "react-icons/ci";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import { useToken } from "../../context/TokenContext";
+import { useUser } from '../../context/UserContext';
 import { TiPlus } from "react-icons/ti";
 import { useTheme } from "../ThemeProvider";
 import CreateVendor from "./CreateVendor";
@@ -183,6 +184,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // console.log("PRModal rendered with props:", { partNo, prNumber, pr_list_id });
 
   const router = useRouter();
+  const { user } = useUser();
   // State สำหรับรายการที่เลือกใน Approved Dropdown
   const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string; part_name: string; prod_code: string }[]>([]);
 
@@ -890,8 +892,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   const handleApproveSubmit = async () => {
     // console.log("Approving PCL ID:", compareData?.pcl_id);
+    // console.log("User ID:", user?.ID);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${compareData?.pcl_id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${compareData?.pcl_id}&approvalId=${user?.ID}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

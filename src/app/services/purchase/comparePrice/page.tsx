@@ -475,10 +475,11 @@ function ComparePriceContent({ token }: { token: string | null }) {
         // }
         let successCount = 0;
         let errorCount = 0;
+        // console.log('User ID for approval:', user?.ID);
         const errorDetails: string[] = [];
         for (const pcl_id of selectedParts) {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${pcl_id}`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/approve-pcl?id=${pcl_id}&approvalId=${user?.ID}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

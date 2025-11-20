@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useToken } from "./TokenContext";
 
 export type Me = {
+  ID: number;
   employee_id: string;
   Department?: {
     ID: number;
