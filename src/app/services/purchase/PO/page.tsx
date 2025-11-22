@@ -659,15 +659,57 @@ export default function PurchaseOrderPage() {
     // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
     // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
     const previewPoPdf = async (po_no: string) => {
-        // console.log("Download PDF for PO ID:", po_no);
-        const pdfUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}/${token}`;
-        window.open(pdfUrl, '_blank');
+        if (!token) {
+            alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+            return;
+        }
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank', 'noopener');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error('previewPoPdf error:', err);
+            // Fallback
+            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}?token=${token}`, '_blank');
+        }
     }
 
-    const downloadPoPdf = (po_no: string) => {
-        // console.log("Download PDF for PO ID:", po_no);
-        const pdfUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}/${token}`;
-        window.open(pdfUrl, '_blank');
+    // Download PDF: ใช้ Authorization header + Blob เพื่อไม่ให้ token อยู่ใน URL
+    const downloadPoPdf = async (po_no: string) => {
+        if (!token) {
+            alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+            return;
+        }
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                if (res.status === 401) alert('Token หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const blob = await res.blob();
+            // สร้างลิงก์ดาวน์โหลดชั่วคราว
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PO_${po_no}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error('downloadPoPdf error:', err);
+            // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
+            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}/${token}`, '_blank', 'noopener');
+        }
     }
 
     const { isCollapsed } = useSidebar();

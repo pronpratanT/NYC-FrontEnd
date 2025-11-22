@@ -1183,6 +1183,64 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // console.log('part_inventory_and_pr:', compareData?.part_inventory_and_pr);
   }, [prNumber, compareData]);
 
+  // TODO: PDF
+  // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
+  // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
+  const previewComparePdf = async () => {
+    // console.log('Generating preview PDF for partNo:', partNo, 'pr_list_id:', pr_list_id);
+    if (!token) {
+      alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+      return;
+    }
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-compare/${partNo}/${pr_list_id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (err) {
+      console.error('previewComparePdf error:', err);
+      // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
+      // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
+    }
+  }
+
+  // Download PDF: ใช้ Authorization header + Blob เพื่อไม่ให้ token อยู่ใน URL
+  const downloadComparePdf = async () => {
+    if (!token) {
+      alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+      return;
+    }
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download-compare/${partNo}/${pr_list_id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        if (res.status === 401) alert('Token หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      // สร้างลิงก์ดาวน์โหลดชั่วคราว
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Compare_${partNo}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      console.error('downloadComparePdf error:', err);
+      // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
+      // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${pr_id}/${token}`, '_blank', 'noopener');
+    }
+  }
+
   return (
     <>
       <style>{scrollbarStyles}</style>
@@ -1599,9 +1657,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   className={`flex items-center cursor-pointer justify-center rounded-l-lg px-3 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    // ทดสอบเปิดไฟล์ PDF เฉพาะ PO_D2510035.pdf
-                    // const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
-                    // window.open(pdfPath, '_blank', 'noopener');
+                    previewComparePdf();
                   }}
                 >
                   <MdOutlineRemoveRedEye className="w-6 h-6" />
@@ -1610,16 +1666,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   className={`flex items-center cursor-pointer justify-center rounded-r-lg px-3 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
                   onClick={e => {
                     e.stopPropagation();
-                    // ดาวน์โหลด PDF จาก public/generated-pdf/PO_{po.po_no}.pdf
-                    // const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
-                    const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
-                    const a = document.createElement('a');
-                    a.href = pdfPath;
-                    // a.download = `PO_${po.po_no}.pdf`;
-                    a.download = `PO_D2510035.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
+                    downloadComparePdf();
                   }}
                 >
                   <GoDownload className="w-6 h-6" />
