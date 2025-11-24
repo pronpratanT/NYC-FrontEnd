@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { JSX } from "react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -207,6 +207,28 @@ export default function PurchaseOrderPage() {
         } else {
             return 'waiting-validated'; // Default: รอการตรวจสอบ
         }
+    };
+
+    // Metadata สำหรับแสดงผล count summary ให้สอดคล้องกับ status badge
+    const PO_STATUS_META: Record<string, { countLabel: string; numberColorLight: string; numberColorDark: string; }> = {
+        'waiting-validated': { countLabel: 'รอการตรวจสอบ', numberColorLight: 'text-neutral-600', numberColorDark: 'text-neutral-400' },
+        'processing': { countLabel: 'รอการอนุมัติ', numberColorLight: 'text-yellow-600', numberColorDark: 'text-yellow-400' },
+        'edit-request': { countLabel: 'ร้องขอการแก้ไข', numberColorLight: 'text-orange-600', numberColorDark: 'text-orange-400' },
+        // ตามตัวอย่างผู้ใช้ต้องการให้ status = ดำเนินการแก้ไข แสดงข้อความ "รอดำเนินการแก้ไข X รายการ"
+        'edit-process': { countLabel: 'รอดำเนินการแก้ไข', numberColorLight: 'text-rose-600', numberColorDark: 'text-rose-400' },
+        'edit-success': { countLabel: 'แก้ไขเสร็จสิ้น', numberColorLight: 'text-violet-600', numberColorDark: 'text-violet-400' },
+        'complete': { countLabel: 'อนุมัติเสร็จสิ้น', numberColorLight: 'text-green-700', numberColorDark: 'text-emerald-400' },
+        'rejected': { countLabel: 'ปฏิเสธ', numberColorLight: 'text-red-700', numberColorDark: 'text-red-400' },
+        'error': { countLabel: 'ERROR', numberColorLight: 'text-gray-700', numberColorDark: 'text-gray-400' }
+    };
+
+    const renderPoCountSummary = (po: POCard): JSX.Element => {
+        const doc = poCards.find(d => d.po.po_no === po.po_no);
+        const countList = doc?.count_list ?? 0;
+        const status = getPOStatus(po);
+        const meta = PO_STATUS_META[status] || PO_STATUS_META['waiting-validated'];
+        const numberColor = isDarkMode ? meta.numberColorDark : meta.numberColorLight;
+        return <>{meta.countLabel} <span className={`font-semibold ${numberColor}`}>{countList} รายการ</span></>;
     };
 
     // NOTE: Count filtered items for pagination (like purchase page)
@@ -1288,25 +1310,7 @@ export default function PurchaseOrderPage() {
                                                 <GoDownload className="w-7 h-7" />
                                             </button>
                                         </div>
-                                        <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                                            {(() => {
-                                                const doc = poCards.find(doc => doc.po.po_no === po.po_no);
-                                                const countList = doc?.count_list ?? 0;
-                                                if (po.rejected_by) {
-                                                    return <>
-                                                        ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{countList} รายการ</span>
-                                                    </>;
-                                                } else if (po.approved_by) {
-                                                    return <>
-                                                        ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
-                                                    </>;
-                                                } else {
-                                                    return <>
-                                                        รอดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList} รายการ</span>
-                                                    </>;
-                                                }
-                                            })()}
-                                        </span>
+                                        <span className={`text-xs mt-2 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>{renderPoCountSummary(po)}</span>
                                     </div>
                                 </div>
                             ))}
@@ -1432,19 +1436,7 @@ export default function PurchaseOrderPage() {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                        {(() => {
-                                                            const doc = poCards.find(doc => doc.po.po_no === po.po_no);
-                                                            const countList = doc?.count_list ?? 0;
-                                                            if (po.rejected_by) {
-                                                                return <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{countList}</span> รายการ</>;
-                                                            } else if (po.approved_by) {
-                                                                return <>ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList}</span> รายการ</>;
-                                                            } else {
-                                                                return <>รอดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{countList}</span> รายการ</>;
-                                                            }
-                                                        })()}
-                                                    </div>
+                                                    <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{renderPoCountSummary(po)}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                                     <div className="flex justify-center space-x-2">

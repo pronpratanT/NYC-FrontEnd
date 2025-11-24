@@ -15,9 +15,13 @@ import Link from 'next/link';
 import { useTheme } from './ThemeProvider';
 import { useSidebar } from '../context/SidebarContext';
 
+// Manual PDF path: set NEXT_PUBLIC_MANUAL_PDF in .env, else fallback
+const manualPdfPath = process.env.NEXT_PUBLIC_MANUAL_PDF || '/guidebook/manual.pdf';
+
 const menu = [
   { label: 'Dashboard', icon: RiDashboardFill, href: process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT },
-  { label: 'คู่มือการใช้งาน', icon: FaBook, href: process.env.NEXT_PUBLIC_MANUAL_REDIRECT || '/manual' },
+  // ใช้ PDF โดยตรง แทนหน้าภายใน; ต้องวางไฟล์ไว้ที่ public/guidebook/manual.pdf หรือกำหนด env NEXT_PUBLIC_MANUAL_PDF
+  { label: 'คู่มือการใช้งาน', icon: FaBook, href: manualPdfPath },
 ];
 
 const system = [
@@ -121,11 +125,33 @@ export default function Sidebar() {
       ' focus:ring-1 focus:ring-offset-0 ' + (isDarkMode ? 'focus:ring-green-400/30' : 'focus:ring-green-300/50');
 
     if (item.href && !hasSubItems) {
+      const isPdf = item.href.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
+        // เปิด PDF ในแท็บใหม่เพื่อให้ตัว viewer ของ browser ทำงาน
+        return (
+          <button
+            key={key}
+            onClick={() => window.open(item.href, '_blank', 'noopener')}
+            className={commonClass}
+            aria-pressed={false}
+            title={isCollapsed ? item.label : undefined}
+            type="button"
+          >
+            {isActive && !isCollapsed && (
+              <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r transition-all duration-200 ${isDarkMode ? 'bg-green-400' : 'bg-[#0f9015]'}`} />
+            )}
+            <span className={`text-base transition-all duration-150 ${(isDarkMode ? 'text-slate-400 group-hover:text-green-400' : 'text-slate-400 group-hover:text-[#0f9015]')}`}>
+              <Icon className="w-5 h-5" />
+            </span>
+            {!isCollapsed && <span className="truncate font-medium">{item.label}</span>}
+          </button>
+        );
+      }
       return (
-        <Link 
-          href={item.href} 
-          key={key} 
-          className={commonClass} 
+        <Link
+          href={item.href}
+          key={key}
+          className={commonClass}
           aria-pressed={isActive}
           title={isCollapsed ? item.label : undefined}
         >
@@ -371,12 +397,12 @@ export default function Sidebar() {
           </div>
         </section>
 
-        <section>
+        {/* <section>
           {renderSectionTitle('Admin')}
           <div className="space-y-0.5">
             {admin.map((p, i) => renderItem(p, `admin-${i}`))}
           </div>
-        </section>
+        </section> */}
       </nav>
 
       {/* Footer */}
