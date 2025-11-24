@@ -19,6 +19,7 @@ import RejectCompare from "./Reject_Compare";
 import { Tooltip } from "@heroui/react";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { GoDownload } from "react-icons/go";
+import ChartsModal from "./Charts";
 
 
 // Custom scrollbar styles
@@ -189,6 +190,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string; part_name: string; prod_code: string }[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
+  // Charts modal visibility
+  const [showChartsModal, setShowChartsModal] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState("purchase");
@@ -1260,11 +1263,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 <div className="flex-1">
                   {/* Simple title */}
                   <div className="flex items-center space-x-3 mb-3">
-                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-900/40' : 'bg-blue-100'}`}>
+                    <button
+                      type="button"
+                      onClick={() => setShowChartsModal(true)}
+                      className={`p-2 rounded-lg cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${isDarkMode ? 'bg-blue-900/40 focus:ring-blue-700 focus:ring-offset-slate-800' : 'bg-blue-100 focus:ring-blue-300 focus:ring-offset-white'} hover:scale-120`}
+                      aria-label="ดูกราฟเปรียบเทียบราคา"
+                    >
                       <svg className={`w-5 h-5 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                    </div>
+                    </button>
                     <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>
                       เปรียบเทียบราคาสินค้า
                     </h2>
@@ -4167,6 +4175,15 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           onConfirm={handleConfirmRejectCompare}
           reason={rejectReason}
           setReason={setRejectReason}
+        />
+      )}
+
+      {showChartsModal && (
+        <ChartsModal
+          isDarkMode={isDarkMode}
+          onClose={() => setShowChartsModal(false)}
+          partNo={partNo}
+          pr_list_id={pr_list_id}
         />
       )}
 
