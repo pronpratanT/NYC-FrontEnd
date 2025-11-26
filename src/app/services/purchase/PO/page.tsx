@@ -358,7 +358,7 @@ export default function PurchaseOrderPage() {
                 }
 
                 // กำหนด URL และ options สำหรับ fetch - ดึงข้อมูลทั้งหมดเพื่อให้กรองได้ครบ
-                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=1&limit=1000`;
+                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=1&limit=100`;
                 let fetchOptions: RequestInit = {
                     headers: {
                         'Content-Type': 'application/json',
@@ -368,7 +368,7 @@ export default function PurchaseOrderPage() {
 
                 // ถ้ามี search ให้ใช้ API search
                 if (search && search.trim() !== "") {
-                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}&page=1&limit=1000`;
+                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}&page=1&limit=100`;
                     fetchOptions = {
                         ...fetchOptions,
                         headers: {
@@ -1095,11 +1095,11 @@ export default function PurchaseOrderPage() {
                                             return (
                                                 <>
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
-                                                    {' '}จาก{' '}
+                                                    {' '}of{' '}
                                                     <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentTotal}</span>
                                                     {statusFilter && (
                                                         <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                                                            (กรองจาก {totalItems} รายการ)
+                                                            (filtered from {totalItems} items)
                                                         </span>
                                                     )}
                                                 </>
