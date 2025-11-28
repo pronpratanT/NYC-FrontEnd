@@ -31,6 +31,7 @@ import { IoSettingsOutline } from "react-icons/io5";
 import { TbProgressCheck } from "react-icons/tb";
 import { TbSettingsCheck } from "react-icons/tb";
 import { TbSettingsQuestion } from "react-icons/tb";
+import { IoReloadOutline } from "react-icons/io5";
 
 // Types
 // ปรับ type ให้ตรงกับโครงสร้างใหม่
@@ -116,6 +117,7 @@ export default function PurchaseOrderPage() {
 
     // NOTE: Data states
     const [poCards, setPoCards] = useState<PoCardItem[]>([]);
+    const [searchResults, setSearchResults] = useState<PoCardItem[] | null>(null);
     const token = useToken();
     const [departments, setDepartments] = useState<Department[]>([]);
 
@@ -232,10 +234,12 @@ export default function PurchaseOrderPage() {
     };
 
     // NOTE: Count filtered items for pagination (like purchase page)
-    const filteredPoCards = statusFilter ? displayedPoCards.filter(po => {
+    // ถ้ามี search ให้ใช้ผลลัพธ์จาก search API แทน cache
+    const basePoCards = searchResults !== null ? searchResults.map(doc => doc.po) : displayedPoCards;
+    const filteredPoCards = statusFilter ? basePoCards.filter(po => {
         const currentStatus = getPOStatus(po);
         return currentStatus === statusFilter;
-    }) : displayedPoCards;
+    }) : basePoCards;
 
     // NOTE: Show all items but use filtered count for pagination
     const filteredCount = filteredPoCards.length;
@@ -251,14 +255,118 @@ export default function PurchaseOrderPage() {
     });
     // Use filtered count for pagination (like purchase page)
     const [totalItems, setTotalItems] = useState(0);
-    const effectiveTotalItems = statusFilter ? filteredCount : totalItems;
+    // ถ้าใช้ search ให้ใช้ filteredCount เป็นจำนวนทั้งหมด
+    const effectiveTotalItems = (searchResults !== null) ? filteredCount : (statusFilter ? filteredCount : totalItems);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const totalPages = Math.ceil(effectiveTotalItems / itemsPerPage);
-    
+    // const totalPages = Math.ceil(effectiveTotalItems / itemsPerPage); // unused
+
     // Show all items but paginate based on filtered count
-    const paginatedPoCards = statusFilter ? 
-        filteredPoCards.slice(startIndex, startIndex + itemsPerPage) : 
-        displayedPoCards.slice(startIndex, startIndex + itemsPerPage);
+    const paginatedPoCards = filteredPoCards.slice(startIndex, startIndex + itemsPerPage);
+    // เรียก API search เมื่อ search มีค่า
+    useEffect(() => {
+        let ignore = false;
+        const fetchSearch = async () => {
+            if (!search.trim()) {
+                setSearchResults(null);
+                return;
+            }
+            setLoading(true);
+            setError(null);
+            try {
+                const url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search.trim())}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    cache: "no-store"
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const data = await response.json();
+                if (!ignore) {
+                    setSearchResults(Array.isArray(data.poDocs?.po_all) ? data.poDocs.po_all : Array.isArray(data.poDocs) ? data.poDocs : []);
+                }
+            } catch {
+                if (!ignore) setError('ค้นหาไม่สำเร็จ');
+            } finally {
+                if (!ignore) setLoading(false);
+            }
+        };
+        fetchSearch();
+        return () => { ignore = true; };
+    }, [search, token]);
+
+    useEffect(() => {
+        const fetchAndMergeLatestPO = async () => {
+            if (!token) return;
+            try {
+                const url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=1&limit=50`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                let batch: PoCardItem[] = [];
+                if (Array.isArray(data.poDocs?.po_all)) {
+                    batch = data.poDocs.po_all as PoCardItem[];
+                } else if (Array.isArray(data.poDocs)) {
+                    batch = data.poDocs as PoCardItem[];
+                }
+                // Merge logic: add new PO or update changed PO
+                let cache: PoCardItem[] = [];
+                try {
+                    cache = JSON.parse(localStorage.getItem('poCache') || '[]') as PoCardItem[];
+                } catch { cache = []; }
+                // Type guard for PoCardItem
+                function isPoCardItem(obj: unknown): obj is PoCardItem {
+                    return (
+                        typeof obj === 'object' &&
+                        obj !== null &&
+                        'po' in obj &&
+                        typeof (obj as { po?: unknown }).po === 'object' &&
+                        (obj as { po?: { po_no?: unknown } }).po !== null &&
+                        'po_no' in (obj as { po?: { po_no?: unknown } }).po! &&
+                        typeof ((obj as { po: { po_no: unknown } }).po.po_no) === 'string'
+                    );
+                }
+                const cacheMap = new Map<string, PoCardItem>(cache.filter(isPoCardItem).map((po: PoCardItem) => [po.po.po_no, po]));
+                let updated = false;
+                for (const po of batch) {
+                    if (!isPoCardItem(po)) continue;
+                    const cached = cacheMap.get(po.po.po_no);
+                    if (!cached) {
+                        cacheMap.set(po.po.po_no, po);
+                        updated = true;
+                    } else if (
+                        po.po.UpdatedAt && cached.po.UpdatedAt &&
+                        new Date(po.po.UpdatedAt).getTime() > new Date(cached.po.UpdatedAt).getTime()
+                    ) {
+                        cacheMap.set(po.po.po_no, { ...cached, ...po });
+                        updated = true;
+                    }
+                }
+                // If updated, update cache and UI
+                if (updated) {
+                    // Convert map back to array and sort by po_date descending
+                    const mergedCache: PoCardItem[] = Array.from(cacheMap.values()).sort((a: PoCardItem, b: PoCardItem) => {
+                        const dateA = a.po && typeof a.po.po_date === 'string' ? new Date(a.po.po_date).getTime() : 0;
+                        const dateB = b.po && typeof b.po.po_date === 'string' ? new Date(b.po.po_date).getTime() : 0;
+                        return dateB - dateA;
+                    });
+                    localStorage.setItem('poCache', JSON.stringify(mergedCache));
+                    setPoCards([...mergedCache]);
+                }
+            } catch {
+                // silent error
+            }
+        };
+        fetchAndMergeLatestPO(); // Run immediately on mount
+        const interval = setInterval(fetchAndMergeLatestPO, 180000);
+        return () => clearInterval(interval);
+    }, [token]);
 
     // Function to update URL parameters
     const updateUrlParams = React.useCallback((newPage?: number, newPerPage?: number) => {
@@ -345,69 +453,87 @@ export default function PurchaseOrderPage() {
 
     // TODO: GET Data
     {/* PO DATA */ }
+
+    // --- PO Cache Logic ---
+    function getPOCache() {
+        if (typeof window === 'undefined') return null;
+        try {
+            const cache = localStorage.getItem('poCache');
+            return cache ? JSON.parse(cache) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function setPOCache(data: PoCardItem[]) {
+        if (typeof window === 'undefined') return;
+        try {
+            localStorage.setItem('poCache', JSON.stringify(data));
+        } catch { }
+    }
+
     useEffect(() => {
-        const fetchPoCards = async () => {
+        const fetchAllPO = async () => {
+            setLoading(true);
+            setError(null);
             try {
-                setError(null);
-                setLoading(true);
-
-                if (!token) {
-                    setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
-                    setLoading(false);
-                    return;
-                }
-
-                // กำหนด URL และ options สำหรับ fetch - ดึงข้อมูลทั้งหมดเพื่อให้กรองได้ครบ
-                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=1&limit=100`;
-                let fetchOptions: RequestInit = {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
+                const cache = getPOCache();
+                let allPO: PoCardItem[] = [];
+                if (cache && Array.isArray(cache) && cache.length > 0) {
+                    allPO = cache;
+                } else {
+                    if (!token) {
+                        setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
+                        setLoading(false);
+                        return;
                     }
-                };
-
-                // ถ้ามี search ให้ใช้ API search
-                if (search && search.trim() !== "") {
-                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/search?keyword=${encodeURIComponent(search)}&page=1&limit=100`;
-                    fetchOptions = {
-                        ...fetchOptions,
+                    // Fetch all PO in batches of 1000
+                    let page = 1;
+                    let hasMore = true;
+                    const batchSize = 1000;
+                    let totalItems = null;
+                    const fetchOptions: RequestInit = {
                         headers: {
-                            ...(fetchOptions.headers || {}),
                             'Content-Type': 'application/json',
                             Authorization: `Bearer ${token}`
-                        },
-                        cache: "no-store" as RequestCache
+                        }
                     };
+                    while (hasMore) {
+                        const url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/all?page=${page}&limit=${batchSize}`;
+                        const responsePO = await fetch(url, fetchOptions);
+                        if (responsePO.status === 401) {
+                            setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+                            document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                            router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
+                            return;
+                        }
+                        if (!responsePO.ok) {
+                            throw new Error(`HTTP ${responsePO.status}: ${responsePO.statusText}`);
+                        }
+                        const data = await responsePO.json();
+                        let batch: PoCardItem[] = [];
+                        if (Array.isArray(data.poDocs?.po_all)) {
+                            batch = data.poDocs.po_all;
+                        } else if (Array.isArray(data.poDocs)) {
+                            batch = data.poDocs;
+                        }
+                        if (totalItems === null) {
+                            totalItems = data.poDocs?.total || data.total || null;
+                        }
+                        allPO = allPO.concat(batch);
+                        hasMore = batch.length === batchSize;
+                        page += 1;
+                        if (totalItems && allPO.length >= totalItems) {
+                            hasMore = false;
+                        }
+                    }
+                    setPOCache(allPO);
                 }
-
-                const responsePO = await fetch(url, fetchOptions);
-                // const responseText = await responsePO.clone().text();
-
-                if (responsePO.status === 401) {
-                    setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
-                    document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
-                    return;
-                }
-                if (!responsePO.ok) {
-                    throw new Error(`HTTP ${responsePO.status}: ${responsePO.statusText}`);
-                }
-
-                const data = await responsePO.json();
-                console.log("Fetched PO data:", data);
-                // รองรับทั้ง API /all (data.poDocs.po_all) และ API /search (data.poDocs)
-                let posArray = [];
-                if (Array.isArray(data.poDocs?.po_all)) {
-                    posArray = data.poDocs.po_all; // API /all
-                } else if (Array.isArray(data.poDocs)) {
-                    posArray = data.poDocs; // API /search
-                }
-                console.log("posArray after mapping:", posArray);
-
-                //Filter by date range BEFORE setPoCards
+                // Filter by dateRange if set
+                let filteredPO = allPO;
                 if (dateRange && dateRange.start && dateRange.end) {
-                    posArray = posArray.filter((doc: PoCardItem) => {
-                        if (!doc.po.po_date) return false;
+                    filteredPO = allPO.filter((doc: PoCardItem) => {
+                        if (!doc.po || !doc.po.po_date) return false;
                         const poDate = new Date(doc.po.po_date);
                         const startDate = new Date(dateRange.start);
                         const endDate = new Date(dateRange.end);
@@ -416,35 +542,16 @@ export default function PurchaseOrderPage() {
                         return poDate >= startDate && poDate <= endDate;
                     });
                 }
-                setPoCards(posArray);
-                // Set totalItems - รองรับทั้ง API /all และ /search
-                let totalCount = 0;
-                if (data.poDocs?.amount_po) {
-                    totalCount = data.poDocs.amount_po; // API /all
-                } else if (Array.isArray(data.poDocs)) {
-                    totalCount = data.poDocs.length; // API /search - ใช้จำนวนข้อมูลที่ได้
-                } else if (data.total || data.count) {
-                    totalCount = data.total || data.count; // fallback หาก API ส่ง field อื่น
-                } else {
-                    totalCount = posArray.length; // fallback ใช้จำนวนข้อมูลที่ได้จริง
-                }
-                setTotalItems(totalCount);
-                console.log("Filtered PO cards:", posArray.length, "items, totalItems:", totalCount);
-            } catch (error: unknown) {
-                console.error("Failed to fetch PO cards:", error);
-                if (error instanceof Error) {
-                    setError(error.message || "ไม่สามารถโหลดข้อมูล PO ได้");
-                } else {
-                    setError("ไม่สามารถโหลดข้อมูล PO ได้");
-                }
-            } finally {
+                setPoCards(filteredPO);
+                setTotalItems(filteredPO.length);
                 setLoading(false);
+            } catch (error: unknown) {
+                setLoading(false);
+                setError(error instanceof Error ? error.message : "ไม่สามารถโหลดข้อมูล PO ได้");
             }
         };
-        if (token !== null) {
-            fetchPoCards();
-        }
-    }, [token, router, search, dateRange]); // ลบ currentPage และ itemsPerPage ออกจาก dependency เพื่อไม่ให้ fetch ใหม่ทุกครั้งที่เปลี่ยนหน้า
+        fetchAllPO();
+    }, [token, dateRange]);
 
     {/* departments */ }
     useEffect(() => {
@@ -675,7 +782,7 @@ export default function PurchaseOrderPage() {
             };
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [calendarOpen, isDarkMode]);
+    }, [calendarOpen, isDarkMode, router]);
 
     // TODO: PDF
     // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
@@ -1063,82 +1170,115 @@ export default function PurchaseOrderPage() {
                         </form>
 
                         {/* Pagination Controls - Top */}
-                        {effectiveTotalItems > 0 && (
+                        {poCards.length > 0 && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                                 {/* Page info and navigation */}
-                                <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
-                                    <div className="flex items-center space-x-2">
-                                        {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
-                                        <select
-                                            value={itemsPerPage}
-                                            onChange={(e) => {
-                                                const newPerPage = Number(e.target.value);
-                                                setItemsPerPage(newPerPage);
-                                                setCurrentPage(1);
-                                                updateUrlParams(1, newPerPage);
-                                            }}
-                                            className={`border-r px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
-                                        >
-                                            <option value={10}>10 per page</option>
-                                            <option value={25}>25 per page</option>
-                                            <option value={50}>50 per page</option>
-                                            {/* <option value={100}>100 per page</option> */}
-                                        </select>
-                                        {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
-                                    </div>
-
-                                    <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
-                                        {(() => {
-                                            const currentTotal = effectiveTotalItems;
-                                            const startItem = currentTotal === 0 ? 0 : startIndex + 1;
-                                            const endItem = Math.min(startIndex + itemsPerPage, currentTotal);
-                                            return (
-                                                <>
-                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
-                                                    {' '}of{' '}
-                                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentTotal}</span>
-                                                    {statusFilter && (
-                                                        <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                                                            (filtered from {totalItems} items)
-                                                        </span>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
-
-                                    {/* Navigation buttons */}
-                                    <div className="flex items-center">
-                                        <button
-                                            type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
-                                            disabled={currentPage === 1}
-                                            onClick={() => {
-                                                const newPage = Math.max(1, currentPage - 1);
-                                                setCurrentPage(newPage);
-                                                updateUrlParams(newPage, itemsPerPage);
-                                            }}
-                                        >
-                                            <IoIosArrowBack className="w-5 h-5" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-                                            disabled={currentPage >= totalPages}
-                                            onClick={() => {
-                                                const newPage = Math.min(totalPages, currentPage + 1);
-                                                setCurrentPage(newPage);
-                                                updateUrlParams(newPage, itemsPerPage);
-                                            }}
-                                        >
-                                            <IoIosArrowForward className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </div>
+                                {(() => {
+                                    // Calculate displayTotal and totalPages for pagination controls
+                                    const isSearching = !!search;
+                                    const isFiltered = !!statusFilter;
+                                    let displayTotal = poCards.length;
+                                    if (isSearching) {
+                                        displayTotal = searchResults?.length || 0;
+                                    } else if (isFiltered) {
+                                        displayTotal = filteredPoCards.length;
+                                    }
+                                    const totalPages = Math.max(1, Math.ceil(displayTotal / itemsPerPage));
+                                    const startItem = displayTotal === 0 ? 0 : startIndex + 1;
+                                    const endItem = Math.min(startIndex + itemsPerPage, displayTotal);
+                                    return (
+                                        <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
+                                            <div className="flex items-center space-x-2">
+                                                <select
+                                                    value={itemsPerPage}
+                                                    onChange={(e) => {
+                                                        const newPerPage = Number(e.target.value);
+                                                        setItemsPerPage(newPerPage);
+                                                        setCurrentPage(1);
+                                                        updateUrlParams(1, newPerPage);
+                                                    }}
+                                                    className={`border-r px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 shadow-sm transition-all ${isDarkMode ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-slate-300 bg-white text-slate-700 focus:ring-emerald-200 focus:border-emerald-400'}`}
+                                                >
+                                                    <option value={10}>10 per page</option>
+                                                    <option value={25}>25 per page</option>
+                                                    <option value={50}>50 per page</option>
+                                                </select>
+                                            </div>
+                                            {/* Clear PO Cache Button */}
+                                            <button
+                                                type="button"
+                                                className={`px-4 py-2 font-medium cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-red-300  hover:bg-red-800/50 hover:text-white' : 'text-red-700hover:bg-red-100 hover:text-red-900'}`}
+                                                onClick={() => {
+                                                    localStorage.removeItem('poCache');
+                                                    window.location.reload();
+                                                }}
+                                                aria-label="Clear PO Cache"
+                                            >
+                                                <IoReloadOutline className="inline-block text-lg align-middle" />
+                                            </button>
+                                            <div className={`px-4 py-2 text-sm border-r border-l font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
+                                                <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
+                                                {' '}of{' '}
+                                                <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{displayTotal}</span>
+                                                {isSearching && (
+                                                    <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                                        (search from {poCards.length} items)
+                                                    </span>
+                                                )}
+                                                {!isSearching && isFiltered && (
+                                                    <span className={`ml-2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                                                        (filtered from {poCards.length} items)
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center">
+                                                <button
+                                                    type="button"
+                                                    className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
+                                                    disabled={currentPage === 1}
+                                                    onClick={() => {
+                                                        const newPage = Math.max(1, currentPage - 1);
+                                                        setCurrentPage(newPage);
+                                                        updateUrlParams(newPage, itemsPerPage);
+                                                    }}
+                                                >
+                                                    <IoIosArrowBack className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                                    disabled={currentPage >= totalPages}
+                                                    onClick={() => {
+                                                        const newPage = Math.min(totalPages, currentPage + 1);
+                                                        setCurrentPage(newPage);
+                                                        updateUrlParams(newPage, itemsPerPage);
+                                                    }}
+                                                >
+                                                    <IoIosArrowForward className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
 
                                 {/* Page numbers */}
                                 <div className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                    หน้า <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentPage}</span> / <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalPages}</span>
+                                    {(() => {
+                                        const isSearching = !!search;
+                                        const isFiltered = !!statusFilter;
+                                        let displayTotal = poCards.length;
+                                        if (isSearching) {
+                                            displayTotal = searchResults?.length || 0;
+                                        } else if (isFiltered) {
+                                            displayTotal = filteredPoCards.length;
+                                        }
+                                        const totalPages = Math.max(1, Math.ceil(displayTotal / itemsPerPage));
+                                        return (
+                                            <>
+                                                หน้า <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentPage}</span> / <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalPages}</span>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         )}
