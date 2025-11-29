@@ -1421,11 +1421,7 @@ export default function PurchaseOrderPage() {
                                                 className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    // ทดสอบเปิดไฟล์ PDF เฉพาะ PO_D2510035.pdf
-                                                    // const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
-                                                    // window.open(pdfPath, '_blank', 'noopener');
                                                     previewPoPdf(String(po.po_no));
-                                                    //window.open(`http://192.168.2.139:5000/preview/${po.po_no}`, '_blank', 'noopener');
                                                 }}
                                             >
                                                 <MdOutlineRemoveRedEye className="w-7 h-7" />
@@ -1434,16 +1430,6 @@ export default function PurchaseOrderPage() {
                                                 className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
                                                 onClick={e => {
                                                     e.stopPropagation();
-                                                    // ดาวน์โหลด PDF จาก public/generated-pdf/PO_{po.po_no}.pdf
-                                                    // const pdfPath = `/generated-pdf/PO_${po.po_no}.pdf`;
-                                                    // const pdfPath = `/generated-pdf/PO_D2510035.pdf`;
-                                                    // const a = document.createElement('a');
-                                                    // a.href = pdfPath;
-                                                    // // a.download = `PO_${po.po_no}.pdf`;
-                                                    // a.download = `PO_D2510035.pdf`;
-                                                    // document.body.appendChild(a);
-                                                    // a.click();
-                                                    // a.remove();
                                                     downloadPoPdf(String(po.po_no));
                                                 }}
                                             >

@@ -34,6 +34,8 @@ import { IoSettingsOutline } from "react-icons/io5";
 import { TbProgressCheck } from "react-icons/tb";
 import { TbSettingsCheck } from "react-icons/tb";
 import { TbSettingsQuestion } from "react-icons/tb";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { GoDownload } from "react-icons/go";
 
 type ReviewedPO = {
     po_id: number;
@@ -336,6 +338,63 @@ export default function ReviewedPOPage() {
         //     console.error('Send mail error:', error);
         // }
     };
+
+    // TODO: PDF
+    // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
+    // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
+    const previewPoPdf = async (po_no: string) => {
+        if (!token) {
+            alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+            return;
+        }
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank', 'noopener');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error('previewPoPdf error:', err);
+            // Fallback
+            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}?token=${token}`, '_blank');
+        }
+    }
+
+    // Download PDF: ใช้ Authorization header + Blob เพื่อไม่ให้ token อยู่ใน URL
+    const downloadPoPdf = async (po_no: string) => {
+        if (!token) {
+            alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+            return;
+        }
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                if (res.status === 401) alert('Token หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const blob = await res.blob();
+            // สร้างลิงก์ดาวน์โหลดชั่วคราว
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PO_${po_no}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error('downloadPoPdf error:', err);
+            // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
+            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}/${token}`, '_blank', 'noopener');
+        }
+    }
 
     const { isCollapsed } = useSidebar();
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
@@ -813,11 +872,11 @@ export default function ReviewedPOPage() {
                                             </div>
                                         </div>
                                         <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/50 border border-amber-600/30' : 'bg-amber-50/70 border border-amber-200'}`}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`text-xs font-medium ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>หมายเหตุ</span>
-                                                    <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.remark}</span>
-                                                </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>หมายเหตุ</span>
+                                                <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>{poData.remark}</span>
                                             </div>
+                                        </div>
                                         {/* {poData.remark && (
                                             <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/50 border border-amber-600/30' : 'bg-amber-50/70 border border-amber-200'}`}>
                                                 <div className="flex items-center justify-between">
@@ -899,13 +958,28 @@ export default function ReviewedPOPage() {
                                             {poData.po_lists?.length ?? 0} รายการ
                                         </span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className={`px-6 py-2.5 rounded-lg cursor-pointer font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white' : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'}`}
-                                        onClick={() => router.push(process.env.NEXT_PUBLIC_PURCHASE_PO_LIST_REDIRECT || "/services/purchase/PO")}
-                                    >
-                                        ← กลับไป PO List
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex gap-0">
+                                            <button
+                                                className={`flex items-center cursor-pointer justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    previewPoPdf(String(poData.po_no));
+                                                }}
+                                            >
+                                                <MdOutlineRemoveRedEye className="w-7 h-7" />
+                                            </button>
+                                            <button
+                                                className={`flex items-center cursor-pointer justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    downloadPoPdf(String(poData.po_no));
+                                                }}
+                                            >
+                                                <GoDownload className="w-7 h-7" />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
