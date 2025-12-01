@@ -1207,7 +1207,7 @@ export default function PurchaseOrderPage() {
                                             {/* Clear PO Cache Button */}
                                             <button
                                                 type="button"
-                                                className={`px-4 py-2 font-medium cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-red-300  hover:bg-red-800/50 hover:text-white' : 'text-red-700hover:bg-red-100 hover:text-red-900'}`}
+                                                className={`px-4 py-2 font-medium cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300  hover:bg-amber-600/50 hover:text-white' : 'text-amber-700hover:bg-amber-100 hover:text-amber-600'}`}
                                                 onClick={() => {
                                                     localStorage.removeItem('poCache');
                                                     window.location.reload();

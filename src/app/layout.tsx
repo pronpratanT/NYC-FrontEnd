@@ -37,8 +37,9 @@ export default function RootLayout({
         <TokenProvider>
           <UserProvider>
             <ThemeProvider>
+              <BackgroundSwitcher />
               <SidebarProvider>
-                <BackgroundSwitcher />
+                
                 {/* <Sidebar />
                 <Header /> */}
                 {children}

@@ -32,9 +32,11 @@ import { GoGift } from "react-icons/go";
 import { SlOptionsVertical } from "react-icons/sl";
 import { LuUngroup } from "react-icons/lu";
 import { LuGroup } from "react-icons/lu";
-import { PiNotepadBold } from "react-icons/pi";
 import { FiFolder } from "react-icons/fi";
 import { TbProgressCheck } from "react-icons/tb";
+import { LuNotebookPen } from "react-icons/lu";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { GoDownload } from "react-icons/go";
 
 type Part = {
     pcl_id: number;
@@ -559,6 +561,68 @@ function ComparePriceContent({ token }: { token: string | null }) {
         await handleRefreshData(); // Refresh data after successful split
     };
 
+    // TODO: PDF
+    // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
+    // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
+    const previewPrPdf = async (pr_id: number) => {
+        console.log('previewPrPdf called for PR:', pr_id);
+        if (!token) {
+            alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+            return;
+        }
+        const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
+        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_id}/${endpointType}`;
+        try {
+            const res = await fetch(previewUrl, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            window.open(objectUrl, '_blank', 'noopener');
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+        } catch (err) {
+            console.error('previewPrPdf error:', err);
+            // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
+            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
+        }
+    }
+
+    // Download PDF: ใช้ Authorization header + Blob เพื่อไม่ให้ token อยู่ใน URL
+    const downloadPrPdf = async (pr_id: number, pr_no: string) => {
+        if (!token) {
+            alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+            return;
+        }
+        const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
+        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_id}/${endpointType}`;
+        try {
+            const res = await fetch(previewUrl, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                if (res.status === 401) alert('Token หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const blob = await res.blob();
+            // สร้างลิงก์ดาวน์โหลดชั่วคราว
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PR_${pr_no}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error('downloadPrPdf error:', err);
+            // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
+            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${pr_id}/${token}`, '_blank', 'noopener');
+        }
+    }
+
     if (loading) return <div>กำลังโหลดข้อมูล...</div>;
     if (error) return <div style={{ color: "red" }}>{error}</div>;
     if (!Array.isArray(data)) return <div style={{ color: "red" }}>ไม่พบข้อมูลกลุ่มหรือข้อมูลผิดรูปแบบ</div>;
@@ -771,6 +835,26 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                 pr_no={prData?.pr_no ?? ''}
                                                 onSuccess={handleRefreshData}
                                             />
+                                            <div className="flex w-full justify-center">
+                                                <button
+                                                    className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        previewPrPdf(Number(prId));
+                                                    }}
+                                                >
+                                                    <MdOutlineRemoveRedEye className="w-7 h-7" />
+                                                </button>
+                                                <button
+                                                    className={`flex items-center justify-center rounded-r-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-red-400 bg-red-900/20 border border-red-800/50 hover:bg-red-800/30' : 'text-red-400 bg-red-50 border border-red-100 hover:bg-red-100'}`}
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        downloadPrPdf(Number(prId), prData.pr_no);
+                                                    }}
+                                                >
+                                                    <GoDownload className="w-7 h-7" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1125,7 +1209,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                         </span>
                                                                     </td>
                                                                 )}
-                                                                <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                     {(() => {
                                                                         // แยก part_no จาก format: part_no|part_name|prod_code
                                                                         if (item.part_no && item.part_no.includes('|')) {
@@ -1134,8 +1218,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                         return item.part_no;
                                                                     })()}
                                                                 </td>
-                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                {/* <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                     {(() => {
                                                                         // แยก prod_code จาก format: part_no|part_name|prod_code
                                                                         if (item.part_no && item.part_no.includes('|')) {
@@ -1145,7 +1228,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                         return item.prod_code || '-';
                                                                     })()}
                                                                 </td>
-                                                                <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                     <div className="flex flex-col gap-0.5">
                                                                         <div>
                                                                             {(() => {
@@ -1157,14 +1240,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                                 return item.part_name || '-';
                                                                             })()}
                                                                         </div>
-                                                                        {item.remark && (
-                                                                            <div className={`text-xs italic leading-tight ${isDarkMode ? 'text-slate-400/80' : 'text-gray-500/80'}`}>
-                                                                                หมายเหตุ: {item.remark}
-                                                                            </div>
-                                                                        )}
                                                                     </div>
-                                                                </td> */}
-                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
+                                                                </td>
                                                                 <td className={`px-4 py-2 text-left text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>* หมายเหตุ : {item.remark}</td>
                                                                 <td className={`px-4 py-2 text-center text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                                     {item.qty}
@@ -1177,7 +1254,6 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                     <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                                 )}
                                                                 <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
-                                                                {/* Add empty price/unit cell only if price column is visible */}
                                                                 {(departmentId === 10086 && prData?.manager_approve && prData?.supervisor_approve && user?.Department?.ID === 10086) && (
                                                                     <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                                 )}
@@ -1199,7 +1275,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 12
                                                             } className={`px-8.5 py-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                                                                 <div className="flex items-center gap-2">
-                                                                    <PiNotepadBold className="w-5 h-5 text-yellow-500" />
+                                                                    <LuNotebookPen className="w-5 h-5 text-yellow-500" />
                                                                     <span className="font-medium">หมายเหตุ : {part.group.note.map(n => n.note).join(', ')}</span>
                                                                 </div>
                                                             </td>

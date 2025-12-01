@@ -183,24 +183,45 @@ export default function DashboardPage() {
         : 30;
 
     return (
-        <div className="flex min-h-screen">
+        <div className={`flex min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
             <Sidebar />
             <Header />
             <main
                 style={{ marginLeft, transition: 'margin-left 0.3s' }}
-                className={`flex-1 p-6 min-h-screen pt-24`}
+                className="flex-1 p-6 min-h-screen pt-24"
             >
                 <div className="max-w-7xl mx-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                        <div className={`rounded-2xl p-6 shadow-lg flex flex-col items-center ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+                            <span className="text-3xl mb-2">📄</span>
+                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>PR ทั้งหมด</p>
+                            <p className={`text-2xl font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{prData.length}</p>
+                        </div>
+                        <div className={`rounded-2xl p-6 shadow-lg flex flex-col items-center ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+                            <span className="text-3xl mb-2">📅</span>
+                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>เดือนที่มากที่สุด</p>
+                            <p className={`text-2xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{maxCount}</p>
+                        </div>
+                        <div className={`rounded-2xl p-6 shadow-lg flex flex-col items-center ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+                            <span className="text-3xl mb-2">📊</span>
+                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>ค่าเฉลี่ย/เดือน</p>
+                            <p className={`text-2xl font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>{Math.round(monthlyData.reduce((sum, d) => sum + d.count, 0) / 12)}</p>
+                        </div>
+                        <div className={`rounded-2xl p-6 shadow-lg flex flex-col items-center ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+                            <span className="text-3xl mb-2">🏢</span>
+                            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>ทั้งหมดในระบบ</p>
+                            <p className={`text-2xl font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{prData.length}</p>
+                        </div>
+                    </div>
+
+                    {/* Header & Year Filter */}
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}> 
                             Dashboard - สถิติ PR รายเดือน
                         </h1>
-
-                        {/* Year Filter */}
                         <div className="flex items-center gap-3">
-                            <label className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                ปี:
-                            </label>
+                            <label className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>ปี:</label>
                             <select
                                 value={selectedYear}
                                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -227,15 +248,14 @@ export default function DashboardPage() {
                         </div>
                     ) : (
                         <>
-                            {/* Charts Grid - 3 columns on xl, 1 on mobile */}
                             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
                                 {/* Monthly Chart */}
-                                <div className={`p-6 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-lg shadow-lg flex flex-col items-center`}>
-                                    <h2 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                <div className={`flex flex-col justify-center items-center h-[420px] bg-opacity-100 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-2xl shadow-lg p-8 transition-all duration-300`}>
+                                    <h2 className={`text-xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                         PR รายเดือน
                                     </h2>
-                                    <svg width={chartWidth} height={chartHeight} className="mx-auto">
-                                        {/* Grid lines */}
+                                    <div className="flex-1 flex items-center justify-center w-full">
+                                        <svg width={chartWidth} height={chartHeight} className="mx-auto">
                                         {[0, 1, 2, 3, 4].map(i => {
                                             const y = padding.top + (chartHeight - padding.top - padding.bottom) * i / 4;
                                             const value = Math.round(maxCount * (4 - i) / 4);
@@ -324,165 +344,132 @@ export default function DashboardPage() {
                                             stroke={isDarkMode ? '#475569' : '#9ca3af'}
                                             strokeWidth="2"
                                         />
-                                    </svg>
-                                </div>
-
-                                {/* Department Pie Chart */}
-                                <div className={`p-6 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-lg shadow-lg flex flex-col items-center`}>
-                                    <h2 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                        สัดส่วน PR ตามแผนก (Top 8)
-                                    </h2>
-                                    {departmentData.pie.length === 0 ? (
-                                        <div className="flex items-center justify-center h-64">
-                                            <p className={isDarkMode ? 'text-slate-400' : 'text-gray-500'}>ไม่มีข้อมูล</p>
-                                        </div>
-                                    ) : (
-                                        <svg width={340} height={340} viewBox="0 0 340 340" className="mx-auto">
-                                            {(() => {
-                                                const total = departmentData.pie.reduce((sum, d) => sum + d.count, 0);
-                                                let startAngle = 0;
-                                                const colors = [
-                                                    '#10b981', '#3b82f6', '#f59e42', '#eab308', '#a78bfa', '#ef4444', '#14b8a6', '#6366f1', '#9ca3af'
-                                                ];
-                                                return departmentData.pie.map((dept, i) => {
-                                                    const angle = (dept.count / total) * 2 * Math.PI;
-                                                    const endAngle = startAngle + angle;
-                                                    const largeArc = angle > Math.PI ? 1 : 0;
-                                                    const radius = 140;
-                                                    const centerX = 170;
-                                                    const centerY = 170;
-                                                    const x1 = centerX + radius * Math.cos(startAngle);
-                                                    const y1 = centerY + radius * Math.sin(startAngle);
-                                                    const x2 = centerX + radius * Math.cos(endAngle);
-                                                    const y2 = centerY + radius * Math.sin(endAngle);
-                                                    const pathData = `M${centerX},${centerY} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`;
-                                                    const midAngle = startAngle + angle / 2;
-                                                    const labelX = centerX + (radius + 30) * Math.cos(midAngle);
-                                                    const labelY = centerY + (radius + 30) * Math.sin(midAngle);
-                                                    const percent = Math.round((dept.count / total) * 100);
-                                                    startAngle = endAngle;
-                                                    return (
-                                                        <g key={i}>
-                                                            <path d={pathData} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="2" />
-                                                            <text
-                                                                x={labelX}
-                                                                y={labelY}
-                                                                textAnchor="middle"
-                                                                alignmentBaseline="middle"
-                                                                className={`text-xs font-bold ${isDarkMode ? 'fill-white' : 'fill-gray-900'}`}
-                                                            >
-                                                                {dept.name.length > 10 ? dept.name.substring(0, 10) + '...' : dept.name}
-                                                                ` (${percent}%)`
-                                                            </text>
-                                                        </g>
-                                                    );
-                                                });
-                                            })()}
                                         </svg>
-                                    )}
+                                    </div>
+                                </div>
+                                {/* Department Pie Chart */}
+                                <div className={`flex flex-col justify-center items-center h-[420px] bg-opacity-100 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-2xl shadow-lg p-8 transition-all duration-300`}>
+                                    <h2 className={`text-xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>สัดส่วน PR ตามแผนก (Top 8)</h2>
+                                    <div className="flex-1 flex items-center justify-center w-full">
+                                        <div className="w-full flex items-center justify-center">
+                                            {departmentData.pie.length === 0 ? (
+                                                <div className="flex items-center justify-center h-64 w-full">
+                                                    <p className={isDarkMode ? 'text-slate-400' : 'text-gray-500'}>ไม่มีข้อมูล</p>
+                                                </div>
+                                            ) : (
+                                                <svg width={340} height={340} viewBox="0 0 340 340" className="mx-auto">
+                                                    {(() => {
+                                                    const total = departmentData.pie.reduce((sum, d) => sum + d.count, 0);
+                                                    let startAngle = 0;
+                                                    const colors = [
+                                                        '#10b981', '#3b82f6', '#f59e42', '#eab308', '#a78bfa', '#ef4444', '#14b8a6', '#6366f1', '#9ca3af'
+                                                    ];
+                                                    return departmentData.pie.map((dept, i) => {
+                                                        const angle = (dept.count / total) * 2 * Math.PI;
+                                                        const endAngle = startAngle + angle;
+                                                        const largeArc = angle > Math.PI ? 1 : 0;
+                                                        const radius = 140;
+                                                        const centerX = 170;
+                                                        const centerY = 170;
+                                                        const x1 = centerX + radius * Math.cos(startAngle);
+                                                        const y1 = centerY + radius * Math.sin(startAngle);
+                                                        const x2 = centerX + radius * Math.cos(endAngle);
+                                                        const y2 = centerY + radius * Math.sin(endAngle);
+                                                        const pathData = `M${centerX},${centerY} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`;
+                                                        const midAngle = startAngle + angle / 2;
+                                                        const labelX = centerX + (radius + 30) * Math.cos(midAngle);
+                                                        const labelY = centerY + (radius + 30) * Math.sin(midAngle);
+                                                        const percent = Math.round((dept.count / total) * 100);
+                                                        startAngle = endAngle;
+                                                        return (
+                                                            <g key={i}>
+                                                                <path d={pathData} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="2" />
+                                                                <text
+                                                                    x={labelX}
+                                                                    y={labelY}
+                                                                    textAnchor="middle"
+                                                                    alignmentBaseline="middle"
+                                                                    className={`text-xs font-bold ${isDarkMode ? 'fill-white' : 'fill-gray-900'}`}
+                                                                >
+                                                                    {dept.name.length > 10 ? dept.name.substring(0, 10) + '...' : dept.name}
+                                                                    {` (${percent}%)`}
+                                                                </text>
+                                                            </g>
+                                                        );
+                                                    });
+                                                })()}
+                                            </svg>
+                                        )}
+                                        </div>
+                                    </div>
                                 </div>
                                 {/* Department Bar Chart */}
-                                <div className={`p-6 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-lg shadow-lg flex flex-col items-center`}>
-                                    <h2 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                        จำนวน PR ของแต่ละแผนก (Top 15)
-                                    </h2>
-                                    {departmentData.bar.length === 0 ? (
-                                        <div className="flex items-center justify-center h-64">
-                                            <p className={isDarkMode ? 'text-slate-400' : 'text-gray-500'}>ไม่มีข้อมูล</p>
-                                        </div>
-                                    ) : (
-                                        <svg width={deptBarChartWidth} height={deptBarChartHeight} className="mx-auto">
-                                            {/* Bars */}
-                                            {departmentData.bar.map((dept, index) => {
-                                                const barW = dept.count > 0
-                                                    ? (dept.count / departmentData.bar[0].count) * (deptBarChartWidth - deptBarPadding.left - deptBarChartWidth * 0.1)
-                                                    : 0;
-                                                const y = deptBarPadding.top + index * deptBarHeight;
-                                                return (
-                                                    <g key={index}>
-                                                        {/* Department name */}
-                                                        <text
-                                                            x={deptBarPadding.left - 10}
-                                                            y={y + deptBarHeight / 2 + 4}
-                                                            textAnchor="end"
-                                                            className={`text-sm ${isDarkMode ? 'fill-slate-300' : 'fill-gray-700'}`}
-                                                        >
-                                                            {dept.name.length > 15 ? dept.name.substring(0, 15) + '...' : dept.name}
-                                                        </text>
-                                                        {/* Bar */}
-                                                        <rect
-                                                            x={deptBarPadding.left}
-                                                            y={y + 5}
-                                                            width={barW}
-                                                            height={deptBarHeight - 10}
-                                                            fill={isDarkMode ? '#3b82f6' : '#2563eb'}
-                                                            className="transition-all duration-200 hover:opacity-80 cursor-pointer"
-                                                            rx="4"
-                                                        />
-                                                        {/* Count label */}
-                                                        {dept.count > 0 && (
+                                <div className={`flex flex-col justify-center items-center h-[420px] bg-opacity-100 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-2xl shadow-lg p-8 transition-all duration-300`}>
+                                    <h2 className={`text-xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>จำนวน PR ของแต่ละแผนก (Top 15)</h2>
+                                    <div className="flex-1 flex items-center justify-center w-full">
+                                        <div className="w-full flex items-center justify-center">
+                                            {departmentData.bar.length === 0 ? (
+                                                <div className="flex items-center justify-center h-64 w-full">
+                                                    <p className={isDarkMode ? 'text-slate-400' : 'text-gray-500'}>ไม่มีข้อมูล</p>
+                                                </div>
+                                            ) : (
+                                                <svg width={deptBarChartWidth} height={deptBarChartHeight} className="mx-auto">
+                                                    {/* Bars */}
+                                                    {departmentData.bar.map((dept, index) => {
+                                                    const barW = dept.count > 0
+                                                        ? (dept.count / departmentData.bar[0].count) * (deptBarChartWidth - deptBarPadding.left - deptBarChartWidth * 0.1)
+                                                        : 0;
+                                                    const y = deptBarPadding.top + index * deptBarHeight;
+                                                    return (
+                                                        <g key={index}>
                                                             <text
-                                                                x={deptBarPadding.left + barW + 8}
+                                                                x={deptBarPadding.left - 10}
                                                                 y={y + deptBarHeight / 2 + 4}
-                                                                className={`text-sm font-semibold ${isDarkMode ? 'fill-blue-400' : 'fill-blue-600'}`}
+                                                                textAnchor="end"
+                                                                className={`text-sm ${isDarkMode ? 'fill-slate-300' : 'fill-gray-700'}`}
                                                             >
-                                                                {dept.count}
+                                                                {dept.name.length > 15 ? dept.name.substring(0, 15) + '...' : dept.name}
                                                             </text>
-                                                        )}
-                                                    </g>
-                                                );
-                                            })}
-                                            {/* Axes */}
-                                            <line
-                                                x1={deptBarPadding.left}
-                                                y1={deptBarPadding.top}
-                                                x2={deptBarPadding.left}
-                                                y2={deptBarChartHeight - deptBarPadding.bottom}
-                                                stroke={isDarkMode ? '#475569' : '#9ca3af'}
-                                                strokeWidth="2"
-                                            />
-                                            <line
-                                                x1={deptBarPadding.left}
-                                                y1={deptBarChartHeight - deptBarPadding.bottom}
-                                                x2={deptBarChartWidth - deptBarChartWidth * 0.1}
-                                                y2={deptBarChartHeight - deptBarPadding.bottom}
-                                                stroke={isDarkMode ? '#475569' : '#9ca3af'}
-                                                strokeWidth="2"
-                                            />
-                                        </svg>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Summary */}
-                            <div className={`w-full p-6 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-lg shadow-lg`}>
-                                <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                    สรุปข้อมูล ปี {selectedYear + 543}
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
-                                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>จำนวน PR ทั้งหมด</p>
-                                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                                            {monthlyData.reduce((sum, d) => sum + d.count, 0)}
-                                        </p>
-                                    </div>
-                                    <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
-                                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>เดือนที่มากที่สุด</p>
-                                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                                            {maxCount}
-                                        </p>
-                                    </div>
-                                    <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
-                                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>ค่าเฉลี่ย/เดือน</p>
-                                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
-                                            {Math.round(monthlyData.reduce((sum, d) => sum + d.count, 0) / 12)}
-                                        </p>
-                                    </div>
-                                    <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
-                                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>ทั้งหมดในระบบ</p>
-                                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                                            {prData.length}
-                                        </p>
+                                                            <rect
+                                                                x={deptBarPadding.left}
+                                                                y={y + 5}
+                                                                width={barW}
+                                                                height={deptBarHeight - 10}
+                                                                fill={isDarkMode ? '#3b82f6' : '#2563eb'}
+                                                                className="transition-all duration-200 hover:opacity-80 cursor-pointer"
+                                                                rx="4"
+                                                            />
+                                                            {dept.count > 0 && (
+                                                                <text
+                                                                    x={deptBarPadding.left + barW + 8}
+                                                                    y={y + deptBarHeight / 2 + 4}
+                                                                    className={`text-sm font-semibold ${isDarkMode ? 'fill-blue-400' : 'fill-blue-600'}`}
+                                                                >
+                                                                    {dept.count}
+                                                                </text>
+                                                            )}
+                                                        </g>
+                                                    );
+                                                })}
+                                                <line
+                                                    x1={deptBarPadding.left}
+                                                    y1={deptBarPadding.top}
+                                                    x2={deptBarPadding.left}
+                                                    y2={deptBarChartHeight - deptBarPadding.bottom}
+                                                    stroke={isDarkMode ? '#475569' : '#9ca3af'}
+                                                    strokeWidth="2"
+                                                />
+                                                <line
+                                                    x1={deptBarPadding.left}
+                                                    y1={deptBarChartHeight - deptBarPadding.bottom}
+                                                    x2={deptBarChartWidth - deptBarChartWidth * 0.1}
+                                                    y2={deptBarChartHeight - deptBarPadding.bottom}
+                                                    stroke={isDarkMode ? '#475569' : '#9ca3af'}
+                                                    strokeWidth="2"
+                                                />
+                                            </svg>
+                                        )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -3,6 +3,7 @@
 import React, { JSX } from "react";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 
 // components
 import { useToken } from "../../context/TokenContext";
@@ -32,6 +33,7 @@ import { GoDownload } from "react-icons/go";
 import { CiCircleInfo } from "react-icons/ci";
 import { FaSave } from "react-icons/fa";
 import { SlOptionsVertical } from "react-icons/sl";
+import { LuNotebookPen } from "react-icons/lu";
 
 // Custom scrollbar styles
 const scrollbarStyles = `
@@ -191,6 +193,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Move hoveredPoint and mouseX state to top-level
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const [mouseX, setMouseX] = useState<number | null>(null);
+  // Dropdown state for vendor actions
+  const [isClient, setIsClient] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<Record<number, HTMLButtonElement | null>>({});
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   // --- State for editing qty in summary tab ---
   const [editingQty, setEditingQty] = useState(false);
   const [qtyValue, setQtyValue] = useState(() => {
@@ -261,7 +269,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     ].includes(status);
   })();
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState<string>("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
@@ -321,6 +328,31 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   // State to track edited prices (support price and discounts array)
   const [editedPrices, setEditedPrices] = useState<EditedPrice[]>([]);
+
+  // Set isClient to true after mount (for createPortal)
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        openDropdown !== null &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current[openDropdown] &&
+        !buttonRef.current[openDropdown]!.contains(event.target as Node)
+      ) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   // เมื่อโหลด compareData แล้ว ให้ดึงข้อมูลล่าสุดมาเก็บ
   useEffect(() => {
@@ -3297,6 +3329,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white border-b border-purple-200/50" style={{ paddingRight: '12px' }}>
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
+                        <col style={{ width: '25px' }} />
                         <col style={{ width: '50px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '200px' }} />
@@ -3305,10 +3338,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '90px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '50px' }} />
+                        {/* <col style={{ width: '50px' }} /> */}
                       </colgroup>
                       <thead>
                         <tr>
+                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center"></th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">#</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ID</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-left">Vendor</th>
@@ -3317,7 +3351,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ราคา</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ส่วนลด%</th>
                           <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">ส่งมอบ</th>
-                          <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Actions</th>
+                          {/* <th className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-center">Actions</th> */}
                         </tr>
                       </thead>
                     </table>
@@ -3326,6 +3360,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   <div className="flex-1 min-h-0 custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-purple-400 scrollbar-track-slate-100 dark:scrollbar-thumb-purple-700 dark:scrollbar-track-slate-800 overflow-y-auto">
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
+                        <col style={{ width: '25px' }} />
                         <col style={{ width: '50px' }} />
                         <col style={{ width: '80px' }} />
                         <col style={{ width: '200px' }} />
@@ -3334,7 +3369,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <col style={{ width: '90px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '80px' }} />
-                        <col style={{ width: '50px' }} />
+                        {/* <col style={{ width: '50px' }} /> */}
                       </colgroup>
                       <tbody className={`${isDarkMode ? 'bg-slate-800/95' : 'bg-white/95'}`}>
                         {(() => {
@@ -3364,607 +3399,680 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               ? (isDarkMode ? 'border-b' : 'border-b border-gray-200')
                               : (isDarkMode ? 'border-b' : 'border-b border-gray-200');
                             return (
-                              <tr
-                                key={vendor.compare_id || index}
-                                className={`border-b ${editableBorder} ${isDisabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'cursor-pointer transition-colors'} ${isDarkMode ? isDisabled ? 'bg-slate-700' : 'hover:bg-purple-900/30' : isDisabled ? 'bg-gray-100' : 'hover:bg-purple-50/50'}`}
-                                onClick={e => {
-                                  if (isDisabled) return;
-                                  if ((e.target as HTMLElement).closest('input')) return;
-                                  handleCompareRowClick(vendor);
-                                }}
-                              >
-                                <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                  <button
-                                    // ref={el => { buttonRef.current[part.pcl_id] = el; }}
-                                    // onClick={(e) => {
-                                    //   e.stopPropagation();
-                                    //   setOpenDropdown(openDropdown === part.pcl_id ? null : part.pcl_id);
-                                    // }}
-                                    className={`p-2 rounded-lg cursor-pointer transition-all duration-200 hover:scale-105 ${isDarkMode
-                                      ? 'hover:bg-gray-600 border-gray-600'
-                                      : 'hover:bg-slate-100 border-slate-200'
-                                      }`}
-                                    type="button"
-                                  >
-                                    <SlOptionsVertical size={18} className={`${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                                  </button>
-                                </td>
-                                {/* <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{startIdx + index + 1}</td> */}
-                                <td className={`px-4 py-3 text-sm text-center font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{vendor.vendor_code}</td>
-                                <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendor.vendor_name}</td>
-                                <td className={`px-4 py-3 text-sm text-left ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                  {typeof vendor.tel === 'string' && vendor.tel.includes(',')
-                                    ? vendor.tel.split(',').map((tel, idx) => (
-                                      <div key={idx}>{tel.trim()}</div>
-                                    ))
-                                    : vendor.tel}
-                                </td>
-                                <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.credit_term}</td>
-                                {/* PRICE EDIT */}
-                                <td className={`px-4 py-3 text-sm font-bold text-right pr-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                                  <span className="flex items-center justify-center gap-2">
-                                    <span className="flex items-center">
-                                      {/* NOTE Tooltips compare */}
-                                      <Tooltip
-                                        content={(() => {
-                                          const priceRounds = [120, 130, 125, 123, 121]; // ข้อมูลราคาการต่อรอง
-
-                                          // คำนวณค่าต่างๆ สำหรับกราฟ
-                                          const w = 280;
-                                          const h = 140;
-                                          const paddingLeft = 45;
-                                          const paddingRight = 20;
-                                          const paddingTop = 20;
-                                          const paddingBottom = 35;
-
-                                          const minPrice = Math.min(...priceRounds);
-                                          const maxPrice = Math.max(...priceRounds);
-                                          const priceRange = maxPrice - minPrice || 1;
-                                          const chartWidth = w - paddingLeft - paddingRight;
-                                          const chartHeight = h - paddingTop - paddingBottom;
-                                          const stepX = priceRounds.length > 1 ? chartWidth / (priceRounds.length - 1) : 0;
-
-                                          // สร้างจุดข้อมูล
-                                          const points = priceRounds.map((price, i) => {
-                                            const x = paddingLeft + i * stepX;
-                                            const y = paddingTop + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
-                                            return { x, y, price, round: i + 1 };
-                                          });
-
-                                          const pathPoints = points.map(p => `${p.x},${p.y}`).join(' ');
-                                          const areaPath = `M ${paddingLeft},${paddingTop + chartHeight} L ${pathPoints} L ${paddingLeft + chartWidth},${paddingTop + chartHeight} Z`;
-
-                                          // Y axis ticks
-                                          const yTicks = [];
-                                          const tickCount = 4;
-                                          for (let i = 0; i < tickCount; i++) {
-                                            const value = minPrice + (priceRange * i / (tickCount - 1));
-                                            const y = paddingTop + chartHeight - ((value - minPrice) / priceRange) * chartHeight;
-                                            yTicks.push({ value, y });
+                              <React.Fragment key={vendor.compare_id || index}>
+                                <tr
+                                  // key={vendor.compare_id || index}
+                                  className={`border-b ${editableBorder} ${isDisabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'cursor-pointer transition-colors'} ${isDarkMode ? isDisabled ? 'bg-slate-700' : 'hover:bg-purple-900/30' : isDisabled ? 'bg-gray-100' : 'hover:bg-purple-50/50'}`}
+                                  onClick={e => {
+                                    if (isDisabled) return;
+                                    if ((e.target as HTMLElement).closest('input')) return;
+                                    handleCompareRowClick(vendor);
+                                  }}
+                                >
+                                  <td className={`px-4 py-3 text-sm text-center justify-items-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    <div className="relative inline-block">
+                                      <button
+                                        ref={el => {
+                                          if (el) {
+                                            if (!buttonRef.current) buttonRef.current = {};
+                                            buttonRef.current[vendor.compare_id] = el;
                                           }
+                                        }}
+                                        onClick={(e) => {
+                                          if (isDisabled) return;
+                                          e.stopPropagation();
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setDropdownPosition({
+                                            top: rect.top,
+                                            left: rect.right + 8
+                                          });
+                                          setOpenDropdown(openDropdown === vendor.compare_id ? null : vendor.compare_id);
+                                        }}
+                                        className={`p-2 rounded-lg cursor-pointer transition-all duration-200 hover:scale-105 ${isDarkMode
+                                          ? 'hover:bg-gray-600 border-gray-600'
+                                          : 'hover:bg-slate-100 border-slate-200'
+                                          } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        type="button"
+                                        disabled={isDisabled}
+                                      >
+                                        <SlOptionsVertical size={18} className={`${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                                      </button>
+                                      {isClient && openDropdown !== null && openDropdown === vendor.compare_id && dropdownPosition &&
+                                        createPortal(
+                                          <>
+                                            {/* Overlay for outside click */}
+                                            <div
+                                              className="fixed inset-0 z-[9998]"
+                                              style={{ pointerEvents: 'auto' }}
+                                              onClick={() => setOpenDropdown(null)}
+                                            />
+                                            <div
+                                              ref={dropdownRef}
+                                              className={`fixed border-2 rounded-xl shadow-xl z-[9999] min-w-[160px] ${isDarkMode
+                                                ? 'bg-gray-700 border-gray-600'
+                                                : 'bg-white border-slate-200'
+                                                }`}
+                                              style={{
+                                                top: dropdownPosition.top,
+                                                left: dropdownPosition.left
+                                              }}
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              <button
+                                                // onClick={(e) => {
+                                                //   e.stopPropagation();
+                                                //   if (window.confirm(`ต้องการลบ ${vendor.vendor_name} ออกจากรายการเปรียบเทียบ?`)) {
+                                                //     handleDeleteVendor(vendor);
+                                                //   }
+                                                //   setOpenDropdown(null);
+                                                // }}
+                                                className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-t-xl ${isDarkMode
+                                                  ? 'text-gray-300 hover:bg-amber-900/30'
+                                                  : 'text-slate-700 hover:bg-amber-50'
+                                                  }`}
+                                              >
+                                                <LuNotebookPen size={18} className={isDarkMode ? 'text-amber-300' : 'text-amber-600'} /> หมายเหตุ
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleEditVendor({
+                                                    ID: vendor.vendor_id,
+                                                    vendor_code: vendor.vendor_code,
+                                                    vendor_name: vendor.vendor_name,
+                                                    tax_id: vendor.tax_id ?? null,
+                                                    credit_term: vendor.credit_term,
+                                                    tel_no: vendor.tel,
+                                                    fax_no: vendor.fax_no ?? '',
+                                                    contact_person: vendor.contact_name ?? '',
+                                                    email: vendor.email ?? '',
+                                                  });
+                                                  setOpenDropdown(null);
+                                                }}
+                                                className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium ${isDarkMode
+                                                  ? 'text-gray-300 hover:bg-purple-900/30'
+                                                  : 'text-slate-700 hover:bg-purple-50'
+                                                  }`}
+                                              >
+                                                <CiEdit size={18} className={isDarkMode ? 'text-purple-300' : 'text-purple-600'} /> แก้ไขข้อมูลผู้ขาย
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (window.confirm(`ต้องการลบ ${vendor.vendor_name} ออกจากรายการเปรียบเทียบ?`)) {
+                                                    handleDeleteVendor(vendor);
+                                                  }
+                                                  setOpenDropdown(null);
+                                                }}
+                                                className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-b-xl ${isDarkMode
+                                                  ? 'text-gray-300 hover:bg-red-900/30'
+                                                  : 'text-slate-700 hover:bg-red-50'
+                                                  }`}
+                                              >
+                                                <IoTrashBinOutline size={18} className={isDarkMode ? 'text-red-300' : 'text-red-600'} /> ลบผู้ขาย
+                                              </button>
+                                            </div>
+                                          </>,
+                                          document.body
+                                        )
+                                      }
+                                    </div>
+                                  </td>
+                                  <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{startIdx + index + 1}</td>
+                                  <td className={`px-4 py-3 text-sm text-center font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{vendor.vendor_code}</td>
+                                  <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{vendor.vendor_name}</td>
+                                  <td className={`px-4 py-3 text-sm text-left ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    {typeof vendor.tel === 'string' && vendor.tel.includes(',')
+                                      ? vendor.tel.split(',').map((tel, idx) => (
+                                        <div key={idx}>{tel.trim()}</div>
+                                      ))
+                                      : vendor.tel}
+                                  </td>
+                                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{vendor.credit_term}</td>
+                                  {/* PRICE EDIT */}
+                                  <td className={`px-4 py-3 text-sm font-bold text-right pr-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                    <span className="flex items-center justify-center gap-2">
+                                      <span className="flex items-center">
+                                        {/* NOTE Tooltips compare */}
+                                        <Tooltip
+                                          content={(() => {
+                                            const priceRounds = [120, 130, 125, 123, 121]; // ข้อมูลราคาการต่อรอง
 
-                                          // Move handlers to top-level scope
-                                          // ...existing code...
+                                            // คำนวณค่าต่างๆ สำหรับกราฟ
+                                            const w = 280;
+                                            const h = 140;
+                                            const paddingLeft = 45;
+                                            const paddingRight = 20;
+                                            const paddingTop = 20;
+                                            const paddingBottom = 35;
 
-                                          return (
-                                            <div className="w-80" onMouseLeave={() => { setMouseX(null); setHoveredPoint(null); }}>
-                                              <div className={`text-base font-bold text-left mb-3 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                                <CiCircleInfo className={`w-4 h-4 mr-1 ${isDarkMode ? 'text-white' : 'text-gray-500'}`} />
-                                                <span>ประวัติการต่อรองราคา</span>
-                                              </div>
+                                            const minPrice = Math.min(...priceRounds);
+                                            const maxPrice = Math.max(...priceRounds);
+                                            const priceRange = maxPrice - minPrice || 1;
+                                            const chartWidth = w - paddingLeft - paddingRight;
+                                            const chartHeight = h - paddingTop - paddingBottom;
+                                            const stepX = priceRounds.length > 1 ? chartWidth / (priceRounds.length - 1) : 0;
 
-                                              {/* Chart Container */}
-                                              <div className={`rounded-xl mb-3 p-3 shadow-lg ${isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-gray-50 border border-gray-200'}`}>
-                                                <div className="relative">
-                                                  <svg
-                                                    width={w}
-                                                    height={h}
-                                                    className="overflow-visible"
-                                                    onMouseMove={e => {
-                                                      const svg = e.currentTarget;
-                                                      const rect = svg.getBoundingClientRect();
-                                                      const x = e.clientX - rect.left;
-                                                      let closestIndex = 0;
-                                                      let closestDistance = Math.abs(x - points[0].x);
-                                                      points.forEach((pt, idx) => {
-                                                        const distance = Math.abs(x - pt.x);
-                                                        if (distance < closestDistance) {
-                                                          closestDistance = distance;
-                                                          closestIndex = idx;
-                                                        }
-                                                      });
-                                                      setMouseX(points[closestIndex].x);
-                                                      setHoveredPoint(closestIndex);
-                                                    }}
-                                                    onMouseLeave={() => { setMouseX(null); setHoveredPoint(null); }}
-                                                    style={{ cursor: 'crosshair' }}
-                                                  >
-                                                    {/* Grid lines */}
-                                                    {yTicks.map((tick, i) => (
-                                                      <line
-                                                        key={i}
-                                                        x1={paddingLeft}
-                                                        y1={tick.y}
-                                                        x2={paddingLeft + chartWidth}
-                                                        y2={tick.y}
-                                                        stroke={isDarkMode ? '#334155' : '#e5e7eb'}
-                                                        strokeWidth="1"
-                                                        strokeDasharray="3,3"
-                                                        opacity="0.5"
-                                                      />
-                                                    ))}
+                                            // สร้างจุดข้อมูล
+                                            const points = priceRounds.map((price, i) => {
+                                              const x = paddingLeft + i * stepX;
+                                              const y = paddingTop + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+                                              return { x, y, price, round: i + 1 };
+                                            });
 
-                                                    {/* Vertical line on hover */}
-                                                    {mouseX !== null && (
-                                                      <>
-                                                        <line
-                                                          x1={mouseX}
-                                                          y1={paddingTop}
-                                                          x2={mouseX}
-                                                          y2={paddingTop + chartHeight}
-                                                          stroke="#05df72"
-                                                          strokeWidth="1.5"
-                                                          strokeDasharray="5,5"
-                                                          opacity="0.6"
-                                                        />
-                                                        {/* Dot on X axis */}
-                                                        <circle
-                                                          cx={mouseX}
-                                                          cy={paddingTop + chartHeight}
-                                                          r="4"
-                                                          fill="#05df72"
-                                                          opacity="0.8"
-                                                        />
-                                                      </>
-                                                    )}
+                                            const pathPoints = points.map(p => `${p.x},${p.y}`).join(' ');
+                                            const areaPath = `M ${paddingLeft},${paddingTop + chartHeight} L ${pathPoints} L ${paddingLeft + chartWidth},${paddingTop + chartHeight} Z`;
 
-                                                    {/* Gradient area */}
-                                                    <defs>
-                                                      <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                                        <stop offset="0%" stopColor="#00c950" stopOpacity="0.25" />
-                                                        <stop offset="100%" stopColor="#00c950" stopOpacity="0.05" />
-                                                      </linearGradient>
-                                                    </defs>
-                                                    <path d={areaPath} fill="url(#areaGradient)" />
+                                            // Y axis ticks
+                                            const yTicks = [];
+                                            const tickCount = 4;
+                                            for (let i = 0; i < tickCount; i++) {
+                                              const value = minPrice + (priceRange * i / (tickCount - 1));
+                                              const y = paddingTop + chartHeight - ((value - minPrice) / priceRange) * chartHeight;
+                                              yTicks.push({ value, y });
+                                            }
 
-                                                    {/* Main line */}
-                                                    <polyline
-                                                      fill="none"
-                                                      stroke="#05df72"
-                                                      strokeWidth="2.5"
-                                                      points={pathPoints}
-                                                      strokeLinecap="round"
-                                                      strokeLinejoin="round"
-                                                    />
+                                            // Move handlers to top-level scope
+                                            // ...existing code...
 
-                                                    {/* Data points */}
-                                                    {points.map((pt, idx) => (
-                                                      <g key={idx}>
-                                                        <circle
-                                                          cx={pt.x}
-                                                          cy={pt.y}
-                                                          r={hoveredPoint === idx ? "8" : "6"}
-                                                          fill={isDarkMode ? '#1e293b' : '#ffffff'}
-                                                          stroke="#00c950"
-                                                          strokeWidth={hoveredPoint === idx ? "3" : "2.5"}
-                                                          style={{
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.2s ease'
-                                                          }}
-                                                        />
-                                                        <circle
-                                                          cx={pt.x}
-                                                          cy={pt.y}
-                                                          r={hoveredPoint === idx ? "4" : "3"}
-                                                          fill="#7bf1a8"
-                                                          style={{ transition: 'all 0.2s ease' }}
-                                                        />
-                                                      </g>
-                                                    ))}
+                                            return (
+                                              <div className="w-80" onMouseLeave={() => { setMouseX(null); setHoveredPoint(null); }}>
+                                                <div className={`text-base font-bold text-left mb-3 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                  <CiCircleInfo className={`w-4 h-4 mr-1 ${isDarkMode ? 'text-white' : 'text-gray-500'}`} />
+                                                  <span>ประวัติการต่อรองราคา</span>
+                                                </div>
 
-                                                    {/* X axis */}
-                                                    <line
-                                                      x1={paddingLeft}
-                                                      y1={paddingTop + chartHeight}
-                                                      x2={paddingLeft + chartWidth}
-                                                      y2={paddingTop + chartHeight}
-                                                      stroke={isDarkMode ? '#475569' : '#d1d5db'}
-                                                      strokeWidth="1.5"
-                                                    />
-                                                    {points.map((pt, idx) => (
-                                                      <text
-                                                        key={idx}
-                                                        x={pt.x}
-                                                        y={paddingTop + chartHeight + 18}
-                                                        textAnchor="middle"
-                                                        fontSize="11"
-                                                        fill={isDarkMode ? '#94a3b8' : '#6b7280'}
-                                                        fontWeight="500"
-                                                      >
-                                                        รอบ {pt.round}
-                                                      </text>
-                                                    ))}
-
-                                                    {/* Y axis */}
-                                                    <line
-                                                      x1={paddingLeft}
-                                                      y1={paddingTop}
-                                                      x2={paddingLeft}
-                                                      y2={paddingTop + chartHeight}
-                                                      stroke={isDarkMode ? '#475569' : '#d1d5db'}
-                                                      strokeWidth="1.5"
-                                                    />
-                                                    {yTicks.map((tick, i) => (
-                                                      <text
-                                                        key={i}
-                                                        x={paddingLeft - 8}
-                                                        y={tick.y + 3}
-                                                        textAnchor="end"
-                                                        fontSize="10"
-                                                        fill={isDarkMode ? '#94a3b8' : '#6b7280'}
-                                                      >
-                                                        ฿{Math.round(tick.value)}
-                                                      </text>
-                                                    ))}
-                                                  </svg>
-
-                                                  {/* Hover tooltip */}
-                                                  {hoveredPoint !== null && (
-                                                    <div
-                                                      className={`absolute ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'} border rounded-xl p-3 shadow-xl z-50 pointer-events-none`}
-                                                      style={{
-                                                        left: points[hoveredPoint].x - 65,
-                                                        top: points[hoveredPoint].y - 130,
-                                                        minWidth: '130px',
-                                                        transform: 'translateX(0%)',
-                                                        textAlign: 'center'
+                                                {/* Chart Container */}
+                                                <div className={`rounded-xl mb-3 p-3 shadow-lg ${isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-gray-50 border border-gray-200'}`}>
+                                                  <div className="relative">
+                                                    <svg
+                                                      width={w}
+                                                      height={h}
+                                                      className="overflow-visible"
+                                                      onMouseMove={e => {
+                                                        const svg = e.currentTarget;
+                                                        const rect = svg.getBoundingClientRect();
+                                                        const x = e.clientX - rect.left;
+                                                        let closestIndex = 0;
+                                                        let closestDistance = Math.abs(x - points[0].x);
+                                                        points.forEach((pt, idx) => {
+                                                          const distance = Math.abs(x - pt.x);
+                                                          if (distance < closestDistance) {
+                                                            closestDistance = distance;
+                                                            closestIndex = idx;
+                                                          }
+                                                        });
+                                                        setMouseX(points[closestIndex].x);
+                                                        setHoveredPoint(closestIndex);
                                                       }}
+                                                      onMouseLeave={() => { setMouseX(null); setHoveredPoint(null); }}
+                                                      style={{ cursor: 'crosshair' }}
                                                     >
-                                                      <div className={`text-sm font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                                        รอบที่ {points[hoveredPoint].round}
+                                                      {/* Grid lines */}
+                                                      {yTicks.map((tick, i) => (
+                                                        <line
+                                                          key={i}
+                                                          x1={paddingLeft}
+                                                          y1={tick.y}
+                                                          x2={paddingLeft + chartWidth}
+                                                          y2={tick.y}
+                                                          stroke={isDarkMode ? '#334155' : '#e5e7eb'}
+                                                          strokeWidth="1"
+                                                          strokeDasharray="3,3"
+                                                          opacity="0.5"
+                                                        />
+                                                      ))}
+
+                                                      {/* Vertical line on hover */}
+                                                      {mouseX !== null && (
+                                                        <>
+                                                          <line
+                                                            x1={mouseX}
+                                                            y1={paddingTop}
+                                                            x2={mouseX}
+                                                            y2={paddingTop + chartHeight}
+                                                            stroke="#05df72"
+                                                            strokeWidth="1.5"
+                                                            strokeDasharray="5,5"
+                                                            opacity="0.6"
+                                                          />
+                                                          {/* Dot on X axis */}
+                                                          <circle
+                                                            cx={mouseX}
+                                                            cy={paddingTop + chartHeight}
+                                                            r="4"
+                                                            fill="#05df72"
+                                                            opacity="0.8"
+                                                          />
+                                                        </>
+                                                      )}
+
+                                                      {/* Gradient area */}
+                                                      <defs>
+                                                        <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                                          <stop offset="0%" stopColor="#00c950" stopOpacity="0.25" />
+                                                          <stop offset="100%" stopColor="#00c950" stopOpacity="0.05" />
+                                                        </linearGradient>
+                                                      </defs>
+                                                      <path d={areaPath} fill="url(#areaGradient)" />
+
+                                                      {/* Main line */}
+                                                      <polyline
+                                                        fill="none"
+                                                        stroke="#05df72"
+                                                        strokeWidth="2.5"
+                                                        points={pathPoints}
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                      />
+
+                                                      {/* Data points */}
+                                                      {points.map((pt, idx) => (
+                                                        <g key={idx}>
+                                                          <circle
+                                                            cx={pt.x}
+                                                            cy={pt.y}
+                                                            r={hoveredPoint === idx ? "8" : "6"}
+                                                            fill={isDarkMode ? '#1e293b' : '#ffffff'}
+                                                            stroke="#00c950"
+                                                            strokeWidth={hoveredPoint === idx ? "3" : "2.5"}
+                                                            style={{
+                                                              cursor: 'pointer',
+                                                              transition: 'all 0.2s ease'
+                                                            }}
+                                                          />
+                                                          <circle
+                                                            cx={pt.x}
+                                                            cy={pt.y}
+                                                            r={hoveredPoint === idx ? "4" : "3"}
+                                                            fill="#7bf1a8"
+                                                            style={{ transition: 'all 0.2s ease' }}
+                                                          />
+                                                        </g>
+                                                      ))}
+
+                                                      {/* X axis */}
+                                                      <line
+                                                        x1={paddingLeft}
+                                                        y1={paddingTop + chartHeight}
+                                                        x2={paddingLeft + chartWidth}
+                                                        y2={paddingTop + chartHeight}
+                                                        stroke={isDarkMode ? '#475569' : '#d1d5db'}
+                                                        strokeWidth="1.5"
+                                                      />
+                                                      {points.map((pt, idx) => (
+                                                        <text
+                                                          key={idx}
+                                                          x={pt.x}
+                                                          y={paddingTop + chartHeight + 18}
+                                                          textAnchor="middle"
+                                                          fontSize="11"
+                                                          fill={isDarkMode ? '#94a3b8' : '#6b7280'}
+                                                          fontWeight="500"
+                                                        >
+                                                          รอบ {pt.round}
+                                                        </text>
+                                                      ))}
+
+                                                      {/* Y axis */}
+                                                      <line
+                                                        x1={paddingLeft}
+                                                        y1={paddingTop}
+                                                        x2={paddingLeft}
+                                                        y2={paddingTop + chartHeight}
+                                                        stroke={isDarkMode ? '#475569' : '#d1d5db'}
+                                                        strokeWidth="1.5"
+                                                      />
+                                                      {yTicks.map((tick, i) => (
+                                                        <text
+                                                          key={i}
+                                                          x={paddingLeft - 8}
+                                                          y={tick.y + 3}
+                                                          textAnchor="end"
+                                                          fontSize="10"
+                                                          fill={isDarkMode ? '#94a3b8' : '#6b7280'}
+                                                        >
+                                                          ฿{Math.round(tick.value)}
+                                                        </text>
+                                                      ))}
+                                                    </svg>
+
+                                                    {/* Hover tooltip */}
+                                                    {hoveredPoint !== null && (
+                                                      <div
+                                                        className={`absolute ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'} border rounded-xl p-3 shadow-xl z-50 pointer-events-none`}
+                                                        style={{
+                                                          left: points[hoveredPoint].x - 65,
+                                                          top: points[hoveredPoint].y - 130,
+                                                          minWidth: '130px',
+                                                          transform: 'translateX(0%)',
+                                                          textAlign: 'center'
+                                                        }}
+                                                      >
+                                                        <div className={`text-sm font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                          รอบที่ {points[hoveredPoint].round}
+                                                        </div>
+                                                        <div className={`text-xs mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                          ราคาต่อรอง
+                                                        </div>
+                                                        <div className="flex gap-2 items-center mb-1">
+                                                          <span className={`px-2 py-1 rounded-lg text-xs font-bold ${isDarkMode ? 'bg-slate-800 text-emerald-400' : 'bg-gray-100 text-gray-900'}`}>
+                                                            ฿{points[hoveredPoint].price}
+                                                          </span>
+                                                          {hoveredPoint > 0 && (() => {
+                                                            const prev = points[hoveredPoint - 1].price;
+                                                            const curr = points[hoveredPoint].price;
+                                                            const diff = curr - prev;
+                                                            const percent = ((diff / prev) * 100).toFixed(1);
+                                                            const isIncrease = diff > 0;
+                                                            const sign = isIncrease ? '+' : '';
+                                                            const colorClass = isIncrease
+                                                              ? (isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-700')
+                                                              : (isDarkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-700');
+                                                            return (
+                                                              <span className={`px-2 py-1 rounded-lg text-xs font-bold ${colorClass}`}>
+                                                                {sign}{percent}%
+                                                              </span>
+                                                            );
+                                                          })()}
+                                                        </div>
+                                                        <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                          {hoveredPoint > 0 ? 'จากรอบก่อนหน้า' : 'ราคาเริ่มต้น'}
+                                                        </div>
                                                       </div>
-                                                      <div className={`text-xs mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                        ราคาต่อรอง
-                                                      </div>
-                                                      <div className="flex gap-2 items-center mb-1">
-                                                        <span className={`px-2 py-1 rounded-lg text-xs font-bold ${isDarkMode ? 'bg-slate-800 text-emerald-400' : 'bg-gray-100 text-gray-900'}`}>
-                                                          ฿{points[hoveredPoint].price}
-                                                        </span>
-                                                        {hoveredPoint > 0 && (() => {
-                                                          const prev = points[hoveredPoint - 1].price;
-                                                          const curr = points[hoveredPoint].price;
-                                                          const diff = curr - prev;
-                                                          const percent = ((diff / prev) * 100).toFixed(1);
-                                                          const isIncrease = diff > 0;
-                                                          const sign = isIncrease ? '+' : '';
-                                                          const colorClass = isIncrease
-                                                            ? (isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-700')
-                                                            : (isDarkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-700');
-                                                          return (
-                                                            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${colorClass}`}>
-                                                              {sign}{percent}%
-                                                            </span>
-                                                          );
-                                                        })()}
-                                                      </div>
-                                                      <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                                        {hoveredPoint > 0 ? 'จากรอบก่อนหน้า' : 'ราคาเริ่มต้น'}
-                                                      </div>
-                                                    </div>
-                                                  )}
+                                                    )}
+                                                  </div>
+                                                </div>
+
+                                                {/* Summary */}
+                                                <div className={`text-center text-xs mb-2 ${isDarkMode ? 'text-white' : 'text-slate-600'} font-semibold`}>
+                                                  มีการต่อรองราคา {priceRounds.length} รอบ
+                                                </div>
+
+                                                {/* Price list */}
+                                                <div className="flex flex-wrap justify-center gap-2 text-xs">
+                                                  {priceRounds.map((price, idx) => (
+                                                    <span
+                                                      key={idx}
+                                                      className={`px-2 py-1 rounded-lg font-semibold ${isDarkMode
+                                                        ? 'bg-slate-800 text-emerald-300'
+                                                        : 'bg-emerald-50 text-emerald-700'
+                                                        }`}
+                                                    >
+                                                      รอบ {idx + 1}: ฿{price}
+                                                    </span>
+                                                  ))}
                                                 </div>
                                               </div>
+                                            );
+                                          })()}
+                                          showArrow={true}
+                                          placement="left"
+                                          classNames={{
+                                            content: isDarkMode
+                                              ? "bg-slate-900 text-white border border-slate-700 shadow-lg rounded-2xl px-4 py-4 m-1"
+                                              : "bg-white text-gray-900 border border-gray-200 shadow-lg rounded-2xl px-4 py-4 m-1",
+                                            arrow: isDarkMode
+                                              ? "fill-slate-900 border-slate-700"
+                                              : "fill-white border-gray-200",
+                                          }}
+                                        >
+                                          <CiCircleInfo className={`w-4 h-4 mr-1 cursor-pointer ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                                        </Tooltip>
+                                        <input
+                                          type="text"
+                                          inputMode="decimal"
+                                          className={`w-24 px-2 py-1 rounded border text-right font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'} focus:outline-none focus:ring-2 focus:ring-emerald-400`}
+                                          value={(() => {
+                                            // Show the raw string if user is editing, otherwise show number
+                                            const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
+                                            if (typeof found?.rawPrice === 'string') return found.rawPrice;
+                                            if (typeof found?.price === 'number' && !isNaN(found.price)) return found.price === 0 ? '' : String(found.price);
+                                            if (typeof vendor.price === 'number' && vendor.price !== null && !isNaN(vendor.price)) return vendor.price === 0 ? '' : String(vendor.price);
+                                            return '';
+                                          })()}
+                                          onClick={e => e.stopPropagation()}
+                                          onFocus={e => {
+                                            e.stopPropagation();
+                                          }}
+                                          onBlur={() => {
+                                            // On blur, parse and save as number, remove rawPrice
+                                            const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
+                                            const val = found?.rawPrice ?? '';
+                                            const num = Number(val);
+                                            setEditedPrices(prev => {
+                                              const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                              if (exists) {
+                                                return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, price: isNaN(num) ? 0 : num, rawPrice: undefined } : p);
+                                              } else {
+                                                return [...prev, { compare_id: vendor.compare_id, price: isNaN(num) ? 0 : num }];
+                                              }
+                                            });
+                                            if (typeof handlePriceBlur === 'function') handlePriceBlur();
+                                          }}
+                                          onChange={e => {
+                                            let val = e.target.value;
+                                            // Allow only digits and one dot
+                                            val = val.replace(/[^\d.]/g, '');
+                                            // Only one dot allowed
+                                            const parts = val.split('.');
+                                            if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                                            // Remove leading zeros from integer part (except for 0. cases)
+                                            if (/^0\d+/.test(val)) val = val.replace(/^0+/, '');
+                                            // Prevent negative
+                                            if (val.startsWith('-')) val = val.replace(/^-+/, '');
+                                            setEditedPrices(prev => {
+                                              const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                              if (exists) {
+                                                return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, rawPrice: val } : p);
+                                              } else {
+                                                return [...prev, { compare_id: vendor.compare_id, rawPrice: val }];
+                                              }
+                                            });
+                                          }}
+                                          disabled={isDisabled}
+                                        />
+                                      </span>
+                                      {/* <span>฿</span> */}
+                                    </span>
+                                  </td>
+                                  {/* DISCOUNT EDIT */}
+                                  <td className={`px-2 py-2 text-sm font-bold text-center ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                    <div className="flex flex-col items-center w-[140px] mx-auto min-h-[48px] justify-center">
+                                      {(() => {
+                                        const currentDiscounts = editedPrices.find(p => p.compare_id === vendor.compare_id)?.discounts || vendor.discount || [];
 
-                                              {/* Summary */}
-                                              <div className={`text-center text-xs mb-2 ${isDarkMode ? 'text-white' : 'text-slate-600'} font-semibold`}>
-                                                มีการต่อรองราคา {priceRounds.length} รอบ
-                                              </div>
-
-                                              {/* Price list */}
-                                              <div className="flex flex-wrap justify-center gap-2 text-xs">
-                                                {priceRounds.map((price, idx) => (
-                                                  <span
-                                                    key={idx}
-                                                    className={`px-2 py-1 rounded-lg font-semibold ${isDarkMode
-                                                      ? 'bg-slate-800 text-emerald-300'
-                                                      : 'bg-emerald-50 text-emerald-700'
-                                                      }`}
-                                                  >
-                                                    รอบ {idx + 1}: ฿{price}
-                                                  </span>
-                                                ))}
-                                              </div>
+                                        // ถ้ายังไม่มี discount ให้ปุ่มเพิ่มอยู่ตรงกลาง
+                                        if (currentDiscounts.length === 0) {
+                                          return (
+                                            <div className="flex justify-center items-center min-h-[48px]">
+                                              {!isDisabled && (
+                                                <button
+                                                  type="button"
+                                                  className={`w-7 h-7 rounded-full text-base leading-none opacity-70 hover:opacity-100 transition-all ${isDarkMode
+                                                    ? 'bg-orange-600/50 text-orange-300 hover:bg-orange-500'
+                                                    : 'bg-orange-300 text-orange-700 hover:bg-orange-400'
+                                                    }`}
+                                                  onClick={e => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    setEditedPrices(prev => {
+                                                      const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                                      if (exists) {
+                                                        return prev.map(p => p.compare_id === vendor.compare_id
+                                                          ? { ...p, discounts: [0] }
+                                                          : p
+                                                        );
+                                                      } else {
+                                                        return [...prev, { compare_id: vendor.compare_id, discounts: [0] }];
+                                                      }
+                                                    });
+                                                  }}
+                                                  title="เพิ่มส่วนลด"
+                                                  disabled={isDisabled}
+                                                >+</button>
+                                              )}
                                             </div>
                                           );
-                                        })()}
-                                        showArrow={true}
-                                        placement="left"
-                                        classNames={{
-                                          content: isDarkMode
-                                            ? "bg-slate-900 text-white border border-slate-700 shadow-lg rounded-2xl px-4 py-4 m-1"
-                                            : "bg-white text-gray-900 border border-gray-200 shadow-lg rounded-2xl px-4 py-4 m-1",
-                                          arrow: isDarkMode
-                                            ? "fill-slate-900 border-slate-700"
-                                            : "fill-white border-gray-200",
-                                        }}
-                                      >
-                                        <CiCircleInfo className={`w-4 h-4 mr-1 cursor-pointer ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
-                                      </Tooltip>
-                                      <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        className={`w-24 px-2 py-1 rounded border text-right font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'} focus:outline-none focus:ring-2 focus:ring-emerald-400`}
-                                        value={(() => {
-                                          // Show the raw string if user is editing, otherwise show number
-                                          const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
-                                          if (typeof found?.rawPrice === 'string') return found.rawPrice;
-                                          if (typeof found?.price === 'number' && !isNaN(found.price)) return found.price === 0 ? '' : String(found.price);
-                                          if (typeof vendor.price === 'number' && vendor.price !== null && !isNaN(vendor.price)) return vendor.price === 0 ? '' : String(vendor.price);
-                                          return '';
-                                        })()}
-                                        onClick={e => e.stopPropagation()}
-                                        onFocus={e => {
-                                          e.stopPropagation();
-                                        }}
-                                        onBlur={() => {
-                                          // On blur, parse and save as number, remove rawPrice
-                                          const found = editedPrices.find(p => p.compare_id === vendor.compare_id);
-                                          const val = found?.rawPrice ?? '';
-                                          const num = Number(val);
-                                          setEditedPrices(prev => {
-                                            const exists = prev.find(p => p.compare_id === vendor.compare_id);
-                                            if (exists) {
-                                              return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, price: isNaN(num) ? 0 : num, rawPrice: undefined } : p);
-                                            } else {
-                                              return [...prev, { compare_id: vendor.compare_id, price: isNaN(num) ? 0 : num }];
-                                            }
-                                          });
-                                          if (typeof handlePriceBlur === 'function') handlePriceBlur();
-                                        }}
-                                        onChange={e => {
-                                          let val = e.target.value;
-                                          // Allow only digits and one dot
-                                          val = val.replace(/[^\d.]/g, '');
-                                          // Only one dot allowed
-                                          const parts = val.split('.');
-                                          if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
-                                          // Remove leading zeros from integer part (except for 0. cases)
-                                          if (/^0\d+/.test(val)) val = val.replace(/^0+/, '');
-                                          // Prevent negative
-                                          if (val.startsWith('-')) val = val.replace(/^-+/, '');
-                                          setEditedPrices(prev => {
-                                            const exists = prev.find(p => p.compare_id === vendor.compare_id);
-                                            if (exists) {
-                                              return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, rawPrice: val } : p);
-                                            } else {
-                                              return [...prev, { compare_id: vendor.compare_id, rawPrice: val }];
-                                            }
-                                          });
-                                        }}
-                                        disabled={isDisabled}
-                                      />
-                                    </span>
-                                    {/* <span>฿</span> */}
-                                  </span>
-                                </td>
-                                {/* DISCOUNT EDIT */}
-                                <td className={`px-2 py-2 text-sm font-bold text-center ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                                  <div className="flex flex-col items-center w-[140px] mx-auto min-h-[48px] justify-center">
-                                    {(() => {
-                                      const currentDiscounts = editedPrices.find(p => p.compare_id === vendor.compare_id)?.discounts || vendor.discount || [];
+                                        }
 
-                                      // ถ้ายังไม่มี discount ให้ปุ่มเพิ่มอยู่ตรงกลาง
-                                      if (currentDiscounts.length === 0) {
+                                        // จัดกลุ่มส่วนลดเป็นบรรทัดละ 2 รายการ
+                                        const discountRows = [];
+                                        for (let i = 0; i < currentDiscounts.length; i += 2) {
+                                          discountRows.push(currentDiscounts.slice(i, i + 2));
+                                        }
+
                                         return (
-                                          <div className="flex justify-center items-center min-h-[48px]">
-                                            {!isDisabled && (
-                                              <button
-                                                type="button"
-                                                className={`w-7 h-7 rounded-full text-base leading-none opacity-70 hover:opacity-100 transition-all ${isDarkMode
-                                                  ? 'bg-emerald-600/50 text-emerald-300 hover:bg-emerald-500'
-                                                  : 'bg-emerald-300 text-emerald-700 hover:bg-emerald-400'
-                                                  }`}
-                                                onClick={e => {
-                                                  e.stopPropagation();
-                                                  e.preventDefault();
-                                                  setEditedPrices(prev => {
-                                                    const exists = prev.find(p => p.compare_id === vendor.compare_id);
-                                                    if (exists) {
-                                                      return prev.map(p => p.compare_id === vendor.compare_id
-                                                        ? { ...p, discounts: [0] }
-                                                        : p
-                                                      );
-                                                    } else {
-                                                      return [...prev, { compare_id: vendor.compare_id, discounts: [0] }];
-                                                    }
-                                                  });
-                                                }}
-                                                title="เพิ่มส่วนลด"
-                                                disabled={isDisabled}
-                                              >+</button>
+                                          <div className="w-full space-y-1">
+                                            {/* แสดงส่วนลดแต่ละบรรทัด */}
+                                            {discountRows.map((row, rowIdx) => (
+                                              <div key={rowIdx} className="flex items-center justify-center gap-1">
+                                                {row.map((discount, colIdx) => {
+                                                  const originalIdx = rowIdx * 2 + colIdx;
+                                                  return (
+                                                    <Tooltip
+                                                      key={originalIdx}
+                                                      content={`ส่วนลดลำดับที่ ${originalIdx + 1}: ${discount}%`}
+                                                      showArrow={true}
+                                                      placement="top"
+                                                      classNames={{
+                                                        content: isDarkMode
+                                                          ? "text-xs bg-slate-900 text-orange-300 border border-slate-700 shadow-lg rounded"
+                                                          : "text-xs bg-white text-orange-700 border border-orange-200 shadow-lg rounded",
+                                                        arrow: isDarkMode
+                                                          ? "fill-slate-900 border-slate-700"
+                                                          : "fill-white border-orange-200",
+                                                      }}
+                                                    >
+                                                      <div className={`flex items-center gap-0.5 rounded-md px-1.5 py-1 transition-all duration-200 ${isDarkMode
+                                                        ? 'bg-slate-800/60 border border-slate-600/40 hover:bg-slate-700/70 hover:border-slate-500/60'
+                                                        : 'bg-orange-50/80 border border-orange-200/60 hover:bg-orange-100/90 hover:border-orange-300/80'
+                                                        }`}>
+                                                        <input
+                                                          type="number"
+                                                          min={0}
+                                                          max={100}
+                                                          step={0.1}
+                                                          className={`w-14 px-1 py-0.5 rounded text-center font-medium text-xs border-0 ${isDarkMode
+                                                            ? 'bg-slate-900/80 text-orange-300 focus:bg-slate-800'
+                                                            : 'bg-white/90 text-orange-700 focus:bg-white'
+                                                            } focus:outline-none focus:ring-1 focus:ring-orange-400/30`}
+                                                          value={discount}
+                                                          onClick={e => e.stopPropagation()}
+                                                          onFocus={e => e.target.select()}
+                                                          onChange={e => {
+                                                            let newValue = Number(e.target.value);
+                                                            if (isNaN(newValue) || e.target.value === '') newValue = 0;
+                                                            if (newValue > 100) newValue = 100;
+                                                            setEditedPrices(prev => {
+                                                              const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                                              if (exists) {
+                                                                const newDiscounts = [...(exists.discounts || [])];
+                                                                newDiscounts[originalIdx] = newValue;
+                                                                return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, discounts: newDiscounts } : p);
+                                                              } else {
+                                                                const discounts = [...currentDiscounts];
+                                                                discounts[originalIdx] = newValue;
+                                                                return [...prev, { compare_id: vendor.compare_id, discounts }];
+                                                              }
+                                                            });
+                                                          }}
+                                                          disabled={isDisabled}
+                                                        />
+                                                        {/* <span className="text-xs opacity-60">%</span> */}
+                                                        {currentDiscounts.length > 1 && !isDisabled && (
+                                                          <button
+                                                            type="button"
+                                                            className={`w-3 h-3 rounded-full flex items-center justify-center text-xs leading-none opacity-40 hover:opacity-100 transition-opacity ${isDarkMode
+                                                              ? 'bg-red-600/60 text-red-200 hover:bg-red-500'
+                                                              : 'bg-red-300 text-red-700 hover:bg-red-400'
+                                                              }`}
+                                                            onClick={e => {
+                                                              e.stopPropagation();
+                                                              setEditedPrices(prev => {
+                                                                return prev.map(p => {
+                                                                  if (p.compare_id === vendor.compare_id) {
+                                                                    const newDiscounts = [...(p.discounts || [])];
+                                                                    newDiscounts.splice(originalIdx, 1);
+                                                                    return { ...p, discounts: newDiscounts };
+                                                                  }
+                                                                  return p;
+                                                                });
+                                                              });
+                                                            }}
+                                                            title="ลบส่วนลด"
+                                                          >×</button>
+                                                        )}
+                                                      </div>
+                                                    </Tooltip>
+                                                  );
+                                                })}
+                                              </div>
+                                            ))}
+
+                                            {/* ปุ่มเพิ่มส่วนลด */}
+                                            {currentDiscounts.length < 6 && !isDisabled && (
+                                              <div className="flex justify-center">
+                                                <button
+                                                  type="button"
+                                                  className={`w-5 h-5 rounded-full text-xs leading-none opacity-50 hover:opacity-100 transition-all ${isDarkMode
+                                                    ? 'bg-emerald-600/50 text-emerald-300 hover:bg-emerald-500'
+                                                    : 'bg-emerald-300 text-emerald-700 hover:bg-emerald-400'
+                                                    }`}
+                                                  onClick={e => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    setEditedPrices(prev => {
+                                                      const exists = prev.find(p => p.compare_id === vendor.compare_id);
+                                                      if (exists) {
+                                                        return prev.map(p => p.compare_id === vendor.compare_id
+                                                          ? { ...p, discounts: [...(p.discounts || []), 0] }
+                                                          : p
+                                                        );
+                                                      } else {
+                                                        return [...prev, { compare_id: vendor.compare_id, discounts: [...currentDiscounts, 0] }];
+                                                      }
+                                                    });
+                                                  }}
+                                                  title="เพิ่มส่วนลด"
+                                                  disabled={isDisabled}
+                                                >+</button>
+                                              </div>
                                             )}
                                           </div>
                                         );
-                                      }
-
-                                      // จัดกลุ่มส่วนลดเป็นบรรทัดละ 2 รายการ
-                                      const discountRows = [];
-                                      for (let i = 0; i < currentDiscounts.length; i += 2) {
-                                        discountRows.push(currentDiscounts.slice(i, i + 2));
-                                      }
-
-                                      return (
-                                        <div className="w-full space-y-1">
-                                          {/* แสดงส่วนลดแต่ละบรรทัด */}
-                                          {discountRows.map((row, rowIdx) => (
-                                            <div key={rowIdx} className="flex items-center justify-center gap-1">
-                                              {row.map((discount, colIdx) => {
-                                                const originalIdx = rowIdx * 2 + colIdx;
-                                                return (
-                                                  <Tooltip
-                                                    key={originalIdx}
-                                                    content={`ส่วนลดลำดับที่ ${originalIdx + 1}: ${discount}%`}
-                                                    showArrow={true}
-                                                    placement="top"
-                                                    classNames={{
-                                                      content: isDarkMode
-                                                        ? "text-xs bg-slate-900 text-orange-300 border border-slate-700 shadow-lg rounded"
-                                                        : "text-xs bg-white text-orange-700 border border-orange-200 shadow-lg rounded",
-                                                      arrow: isDarkMode
-                                                        ? "fill-slate-900 border-slate-700"
-                                                        : "fill-white border-orange-200",
-                                                    }}
-                                                  >
-                                                    <div className={`flex items-center gap-0.5 rounded-md px-1.5 py-1 transition-all duration-200 ${isDarkMode
-                                                      ? 'bg-slate-800/60 border border-slate-600/40 hover:bg-slate-700/70 hover:border-slate-500/60'
-                                                      : 'bg-orange-50/80 border border-orange-200/60 hover:bg-orange-100/90 hover:border-orange-300/80'
-                                                      }`}>
-                                                      <input
-                                                        type="number"
-                                                        min={0}
-                                                        max={100}
-                                                        step={0.1}
-                                                        className={`w-14 px-1 py-0.5 rounded text-center font-medium text-xs border-0 ${isDarkMode
-                                                          ? 'bg-slate-900/80 text-orange-300 focus:bg-slate-800'
-                                                          : 'bg-white/90 text-orange-700 focus:bg-white'
-                                                          } focus:outline-none focus:ring-1 focus:ring-orange-400/30`}
-                                                        value={discount}
-                                                        onClick={e => e.stopPropagation()}
-                                                        onFocus={e => e.target.select()}
-                                                        onChange={e => {
-                                                          let newValue = Number(e.target.value);
-                                                          if (isNaN(newValue) || e.target.value === '') newValue = 0;
-                                                          if (newValue > 100) newValue = 100;
-                                                          setEditedPrices(prev => {
-                                                            const exists = prev.find(p => p.compare_id === vendor.compare_id);
-                                                            if (exists) {
-                                                              const newDiscounts = [...(exists.discounts || [])];
-                                                              newDiscounts[originalIdx] = newValue;
-                                                              return prev.map(p => p.compare_id === vendor.compare_id ? { ...p, discounts: newDiscounts } : p);
-                                                            } else {
-                                                              const discounts = [...currentDiscounts];
-                                                              discounts[originalIdx] = newValue;
-                                                              return [...prev, { compare_id: vendor.compare_id, discounts }];
-                                                            }
-                                                          });
-                                                        }}
-                                                        disabled={isDisabled}
-                                                      />
-                                                      {/* <span className="text-xs opacity-60">%</span> */}
-                                                      {currentDiscounts.length > 1 && !isDisabled && (
-                                                        <button
-                                                          type="button"
-                                                          className={`w-3 h-3 rounded-full flex items-center justify-center text-xs leading-none opacity-40 hover:opacity-100 transition-opacity ${isDarkMode
-                                                            ? 'bg-red-600/60 text-red-200 hover:bg-red-500'
-                                                            : 'bg-red-300 text-red-700 hover:bg-red-400'
-                                                            }`}
-                                                          onClick={e => {
-                                                            e.stopPropagation();
-                                                            setEditedPrices(prev => {
-                                                              return prev.map(p => {
-                                                                if (p.compare_id === vendor.compare_id) {
-                                                                  const newDiscounts = [...(p.discounts || [])];
-                                                                  newDiscounts.splice(originalIdx, 1);
-                                                                  return { ...p, discounts: newDiscounts };
-                                                                }
-                                                                return p;
-                                                              });
-                                                            });
-                                                          }}
-                                                          title="ลบส่วนลด"
-                                                        >×</button>
-                                                      )}
-                                                    </div>
-                                                  </Tooltip>
-                                                );
-                                              })}
-                                            </div>
-                                          ))}
-
-                                          {/* ปุ่มเพิ่มส่วนลด */}
-                                          {currentDiscounts.length < 6 && !isDisabled && (
-                                            <div className="flex justify-center">
-                                              <button
-                                                type="button"
-                                                className={`w-5 h-5 rounded-full text-xs leading-none opacity-50 hover:opacity-100 transition-all ${isDarkMode
-                                                  ? 'bg-emerald-600/50 text-emerald-300 hover:bg-emerald-500'
-                                                  : 'bg-emerald-300 text-emerald-700 hover:bg-emerald-400'
-                                                  }`}
-                                                onClick={e => {
-                                                  e.stopPropagation();
-                                                  e.preventDefault();
-                                                  setEditedPrices(prev => {
-                                                    const exists = prev.find(p => p.compare_id === vendor.compare_id);
-                                                    if (exists) {
-                                                      return prev.map(p => p.compare_id === vendor.compare_id
-                                                        ? { ...p, discounts: [...(p.discounts || []), 0] }
-                                                        : p
-                                                      );
-                                                    } else {
-                                                      return [...prev, { compare_id: vendor.compare_id, discounts: [...currentDiscounts, 0] }];
-                                                    }
-                                                  });
-                                                }}
-                                                title="เพิ่มส่วนลด"
-                                                disabled={isDisabled}
-                                              >+</button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-                                  </div>
-                                </td>
-                                {/* DELIVERY DATE */}
-                                <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                  {vendor.due_date ? new Date(vendor.due_date).toLocaleDateString('th-TH', {
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit'
-                                  }) : '-'}
-                                </td>
-                                {/* ACTIONS */}
-                                <td className="px-4 py-3 text-center">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      type="button"
-                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-purple-300 hover:text-white hover:bg-purple-700/30' : 'text-purple-600 hover:text-white hover:bg-purple-500/80'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                                      onClick={e => {
-                                        if (isDisabled) return;
-                                        e.stopPropagation();
-                                        handleEditVendor({
-                                          ID: vendor.vendor_id,
-                                          vendor_code: vendor.vendor_code,
-                                          vendor_name: vendor.vendor_name,
-                                          tax_id: vendor.tax_id ?? null,
-                                          credit_term: vendor.credit_term,
-                                          tel_no: vendor.tel,
-                                          fax_no: vendor.fax_no ?? '',
-                                          contact_person: vendor.contact_name ?? '',
-                                          email: vendor.email ?? '',
-                                        });
-                                      }}
-                                      disabled={isDisabled}
-                                    >
-                                      <CiEdit size={24} className="inline align-middle" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={`text-sm font-medium group p-1 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-300 hover:text-white hover:bg-red-700/30' : 'text-red-600 hover:text-white hover:bg-red-500/80'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                                      onClick={e => {
-                                        if (isDisabled) return;
-                                        e.stopPropagation();
-                                        if (window.confirm(`ต้องการลบ ${vendor.vendor_name} ออกจากรายการเปรียบเทียบ?`)) {
-                                          handleDeleteVendor(vendor);
-                                        }
-                                      }}
-                                      disabled={isDisabled}
-                                    >
-                                      <IoTrashBinOutline size={20} className="inline align-middle" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
+                                      })()}
+                                    </div>
+                                  </td>
+                                  {/* DELIVERY DATE */}
+                                  <td className={`px-4 py-3 text-sm text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    {vendor.due_date ? new Date(vendor.due_date).toLocaleDateString('th-TH', {
+                                      year: 'numeric',
+                                      month: '2-digit',
+                                      day: '2-digit'
+                                    }) : '-'}
+                                  </td>
+                                </tr>
+                                {/* Note Row - แถวหมายเหตุใต้แต่ละ vendor */}
+                                <tr className={`${isDarkMode ? 'bg-slate-800/50' : 'bg-gray-50/80'} border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'} ${isDisabled ? 'opacity-60' : ''}`}>
+                                  <td className="px-4 py-2" />
+                                  <td className="px-4 py-2" />
+                                  <td className="px-4 py-2 flex justify-center" ><LuNotebookPen className={`w-4 h-4 ${isDisabled ? 'text-amber-400/100' : 'text-amber-400'}`} /></td>
+                                  <td className="px-4 py-2 text-xs align-top" style={{ width: '180px' }}>
+                                    <span className={`${isDisabled ? (isDarkMode ? 'text-amber-300/100' : 'text-amber-600/100') : (isDarkMode ? 'text-amber-300' : 'text-amber-600')}`}>
+                                      {/* ตัวอย่างข้อมูลหมายเหตุ - ในอนาคตสามารถดึงจาก vendor.note หรือ API */}
+                                      {index === 0 && "หมายเหตุ : ผู้ขายรายนี้มีสินค้าพร้อมส่งทันที"}
+                                      {index === 1 && "หมายเหตุ : ราคานี้รวมค่าขนส่งและติดตั้งแล้ว รับประกันสินค้า 2 ปี"}
+                                      {index === 2 && "หมายเหตุ : สินค้าต้องสั่งผลิตล่วงหน้า 7 วัน มีค่าบริการเพิ่มเติม 500 บาท"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2" />
+                                  <td className="px-4 py-2" />
+                                  <td className="px-4 py-2" />
+                                  <td className="px-4 py-2" />
+                                  <td className="px-4 py-2" />
+                                </tr>
+                              </React.Fragment>
                             );
                           }) : (
                             <tr>
@@ -4477,57 +4585,65 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             </div>
           </div>
         </div>
-      </div>
+      </div >
       {/* Open Modal */}
-      {showCreateVendor && (
-        <CreateVendor
-          pcl_id={compareData?.pcl_id}
-          onCancel={() => setShowCreateVendor(false)}
-          onConfirm={() => {
-            setShowCreateVendor(false);
-            // รีโหลดข้อมูลใหม่และไปที่ tab เปรียบเทียบราคา
-            if (typeof fetchCompareData === 'function') fetchCompareData();
-            setActiveTab('compare');
-          }}
-        />
-      )}
-      {showEditVendor && (
-        <EditVendor
-          vendorData={editVendorData ? {
-            ...editVendorData,
-            tax_id: editVendorData.tax_id ?? undefined,
-            fax_no: editVendorData.fax_no ?? undefined,
-            email: editVendorData.email ?? undefined,
-            tel: editVendorData.tel_no ?? undefined,
-            contact_name: editVendorData.contact_person ?? undefined,
-          } : undefined}
-          source="PRModal"
-          onCancel={() => setShowEditVendor(false)}
-          onConfirm={() => {
-            setShowEditVendor(false);
-            if (typeof fetchCompareData === 'function') fetchCompareData();
-            setActiveTab('compare');
-          }}
-        />
-      )}
-      {showRejectModal && (
-        <RejectCompare
-          open={showRejectModal}
-          onClose={() => setShowRejectModal(false)}
-          onConfirm={handleConfirmRejectCompare}
-          reason={rejectReason}
-          setReason={setRejectReason}
-        />
-      )}
+      {
+        showCreateVendor && (
+          <CreateVendor
+            pcl_id={compareData?.pcl_id}
+            onCancel={() => setShowCreateVendor(false)}
+            onConfirm={() => {
+              setShowCreateVendor(false);
+              // รีโหลดข้อมูลใหม่และไปที่ tab เปรียบเทียบราคา
+              if (typeof fetchCompareData === 'function') fetchCompareData();
+              setActiveTab('compare');
+            }}
+          />
+        )
+      }
+      {
+        showEditVendor && (
+          <EditVendor
+            vendorData={editVendorData ? {
+              ...editVendorData,
+              tax_id: editVendorData.tax_id ?? undefined,
+              fax_no: editVendorData.fax_no ?? undefined,
+              email: editVendorData.email ?? undefined,
+              tel: editVendorData.tel_no ?? undefined,
+              contact_name: editVendorData.contact_person ?? undefined,
+            } : undefined}
+            source="PRModal"
+            onCancel={() => setShowEditVendor(false)}
+            onConfirm={() => {
+              setShowEditVendor(false);
+              if (typeof fetchCompareData === 'function') fetchCompareData();
+              setActiveTab('compare');
+            }}
+          />
+        )
+      }
+      {
+        showRejectModal && (
+          <RejectCompare
+            open={showRejectModal}
+            onClose={() => setShowRejectModal(false)}
+            onConfirm={handleConfirmRejectCompare}
+            reason={rejectReason}
+            setReason={setRejectReason}
+          />
+        )
+      }
 
-      {showChartsModal && (
-        <ChartsModal
-          isDarkMode={isDarkMode}
-          onClose={() => setShowChartsModal(false)}
-          partNo={partNo}
-          pr_list_id={pr_list_id}
-        />
-      )}
+      {
+        showChartsModal && (
+          <ChartsModal
+            isDarkMode={isDarkMode}
+            onClose={() => setShowChartsModal(false)}
+            partNo={partNo}
+            pr_list_id={pr_list_id}
+          />
+        )
+      }
 
     </>
   );
