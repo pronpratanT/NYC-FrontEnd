@@ -1234,6 +1234,51 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // console.log('part_inventory_and_pr:', compareData?.part_inventory_and_pr);
   }, [prNumber, compareData]);
 
+  // Save compare price for ALL vendors in the table
+  const saveAllComparePrices = async () => {
+    if (!compareData || !Array.isArray(compareData.compare_vendors) || compareData.compare_vendors.length === 0) {
+      alert('ไม่พบรายการผู้ขายสำหรับบันทึก');
+      return;
+    }
+    // Build payloads from editedPrices fallback to vendor.price
+    const payloads = compareData.compare_vendors.map(vendor => {
+      const edited = editedPrices.find(p => p.compare_id === vendor.compare_id);
+      return {
+        price: edited?.price ?? vendor.price ?? '',
+        // content: '',
+        pricecompare_id: compareData?.pcl_id,
+        vendor_id: vendor.vendor_id,
+      };
+    });
+
+    // Validate: ensure no empty/zero price
+    const hasMissing = payloads.some(p => p.price == null || Number(p.price) === 0);
+    if (hasMissing) {
+      alert('กรุณากรอกราคาให้ครบทุกรายการก่อนบันทึก');
+      return;
+    }
+
+    console.log('Saving compare prices payloads:', payloads);
+    // Loop and send each payload separately
+    for (const payload of payloads) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-history`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.error('Error saving compare price:', err);
+        alert('เกิดข้อผิดพลาดในการบันทึกราคาสินค้า');
+        return;
+      }
+    }
+    alert('บันทึกราคาสินค้าทุกรายการเรียบร้อยแล้ว');
+  };
+
   // TODO: PDF
   // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
   // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
@@ -3330,13 +3375,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
                         <col style={{ width: '25px' }} />
-                        <col style={{ width: '50px' }} />
-                        <col style={{ width: '80px' }} />
-                        <col style={{ width: '200px' }} />
+                        <col style={{ width: '45px' }} />
+                        <col style={{ width: '60px' }} />
+                        <col style={{ width: '250px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
-                        <col style={{ width: '90px' }} />
-                        <col style={{ width: '120px' }} />
+                        <col style={{ width: '100px' }} />
+                        <col style={{ width: '140px' }} />
                         <col style={{ width: '80px' }} />
                         {/* <col style={{ width: '50px' }} /> */}
                       </colgroup>
@@ -3361,13 +3406,13 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
                         <col style={{ width: '25px' }} />
-                        <col style={{ width: '50px' }} />
-                        <col style={{ width: '80px' }} />
-                        <col style={{ width: '200px' }} />
+                        <col style={{ width: '45px' }} />
+                        <col style={{ width: '60px' }} />
+                        <col style={{ width: '250px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '100px' }} />
-                        <col style={{ width: '90px' }} />
-                        <col style={{ width: '120px' }} />
+                        <col style={{ width: '100px' }} />
+                        <col style={{ width: '140px' }} />
                         <col style={{ width: '80px' }} />
                         {/* <col style={{ width: '50px' }} /> */}
                       </colgroup>
@@ -4202,10 +4247,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 : 'text-green-700 hover:bg-green-100 hover:text-green-900 cursor-pointer'}
                           `}
                           disabled={isVendorInputDisabled}
-                          // onClick={() => {
-                          //   localStorage.removeItem('poCache');
-                          //   window.location.reload();
-                          // }}
+                          onClick={() => {
+                            // Save prices for ALL vendors (no selection required)
+                            saveAllComparePrices();
+                          }}
                           aria-label="Save Compare Price"
                         >
                           <FaSave className="inline-block text-lg align-middle" />
