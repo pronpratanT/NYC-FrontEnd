@@ -18,6 +18,16 @@ import "react-datepicker/dist/react-datepicker.css";
 import ChartsModal from "./Charts";
 import CreateVendor from "./CreateVendor";
 import EditVendor from "./EditVendor";
+
+// Type for price history items used in compare price history logic
+export interface PriceHistoryItem {
+  price?: number | string;
+  vendor_price?: number | string;
+  value?: number | string;
+  vendor_id?: string | number;
+  vendorId?: string | number;
+  [key: string]: any;
+}
 import RejectCompare from "./Reject_Compare";
 
 // icons
@@ -134,6 +144,7 @@ type CompareData = {
   tel: string;
   credit_term: string;
   price: number;
+  remark: string | null;
   discount: number[];
   due_date: string;
   date_shipped: string;
@@ -188,6 +199,25 @@ type EditedPrice = {
   rawPrice?: string;
 };
 
+type PriceCompareHistory = {
+  ID: number;
+  price: number;
+  content: string;
+  PuOperatorID: number;
+  PricecompareId: number;
+  VendorId: number;
+}
+
+type freeItemHistory = {
+  free_item_id: number;
+  pcl_id: number;
+  part_no: string;
+  prod_code: string;
+  part_name: string;
+  qty: number;
+  remark: string;
+}
+
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
   // ...existing code...
   // Move hoveredPoint and mouseX state to top-level
@@ -199,6 +229,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<Record<number, HTMLButtonElement | null>>({});
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  // Note state for vendor
+  const [editingNote, setEditingNote] = useState<number | null>(null); // compare_id of vendor being edited
+  const [vendorNotes, setVendorNotes] = useState<Record<number, string>>({}); // { compare_id: note_text }
   // --- State for editing qty in summary tab ---
   const [editingQty, setEditingQty] = useState(false);
   const [qtyValue, setQtyValue] = useState(() => {
@@ -322,6 +355,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // เก็บเหตุผลการเลือก
   const [selectedReason, setSelectedReason] = useState<string>("");
   const [customReason, setCustomReason] = useState<string>("");
+  const [priceCompareHistory, setPriceCompareHistory] = useState<PriceCompareHistory[]>([]);
+  const [freeItemHistory, setFreeItemHistory] = useState<freeItemHistory[]>([]);
 
   // State to track which vendor is being edited (by vendor_code)
   // Removed: editingVendorCode (unused)
@@ -1234,7 +1269,56 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // console.log('part_inventory_and_pr:', compareData?.part_inventory_and_pr);
   }, [prNumber, compareData]);
 
-  // Save compare price for ALL vendors in the table
+  //TODO GET PRICE COMPARE HISTORY
+  useEffect(() => {
+    // Only run when tab is 'compare' and have vendors
+    if (activeTab !== 'compare' || !compareData?.pcl_id || !Array.isArray(compareData?.compare_vendors) || compareData.compare_vendors.length === 0) {
+      setPriceCompareHistory([]);
+      return;
+    }
+    let isCancelled = false;
+    const fetchAllHistories = async () => {
+      try {
+        const allHistories: PriceCompareHistory[] = [];
+        for (const vendor of compareData.compare_vendors) {
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-histories?pricecompareId=${compareData.pcl_id}&vendorId=${vendor.vendor_id}`, {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            });
+            if (!res.ok) {
+              console.error('Failed to fetch for vendor', vendor.vendor_id, res.status, res.statusText);
+              continue;
+            }
+            const data = await res.json();
+            // API returns array of history items, tag each with vendor_id
+            if (Array.isArray(data)) {
+              data.forEach((item: PriceCompareHistory) => {
+                allHistories.push({ ...item, VendorId: vendor.vendor_id });
+              });
+            }
+          } catch (err) {
+            console.error('Error fetching for vendor', vendor.vendor_id, err);
+          }
+        }
+        if (!isCancelled) setPriceCompareHistory(allHistories);
+        console.log('Fetched priceCompareHistory:', allHistories);
+      } catch (err) {
+        console.error('Error fetching price compare history:', err);
+        if (!isCancelled) setPriceCompareHistory([]);
+      }
+    };
+    fetchAllHistories();
+    return () => { isCancelled = true; };
+  }, [activeTab, compareData?.pcl_id, compareData?.compare_vendors, token]);
+
+  // Log priceCompareHistory whenever it changes
+  useEffect(() => {
+    console.log('priceCompareHistory state changed:', priceCompareHistory);
+  }, [priceCompareHistory]);
+
+  //TODO Save compare price for ALL vendors in the table
   const saveAllComparePrices = async () => {
     if (!compareData || !Array.isArray(compareData.compare_vendors) || compareData.compare_vendors.length === 0) {
       alert('ไม่พบรายการผู้ขายสำหรับบันทึก');
@@ -1277,7 +1361,57 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       }
     }
     alert('บันทึกราคาสินค้าทุกรายการเรียบร้อยแล้ว');
+    // Reload compare list and price histories so charts and remarks reflect latest
+    if (typeof fetchCompareData === 'function') {
+      await fetchCompareData();
+    }
+    // Re-fetch price histories used by chart tooltips
+    try {
+      // reuse the same logic as in useEffect; wrap in local function if needed
+      // Only run when have vendors and pcl_id
+      if (compareData?.pcl_id && Array.isArray(compareData?.compare_vendors) && compareData.compare_vendors.length > 0) {
+        const allHistories: PriceCompareHistory[] = [];
+        for (const vendor of compareData.compare_vendors) {
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-histories?pricecompareId=${compareData.pcl_id}&vendorId=${vendor.vendor_id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              data.forEach((item: PriceCompareHistory) => {
+                allHistories.push({ ...item, VendorId: vendor.vendor_id });
+              });
+            }
+          } catch (err) {
+            console.error('Error refetching history for vendor', vendor.vendor_id, err);
+          }
+        }
+        setPriceCompareHistory(allHistories);
+      }
+    } catch (err) {
+      console.error('Error reloading price histories:', err);
+    }
   };
+
+  // TODO Get free item history
+  useEffect(() => {
+    const fetchFreeItemHistory = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/free-items/recent?pcl_id=${compareData?.pcl_id}&part_no=${partNo}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (!res.ok) throw new Error('Failed to fetch free item history');
+        const data = await res.json();
+        setFreeItemHistory(data);
+      } catch (err) {
+        console.error('Error fetching free item history:', err);
+        setFreeItemHistory([]);
+      }
+    };
+  }, [token]);
 
   // TODO: PDF
   // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
@@ -1302,6 +1436,38 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       console.error('previewComparePdf error:', err);
       // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
       // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
+    }
+  }
+
+  // TODO Save Compare Note
+  const saveCompareNote = async (note: string, compare_id?: number) => {
+    const payload = {
+      save_comparisons_vendors: [
+        {
+          clv_id: compare_id,
+          content: note,
+        }
+      ]
+    }
+    // console.log('compare note payload:', payload);
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/update-content`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      alert('บันทึกหมายเหตุเรียบร้อยแล้ว');
+      setEditingNote(null);
+      // Reload compare data to get updated remarks
+      if (typeof fetchCompareData === 'function') {
+        await fetchCompareData();
+      }
+    } catch (err) {
+      console.error('Error saving compare note:', err);
+      alert('เกิดข้อผิดพลาดในการบันทึกหมายเหตุ');
     }
   }
 
@@ -1646,7 +1812,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                 {/* TODO - implement tab logic by status */}
                 {(() => {
                   const prItem = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === currentPrListId);
-                  console.log("Current PR Item for tab logic:", prItem?.status);
+                  // console.log("Current PR Item for tab logic:", prItem?.status);
                   if (!prItem) {
                     // ถ้าไม่พบ PR ให้แสดง summary เฉพาะเมื่อข้อมูลโหลดเสร็จ
                     if (loading || error || !compareData) return null;
@@ -2760,6 +2926,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     day: '2-digit'
                                   }) : '-'}</td>
                                 </tr>
+                                // NOTE FREE ITEMs
                               );
                               if (Array.isArray(rp)) {
                                 if (rp.length > 0) {
@@ -3504,13 +3671,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                               onClick={(e) => e.stopPropagation()}
                                             >
                                               <button
-                                                // onClick={(e) => {
-                                                //   e.stopPropagation();
-                                                //   if (window.confirm(`ต้องการลบ ${vendor.vendor_name} ออกจากรายการเปรียบเทียบ?`)) {
-                                                //     handleDeleteVendor(vendor);
-                                                //   }
-                                                //   setOpenDropdown(null);
-                                                // }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setEditingNote(vendor.compare_id);
+                                                  setOpenDropdown(null);
+                                                }}
                                                 className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium rounded-t-xl ${isDarkMode
                                                   ? 'text-gray-300 hover:bg-amber-900/30'
                                                   : 'text-slate-700 hover:bg-amber-50'
@@ -3581,7 +3746,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         {/* NOTE Tooltips compare */}
                                         <Tooltip
                                           content={(() => {
-                                            const priceRounds = [120, 130, 125, 123, 121]; // ข้อมูลราคาการต่อรอง
+                                            // ใช้ข้อมูลจาก priceCompareHistory ของผู้ขายนี้
+                                            const vendorHistory = Array.isArray(priceCompareHistory)
+                                              ? priceCompareHistory.filter((h: PriceCompareHistory) => h && (h.VendorId === vendor.vendor_id))
+                                              : [];
+                                            const historyPrices = vendorHistory
+                                              .map((h: PriceCompareHistory) => Number(h.price))
+                                              .filter((p: number) => !isNaN(p));
+                                            const priceRounds = historyPrices.length > 0
+                                              ? historyPrices
+                                              : (typeof vendor.price === 'number' && !isNaN(vendor.price) ? [Number(vendor.price)] : []);
 
                                             // คำนวณค่าต่างๆ สำหรับกราฟ
                                             const w = 280;
@@ -3591,9 +3765,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                             const paddingTop = 20;
                                             const paddingBottom = 35;
 
-                                            const minPrice = Math.min(...priceRounds);
-                                            const maxPrice = Math.max(...priceRounds);
-                                            const priceRange = maxPrice - minPrice || 1;
+                                            const minPrice = priceRounds.length ? Math.min(...priceRounds) : 0;
+                                            const maxPrice = priceRounds.length ? Math.max(...priceRounds) : 0;
+                                            const priceRange = (maxPrice - minPrice) || 1;
                                             const chartWidth = w - paddingLeft - paddingRight;
                                             const chartHeight = h - paddingTop - paddingBottom;
                                             const stepX = priceRounds.length > 1 ? chartWidth / (priceRounds.length - 1) : 0;
@@ -3635,6 +3809,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                       height={h}
                                                       className="overflow-visible"
                                                       onMouseMove={e => {
+                                                        if (!points.length) return;
                                                         const svg = e.currentTarget;
                                                         const rect = svg.getBoundingClientRect();
                                                         const x = e.clientX - rect.left;
@@ -3669,7 +3844,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                       ))}
 
                                                       {/* Vertical line on hover */}
-                                                      {mouseX !== null && (
+                                                      {mouseX !== null && points.length > 0 && (
                                                         <>
                                                           <line
                                                             x1={mouseX}
@@ -3699,17 +3874,19 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                           <stop offset="100%" stopColor="#00c950" stopOpacity="0.05" />
                                                         </linearGradient>
                                                       </defs>
-                                                      <path d={areaPath} fill="url(#areaGradient)" />
+                                                      {points.length > 0 && <path d={areaPath} fill="url(#areaGradient)" />}
 
                                                       {/* Main line */}
-                                                      <polyline
-                                                        fill="none"
-                                                        stroke="#05df72"
-                                                        strokeWidth="2.5"
-                                                        points={pathPoints}
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                      />
+                                                      {points.length > 0 && (
+                                                        <polyline
+                                                          fill="none"
+                                                          stroke="#05df72"
+                                                          strokeWidth="2.5"
+                                                          points={pathPoints}
+                                                          strokeLinecap="round"
+                                                          strokeLinejoin="round"
+                                                        />
+                                                      )}
 
                                                       {/* Data points */}
                                                       {points.map((pt, idx) => (
@@ -3783,7 +3960,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                     </svg>
 
                                                     {/* Hover tooltip */}
-                                                    {hoveredPoint !== null && (
+                                                    {hoveredPoint !== null && points.length > 0 && (
                                                       <div
                                                         className={`absolute ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'} border rounded-xl p-3 shadow-xl z-50 pointer-events-none`}
                                                         style={{
@@ -3831,7 +4008,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
                                                 {/* Summary */}
                                                 <div className={`text-center text-xs mb-2 ${isDarkMode ? 'text-white' : 'text-slate-600'} font-semibold`}>
-                                                  มีการต่อรองราคา {priceRounds.length} รอบ
+                                                  {priceRounds.length > 0 ? (
+                                                    <>มีการต่อรองราคา {priceRounds.length} รอบ</>
+                                                  ) : (
+                                                    <>ไม่มีข้อมูลประวัติการต่อรองสำหรับผู้ขายนี้</>
+                                                  )}
                                                 </div>
 
                                                 {/* Price list */}
@@ -4099,24 +4280,69 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   </td>
                                 </tr>
                                 {/* Note Row - แถวหมายเหตุใต้แต่ละ vendor */}
-                                <tr className={`${isDarkMode ? 'bg-slate-800/50' : 'bg-gray-50/80'} border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'} ${isDisabled ? 'opacity-60' : ''}`}>
-                                  <td className="px-4 py-2" />
-                                  <td className="px-4 py-2" />
-                                  <td className="px-4 py-2 flex justify-center" ><LuNotebookPen className={`w-4 h-4 ${isDisabled ? 'text-amber-400/100' : 'text-amber-400'}`} /></td>
-                                  <td className="px-4 py-2 text-xs align-top" style={{ width: '180px' }}>
-                                    <span className={`${isDisabled ? (isDarkMode ? 'text-amber-300/100' : 'text-amber-600/100') : (isDarkMode ? 'text-amber-300' : 'text-amber-600')}`}>
-                                      {/* ตัวอย่างข้อมูลหมายเหตุ - ในอนาคตสามารถดึงจาก vendor.note หรือ API */}
-                                      {index === 0 && "หมายเหตุ : ผู้ขายรายนี้มีสินค้าพร้อมส่งทันที"}
-                                      {index === 1 && "หมายเหตุ : ราคานี้รวมค่าขนส่งและติดตั้งแล้ว รับประกันสินค้า 2 ปี"}
-                                      {index === 2 && "หมายเหตุ : สินค้าต้องสั่งผลิตล่วงหน้า 7 วัน มีค่าบริการเพิ่มเติม 500 บาท"}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-2" />
-                                  <td className="px-4 py-2" />
-                                  <td className="px-4 py-2" />
-                                  <td className="px-4 py-2" />
-                                  <td className="px-4 py-2" />
-                                </tr>
+                                {(editingNote === vendor.compare_id || (vendor.remark && vendor.remark.trim() !== '')) && (
+                                  <tr className={`${isDarkMode ? 'bg-slate-800/50' : 'bg-gray-50/80'} border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'} ${isDisabled ? 'opacity-60' : ''}`}>
+                                    <td className="px-4 py-2" />
+                                    <td className="px-4 py-2" />
+                                    <td className="px-4 py-2 flex justify-center" ><LuNotebookPen className={`w-4 h-4 ${isDisabled ? 'text-amber-400/100' : 'text-amber-400'}`} /></td>
+                                    <td colSpan={6} className="px-4 py-2 text-xs align-top">
+                                      {editingNote === vendor.compare_id ? (
+                                        <div className="flex items-start gap-2">
+                                          <textarea
+                                            className={`flex-1 px-3 py-2 rounded-lg border text-sm resize-none ${isDarkMode
+                                              ? 'bg-slate-900 border-slate-600 text-amber-300 focus:border-amber-500'
+                                              : 'bg-white border-amber-300 text-amber-700 focus:border-amber-500'
+                                              } focus:outline-none focus:ring-2 focus:ring-amber-400/30`}
+                                            rows={2}
+                                            placeholder="กรอกหมายเหตุ..."
+                                            value={vendorNotes[vendor.compare_id] !== undefined ? vendorNotes[vendor.compare_id] : (vendor.remark || '')}
+                                            onChange={(e) => {
+                                              setVendorNotes(prev => ({
+                                                ...prev,
+                                                [vendor.compare_id]: e.target.value
+                                              }));
+                                            }}
+                                            disabled={isDisabled}
+                                            autoFocus
+                                          />
+                                          <div className="flex gap-1">
+                                            <button
+                                              onClick={() => saveCompareNote(vendorNotes[vendor.compare_id] !== undefined ? vendorNotes[vendor.compare_id] : (vendor.remark || ''), vendor.compare_id)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDarkMode
+                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                                : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                                                }`}
+                                              disabled={isDisabled}
+                                            >
+                                              บันทึก
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                setEditingNote(null);
+                                                setVendorNotes(prev => {
+                                                  const newNotes = { ...prev };
+                                                  delete newNotes[vendor.compare_id];
+                                                  return newNotes;
+                                                });
+                                              }}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDarkMode
+                                                ? 'bg-slate-600 hover:bg-slate-500 text-white'
+                                                : 'bg-gray-300 hover:bg-gray-400 text-gray-700'
+                                                }`}
+                                              disabled={isDisabled}
+                                            >
+                                              ยกเลิก
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span className={`${isDisabled ? (isDarkMode ? 'text-amber-300/100' : 'text-amber-600/100') : (isDarkMode ? 'text-amber-300' : 'text-amber-600')}`}>
+                                          {vendor.remark}
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )}
                               </React.Fragment>
                             );
                           }) : (

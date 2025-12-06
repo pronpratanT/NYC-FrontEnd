@@ -197,7 +197,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
     };
 
     // Use grouped data only
-    const hasActionableParts = allParts.some(part => part.status === 'Compared' || part.status === 'pending' || part.status === 'Rejected') && (prData?.manager_approve && prData?.supervisor_approve && user?.Department?.ID === 10086) && !(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at);
+    const hasActionableParts = allParts.some(part => part.status === 'Compared' || part.status === 'pending' || part.status === 'Rejected' || part.status === 'Po Rejected' || part.status === 'Recheck') && (prData?.manager_approve && prData?.supervisor_approve && user?.Department?.ID === 10086) && !(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at);
 
     // Handle checkbox selection
     const handlePartSelection = (pclId: number, checked: boolean) => {
