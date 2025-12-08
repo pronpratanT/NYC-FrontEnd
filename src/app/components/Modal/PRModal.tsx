@@ -208,7 +208,7 @@ type PriceCompareHistory = {
   VendorId: number;
 }
 
-type freeItemHistory = {
+type FreeItemHistory = {
   free_item_id: number;
   pcl_id: number;
   part_no: string;
@@ -216,6 +216,7 @@ type freeItemHistory = {
   part_name: string;
   qty: number;
   remark: string;
+  pr_list_id: number;
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
@@ -356,7 +357,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [selectedReason, setSelectedReason] = useState<string>("");
   const [customReason, setCustomReason] = useState<string>("");
   const [priceCompareHistory, setPriceCompareHistory] = useState<PriceCompareHistory[]>([]);
-  const [freeItemHistory, setFreeItemHistory] = useState<freeItemHistory[]>([]);
+  const [freeItemHistory, setFreeItemHistory] = useState<FreeItemHistory[]>([]);
 
   // State to track which vendor is being edited (by vendor_code)
   // Removed: editingVendorCode (unused)
@@ -1398,7 +1399,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   useEffect(() => {
     const fetchFreeItemHistory = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/free-items/recent?pcl_id=${compareData?.pcl_id}&part_no=${partNo}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/free-items/recent?part_no=${partNo}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -1406,12 +1407,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         if (!res.ok) throw new Error('Failed to fetch free item history');
         const data = await res.json();
         setFreeItemHistory(data);
+        // console.log('🎁 Fetched Free Item History:', data);
+        // console.log('🎁 for partNo:', partNo);
+        // console.log('🎁 free items:', freeItemHistory);
       } catch (err) {
         console.error('Error fetching free item history:', err);
         setFreeItemHistory([]);
       }
     };
-  }, [token]);
+    fetchFreeItemHistory();
+  }, [token, partNo]);
 
   // TODO: PDF
   // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
@@ -2926,8 +2931,76 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     day: '2-digit'
                                   }) : '-'}</td>
                                 </tr>
-                                // NOTE FREE ITEMs
                               );
+
+                              // Render free items for this pr_list_id
+                              const renderFreeItemRows = (prListId: number): React.ReactElement[] => {
+                                // console.log('🎁 Free Items Debug:', {
+                                //   prListId,
+                                //   prListIdType: typeof prListId,
+                                //   freeItemHistory,
+                                //   isArray: Array.isArray(freeItemHistory),
+                                //   length: freeItemHistory?.length,
+                                //   firstItem: freeItemHistory?.[0]
+                                // });
+                                
+                                // Check if freeItemHistory is an object with data array inside
+                                const freeItems = Array.isArray(freeItemHistory) 
+                                  ? freeItemHistory 
+                                  : (freeItemHistory as any)?.data;
+                                
+                                console.log('🔍 Extracted freeItems:', {
+                                  freeItems,
+                                  isArray: Array.isArray(freeItems),
+                                  length: freeItems?.length
+                                });
+                                
+                                if (!Array.isArray(freeItems) || freeItems.length === 0) {
+                                  console.log('❌ No freeItems or empty array');
+                                  return [];
+                                }
+                                
+                                const itemsForThisPR = freeItems.filter(fi => {
+                                  const fiPrListId = (fi as any)?.pr_list_id;
+                                  const match = Number(fiPrListId) === Number(prListId);
+                                  // console.log('🔍 Checking:', { fiPrListId, prListId, match });
+                                  return match;
+                                });
+                                // console.log('🎁 Filtered for PR', prListId, ':', itemsForThisPR);
+                                const rows: React.ReactElement[] = [];
+                                itemsForThisPR.forEach((fi, fiIdx) => {
+                                  // Main free item row
+                                  rows.push(
+                                    <tr key={`free-${prListId}-${(fi as any)?.id ?? fiIdx}`} className={`border-b ${isDarkMode ? 'bg-emerald-900/20 border-slate-700/60' : 'bg-emerald-50/60 border-emerald-100'}`}>
+                                      <td className={`px-3 py-2.5 text-center text-xs font-medium ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>ฟรี</td>
+                                      <td className={`px-4 py-2.5 text-xs text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>-</td>
+                                      <td className="px-4 py-2.5 text-center">
+                                        <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-emerald-800/60 text-emerald-200' : 'bg-emerald-100 text-emerald-700'}`}>
+                                          ของแถม
+                                        </span>
+                                      </td>
+                                      <td className={`px-4 py-2.5 font-bold text-xs text-center ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>{item.pr_no}</td>
+                                      <td className={`px-4 py-2.5 font-bold text-xs text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{(fi as any)?.qty ?? '-'}</td>
+                                      <td className={`px-4 py-2.5 text-xs text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{item.unit}</td>
+                                      <td className={`px-4 py-2.5 text-center border-r ${isDarkMode ? 'border-slate-700' : 'border-black-200'}`}>
+                                        <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-emerald-800/40 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>FREE</span>
+                                      </td>
+                                      <td colSpan={4} className={`px-4 py-2.5 text-xs text-left font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                        <div className="whitespace-nowrap overflow-visible">
+                                          {(fi as any)?.part_name ?? (fi as any)?.item_name ?? '-'}
+                                          {(fi as any)?.remark && (
+                                            <span className={`ml-2 italic ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                              ({(fi as any)?.remark})
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                });
+                                return rows;
+                              };
+
                               if (Array.isArray(rp)) {
                                 if (rp.length > 0) {
                                   rp.forEach((purchase, i) => allRows.push(renderPurchaseRow(purchase, `${idx}-${i}`)));
@@ -2939,6 +3012,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               } else {
                                 allRows.push(renderPurchaseRow({}, `${idx}-empty`));
                               }
+
+                              // Append free item rows for this pr_list_id
+                              const freeRows = renderFreeItemRows(item.pr_list_id);
+                              freeRows.forEach(fr => allRows.push(fr));
                             });
                           }
                           // Pagination logic
