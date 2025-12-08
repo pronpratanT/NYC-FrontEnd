@@ -18,16 +18,6 @@ import "react-datepicker/dist/react-datepicker.css";
 import ChartsModal from "./Charts";
 import CreateVendor from "./CreateVendor";
 import EditVendor from "./EditVendor";
-
-// Type for price history items used in compare price history logic
-export interface PriceHistoryItem {
-  price?: number | string;
-  vendor_price?: number | string;
-  value?: number | string;
-  vendor_id?: string | number;
-  vendorId?: string | number;
-  [key: string]: any;
-}
 import RejectCompare from "./Reject_Compare";
 
 // icons
@@ -217,6 +207,16 @@ type FreeItemHistory = {
   qty: number;
   remark: string;
   pr_list_id: number;
+}
+
+// Type for price history items used in compare price history logic
+export interface PriceHistoryItem {
+  price?: number | string;
+  vendor_price?: number | string;
+  value?: number | string;
+  vendor_id?: string | number;
+  vendorId?: string | number;
+  [key: string]: unknown;
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
@@ -1333,12 +1333,23 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Helper: get latest saved price for a vendor from priceCompareHistory
   const getLatestVendorPrice = (vendorId: number) => {
     const histories = Array.isArray(priceCompareHistory)
-      ? priceCompareHistory.filter(h => (h as any).VendorId === vendorId)
+      ? priceCompareHistory.filter((h: PriceCompareHistory) => 
+          (h.VendorId === vendorId)
+        )
       : [];
+    console.log('🔍 getLatestVendorPrice for vendor', vendorId, ':', histories);
     if (histories.length === 0) return null;
-    const latest = histories[0];
-    const latestPrice = (latest as any).price;
+    
+    // Sort by ID descending to get the most recent
+    const sorted = [...histories].sort((a, b) => {
+      if (a.ID && b.ID) return b.ID - a.ID;
+      return 0;
+    });
+    
+    const latest = sorted[0] as PriceCompareHistory;
+    const latestPrice = latest.price;
     const num = Number(latestPrice);
+    console.log('💰 Latest price for vendor', vendorId, ':', num, 'from', latest);
     return isNaN(num) ? null : num;
   };
   // Auto save compare prices when in 'compare' tab, no negotiation history, and all vendors have price
@@ -1387,12 +1398,15 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     payloads = payloads.filter(p => {
       const latest = getLatestVendorPrice(p.vendor_id as number);
       const nextPrice = Number(p.price);
-      return latest === null || latest !== nextPrice;
+      const shouldSave = latest === null || latest !== nextPrice;
+      console.log('🔄 Vendor', p.vendor_id, '- Latest:', latest, 'Next:', nextPrice, 'Should save:', shouldSave);
+      return shouldSave;
     });
     if (payloads.length === 0) {
       alert('ราคาที่จะบันทึกตรงกับราคาล่าสุดทั้งหมด จึงไม่บันทึกซ้ำ');
       return;
     }
+    console.log('✅ Filtered payloads to save:', payloads);
 
     console.log('Saving compare prices payloads:', payloads);
     // Loop and send each payload separately
@@ -3070,9 +3084,19 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 // });
 
                                 // Check if freeItemHistory is an object with data array inside
-                                const freeItems = Array.isArray(freeItemHistory)
-                                  ? freeItemHistory
-                                  : (freeItemHistory as any)?.data;
+                                type FreeItem = {
+                                  id?: number;
+                                  pr_list_id?: number;
+                                  qty?: number | string;
+                                  part_name?: string;
+                                  item_name?: string;
+                                  remark?: string;
+                                };
+                                const freeItems: FreeItem[] = Array.isArray(freeItemHistory)
+                                  ? freeItemHistory as FreeItem[]
+                                  : (typeof freeItemHistory === 'object' && freeItemHistory !== null && Array.isArray((freeItemHistory as { data?: unknown }).data))
+                                    ? (freeItemHistory as { data: FreeItem[] }).data
+                                    : [];
 
                                 console.log('🔍 Extracted freeItems:', {
                                   freeItems,
@@ -3086,17 +3110,18 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 }
 
                                 const itemsForThisPR = freeItems.filter(fi => {
-                                  const fiPrListId = (fi as any)?.pr_list_id;
+                                  const fiPrListId = fi?.pr_list_id;
                                   const match = Number(fiPrListId) === Number(prListId);
-                                  // console.log('🔍 Checking:', { fiPrListId, prListId, match });
                                   return match;
                                 });
                                 // console.log('🎁 Filtered for PR', prListId, ':', itemsForThisPR);
                                 const rows: React.ReactElement[] = [];
                                 itemsForThisPR.forEach((fi, fiIdx) => {
-                                  // Main free item row
+                                  const qtyValue = fi.qty ?? '-';
+                                  const showQty = !qtyValue || qtyValue === '-' ? '-' : qtyValue;
+                                  const showUnit = !qtyValue || qtyValue === '-' ? '-' : item.unit;
                                   rows.push(
-                                    <tr key={`free-${prListId}-${(fi as any)?.id ?? fiIdx}`} className={`border-b ${isDarkMode ? 'bg-emerald-900/20 border-slate-700/60' : 'bg-emerald-50/60 border-emerald-100'}`}>
+                                    <tr key={`free-${prListId}-${fi.id ?? fiIdx}`} className={`border-b ${isDarkMode ? 'bg-emerald-900/20 border-slate-700/60' : 'bg-emerald-50/60 border-emerald-100'}`}>
                                       <td className={`px-3 py-2.5 text-center text-xs font-medium ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>ฟรี</td>
                                       <td className={`px-4 py-2.5 text-xs text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>-</td>
                                       <td className="px-4 py-2.5 text-center">
@@ -3105,17 +3130,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         </span>
                                       </td>
                                       <td className={`px-4 py-2.5 font-bold text-xs text-center ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>{item.pr_no}</td>
-                                      <td className={`px-4 py-2.5 font-bold text-xs text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{(fi as any)?.qty ?? '-'}</td>
-                                                                            <td className={`px-4 py-2.5 text-xs text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{!((fi as any)?.qty) || (fi as any)?.qty === '-' ? '-' : item.unit}</td>
+                                      <td className={`px-4 py-2.5 font-bold text-xs text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{showQty}</td>
+                                      <td className={`px-4 py-2.5 text-xs text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{showUnit}</td>
                                       <td className={`px-4 py-2.5 text-center border-r ${isDarkMode ? 'border-slate-700' : 'border-black-200'}`}>
                                         <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-emerald-800/40 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>FREE</span>
                                       </td>
                                       <td colSpan={4} className={`px-4 py-2.5 text-xs text-left font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                                         <div className="whitespace-nowrap overflow-visible">
-                                          {(fi as any)?.part_name ?? (fi as any)?.item_name ?? '-'}
-                                          {(fi as any)?.remark && (
+                                          {fi.part_name ?? fi.item_name ?? '-'}
+                                          {fi.remark && (
                                             <span className={`ml-2 italic ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                              ({(fi as any)?.remark})
+                                              ({fi.remark})
                                             </span>
                                           )}
                                         </div>
@@ -4162,7 +4187,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                     </svg>
 
                                                     {/* Hover tooltip */}
-                                                    {hoveredPoint !== null && points.length > 0 && (
+                                                    {hoveredPoint !== null && points.length > 0 && points[hoveredPoint] && (
                                                       <div
                                                         className={`absolute ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'} border rounded-xl p-3 shadow-xl z-50 pointer-events-none`}
                                                         style={{
@@ -4183,7 +4208,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                           <span className={`px-2 py-1 rounded-lg text-xs font-bold ${isDarkMode ? 'bg-slate-800 text-emerald-400' : 'bg-gray-100 text-gray-900'}`}>
                                                             ฿{points[hoveredPoint].price}
                                                           </span>
-                                                          {hoveredPoint > 0 && (() => {
+                                                          {hoveredPoint > 0 && points[hoveredPoint - 1] && (() => {
                                                             const prev = points[hoveredPoint - 1].price;
                                                             const curr = points[hoveredPoint].price;
                                                             const diff = curr - prev;

@@ -15,7 +15,7 @@ export default function BackgroundSwitcher() {
         height: '100vh', 
         background: isDarkMode 
           ? 'linear-gradient(135deg, #0F0F23 0%, #1A1A2E 50%, #16213E 100%)' 
-          : '#ffffff',
+          : '#f2f2f2',
         zIndex: -1 
       }} 
     />

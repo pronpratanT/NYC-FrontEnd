@@ -920,7 +920,7 @@ function PurchasePageContent() {
                                         type="search"
                                         id="search-dropdown"
                                         className={`block pl-10 pr-3 py-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
-                                        placeholder="PR, ผู้จัดทำ"
+                                        placeholder="ค้นหาด้วย PR หรือ ชื่อผู้จัดทำ"
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                     />

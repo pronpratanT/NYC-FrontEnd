@@ -391,22 +391,22 @@ export default function PurchaseOrderPage() {
 
     // Reset to page 1 when filters change and update URL
     // Reset to page 1 only if filters actually change, not on every mount/navigation
-    const prevFilters = useRef({ departmentFilter, statusFilter, search, sortBy, itemsPerPage });
-    useEffect(() => {
-        const prev = prevFilters.current;
-        // Only reset if any filter (not page) actually changed
-        if (
-            prev.departmentFilter !== departmentFilter ||
-            prev.statusFilter !== statusFilter ||
-            prev.search !== search ||
-            prev.sortBy !== sortBy ||
-            prev.itemsPerPage !== itemsPerPage
-        ) {
-            setCurrentPage(1);
-            updateUrlParams(1, itemsPerPage);
-        }
-        prevFilters.current = { departmentFilter, statusFilter, search, sortBy, itemsPerPage };
-    }, [departmentFilter, statusFilter, search, sortBy, itemsPerPage, updateUrlParams]);
+    // const prevFilters = useRef({ departmentFilter, statusFilter, search, sortBy, itemsPerPage });
+    // useEffect(() => {
+    //     const prev = prevFilters.current;
+    //     // Only reset if any filter (not page) actually changed
+    //     if (
+    //         prev.departmentFilter !== departmentFilter ||
+    //         prev.statusFilter !== statusFilter ||
+    //         prev.search !== search ||
+    //         prev.sortBy !== sortBy ||
+    //         prev.itemsPerPage !== itemsPerPage
+    //     ) {
+    //         setCurrentPage(1);
+    //         updateUrlParams(1, itemsPerPage);
+    //     }
+    //     prevFilters.current = { departmentFilter, statusFilter, search, sortBy, itemsPerPage };
+    // }, [departmentFilter, statusFilter, search, sortBy, itemsPerPage, updateUrlParams]);
 
     // Sync state with URL params only on mount or true URL change
     useEffect(() => {
@@ -554,33 +554,33 @@ export default function PurchaseOrderPage() {
     }, [token, dateRange]);
 
     {/* departments */ }
-    useEffect(() => {
-        const fetchDepartments = async () => {
-            try {
-                setError(null);
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" });
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const data = await response.json();
-                const depsArray = Array.isArray(data) ? data : data.data || [];
+    // useEffect(() => {
+    //     const fetchDepartments = async () => {
+    //         try {
+    //             setError(null);
+    //             const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/deps`, { cache: "no-store" });
+    //             if (!response.ok) {
+    //                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    //             }
+    //             const data = await response.json();
+    //             const depsArray = Array.isArray(data) ? data : data.data || [];
 
-                setDepartments(depsArray);
-                console.log("Loaded departments:", depsArray);
+    //             setDepartments(depsArray);
+    //             console.log("Loaded departments:", depsArray);
 
-            } catch (error: unknown) {
-                console.error("Failed to fetch departments:", error);
-                if (error instanceof Error) {
-                    setError(error.message || "ไม่สามารถโหลดข้อมูลแผนกได้");
-                } else {
-                    setError("ไม่สามารถโหลดข้อมูลแผนกได้");
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchDepartments();
-    }, []);
+    //         } catch (error: unknown) {
+    //             console.error("Failed to fetch departments:", error);
+    //             if (error instanceof Error) {
+    //                 setError(error.message || "ไม่สามารถโหลดข้อมูลแผนกได้");
+    //             } else {
+    //                 setError("ไม่สามารถโหลดข้อมูลแผนกได้");
+    //             }
+    //         } finally {
+    //             setLoading(false);
+    //         }
+    //     };
+    //     fetchDepartments();
+    // }, []);
 
     // ANCHOR Calendar customization
     function injectFlatpickrTheme() {
@@ -908,7 +908,7 @@ export default function PurchaseOrderPage() {
 
                             <div className={`flex w-full group focus-within:ring-2 focus-within:ring-emerald-500/30 border rounded-xl ${isDarkMode ? 'border-slate-700/50 bg-slate-900/50' : 'border-gray-300 bg-white'}`}>
                                 {/* Custom Dropdown */}
-                                <div className="relative" style={{ minWidth: '180px' }}>
+                                {/* <div className="relative" style={{ minWidth: '180px' }}>
                                     <button
                                         type="button"
                                         className={`h-[48px] w-full flex items-center justify-between px-5 font-medium text-base focus:outline-none transition-all duration-150 rounded-l-xl ${isDarkMode ? 'text-slate-300 border-slate-700/50 bg-slate-900/50' : 'text-gray-700 border-gray-100 bg-white'} ${dropdownOpen ? (isDarkMode ? 'bg-slate-800/70' : 'bg-gray-100') : ''}`}
@@ -970,7 +970,7 @@ export default function PurchaseOrderPage() {
                                             )}
                                         </ul>
                                     )}
-                                    {/* ปิด dropdown เมื่อคลิกนอก */}
+                                    ปิด dropdown เมื่อคลิกนอก
                                     {dropdownOpen && (
                                         <div
                                             className="fixed inset-0 z-10"
@@ -978,7 +978,7 @@ export default function PurchaseOrderPage() {
                                             aria-label="Close dropdown"
                                         />
                                     )}
-                                </div>
+                                </div> */}
                                 {/* Search Input */}
                                 <div className="relative w-full flex">
                                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -987,8 +987,8 @@ export default function PurchaseOrderPage() {
                                     <input
                                         type="search"
                                         id="search-dropdown"
-                                        className={`block pl-10 pr-3 py-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
-                                        placeholder="PO, ออกโดย"
+                                        className={`block pl-10 pr-3 rounded-l-xl py-3 w-full z-20 text-base font-medium border-none h-[48px] focus:outline-none ${isDarkMode ? 'text-slate-200 bg-slate-900/50 placeholder-slate-500' : 'text-gray-700 bg-white'}`}
+                                        placeholder="ค้นหาด้วย PO หรือ ชื่อผู้ออกใบสั่งซื้อ"
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                     />
@@ -1207,7 +1207,7 @@ export default function PurchaseOrderPage() {
                                             {/* Clear PO Cache Button */}
                                             <button
                                                 type="button"
-                                                className={`px-4 py-2 font-medium cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300  hover:bg-amber-600/50 hover:text-white' : 'text-amber-700hover:bg-amber-100 hover:text-amber-600'}`}
+                                                className={`px-4 py-2 font-medium cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300 hover:bg-amber-600/50 hover:text-white' : 'text-amber-700 hover:bg-amber-100 hover:text-amber-600'}`}
                                                 onClick={() => {
                                                     localStorage.removeItem('poCache');
                                                     window.location.reload();
