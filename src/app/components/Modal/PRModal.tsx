@@ -358,6 +358,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [customReason, setCustomReason] = useState<string>("");
   const [priceCompareHistory, setPriceCompareHistory] = useState<PriceCompareHistory[]>([]);
   const [freeItemHistory, setFreeItemHistory] = useState<FreeItemHistory[]>([]);
+  // Track whether price history fetch finished to avoid autosave before data arrives
+  const [priceHistoryLoaded, setPriceHistoryLoaded] = useState(false);
 
   // State to track which vendor is being edited (by vendor_code)
   // Removed: editingVendorCode (unused)
@@ -1275,9 +1277,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     // Only run when tab is 'compare' and have vendors
     if (activeTab !== 'compare' || !compareData?.pcl_id || !Array.isArray(compareData?.compare_vendors) || compareData.compare_vendors.length === 0) {
       setPriceCompareHistory([]);
+      setPriceHistoryLoaded(false);
       return;
     }
     let isCancelled = false;
+    setPriceHistoryLoaded(false);
     const fetchAllHistories = async () => {
       try {
         const allHistories: PriceCompareHistory[] = [];
@@ -1303,11 +1307,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
             console.error('Error fetching for vendor', vendor.vendor_id, err);
           }
         }
-        if (!isCancelled) setPriceCompareHistory(allHistories);
+        if (!isCancelled) {
+          setPriceCompareHistory(allHistories);
+          setPriceHistoryLoaded(true);
+        }
         console.log('Fetched priceCompareHistory:', allHistories);
       } catch (err) {
         console.error('Error fetching price compare history:', err);
-        if (!isCancelled) setPriceCompareHistory([]);
+        if (!isCancelled) {
+          setPriceCompareHistory([]);
+          setPriceHistoryLoaded(true);
+        }
       }
     };
     fetchAllHistories();
@@ -1320,13 +1330,43 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }, [priceCompareHistory]);
 
   //TODO Save compare price for ALL vendors in the table
+  // Helper: get latest saved price for a vendor from priceCompareHistory
+  const getLatestVendorPrice = (vendorId: number) => {
+    const histories = Array.isArray(priceCompareHistory)
+      ? priceCompareHistory.filter(h => (h as any).VendorId === vendorId)
+      : [];
+    if (histories.length === 0) return null;
+    const latest = histories[0];
+    const latestPrice = (latest as any).price;
+    const num = Number(latestPrice);
+    return isNaN(num) ? null : num;
+  };
+  // Auto save compare prices when in 'compare' tab, no negotiation history, and all vendors have price
+  const autoSaveRef = useRef(false);
+  useEffect(() => {
+    if (activeTab === 'compare' && compareData && priceHistoryLoaded) {
+      // If any history exists for any vendor, do NOT autosave
+      const hasAnyHistory = Array.isArray(priceCompareHistory) && priceCompareHistory.length > 0;
+      const hasAtLeastOneValidPrice = Array.isArray(compareData.compare_vendors) && compareData.compare_vendors.length > 0 && compareData.compare_vendors.some(v => v.price !== undefined && v.price !== null && !isNaN(Number(v.price)) && Number(v.price) > 0);
+      if (!hasAnyHistory && hasAtLeastOneValidPrice && !autoSaveRef.current) {
+        autoSaveRef.current = true;
+        saveValidComparePrices().finally(() => {
+          setTimeout(() => { autoSaveRef.current = false; }, 1000);
+        });
+      }
+    } else {
+      autoSaveRef.current = false;
+    }
+  }, [activeTab, compareData, priceHistoryLoaded, priceCompareHistory]);
+
+  // Button handler to save all compare prices
   const saveAllComparePrices = async () => {
     if (!compareData || !Array.isArray(compareData.compare_vendors) || compareData.compare_vendors.length === 0) {
       alert('ไม่พบรายการผู้ขายสำหรับบันทึก');
       return;
     }
     // Build payloads from editedPrices fallback to vendor.price
-    const payloads = compareData.compare_vendors.map(vendor => {
+    let payloads = compareData.compare_vendors.map(vendor => {
       const edited = editedPrices.find(p => p.compare_id === vendor.compare_id);
       return {
         price: edited?.price ?? vendor.price ?? '',
@@ -1340,6 +1380,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     const hasMissing = payloads.some(p => p.price == null || Number(p.price) === 0);
     if (hasMissing) {
       alert('กรุณากรอกราคาให้ครบทุกรายการก่อนบันทึก');
+      return;
+    }
+
+    // Skip vendors where new price equals latest saved price
+    payloads = payloads.filter(p => {
+      const latest = getLatestVendorPrice(p.vendor_id as number);
+      const nextPrice = Number(p.price);
+      return latest === null || latest !== nextPrice;
+    });
+    if (payloads.length === 0) {
+      alert('ราคาที่จะบันทึกตรงกับราคาล่าสุดทั้งหมด จึงไม่บันทึกซ้ำ');
       return;
     }
 
@@ -1392,6 +1443,80 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       }
     } catch (err) {
       console.error('Error reloading price histories:', err);
+    }
+  };
+
+  // Save compare prices for vendors with valid price only (skip missing/zero). Used by autosave.
+  const saveValidComparePrices = async () => {
+    if (!compareData || !Array.isArray(compareData.compare_vendors) || compareData.compare_vendors.length === 0) {
+      return;
+    }
+    let payloads = compareData.compare_vendors
+      .map(vendor => {
+        const edited = editedPrices.find(p => p.compare_id === vendor.compare_id);
+        const priceValue = edited?.price ?? vendor.price ?? '';
+        return {
+          price: priceValue,
+          pricecompare_id: compareData?.pcl_id,
+          vendor_id: vendor.vendor_id,
+        };
+      })
+      .filter(p => p.price != null && !isNaN(Number(p.price)) && Number(p.price) > 0);
+
+    // Skip vendors where new price equals latest saved price
+    payloads = payloads.filter(p => {
+      const latest = getLatestVendorPrice(p.vendor_id as number);
+      const nextPrice = Number(p.price);
+      return latest === null || latest !== nextPrice;
+    });
+
+    if (payloads.length === 0) {
+      return;
+    }
+
+    for (const payload of payloads) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-history`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.error('Error autosaving compare price:', err);
+        // For autosave, skip alert; continue with remaining vendors
+      }
+    }
+
+    // Refresh compare data and histories to reflect saved entries
+    if (typeof fetchCompareData === 'function') {
+      await fetchCompareData();
+    }
+    try {
+      if (compareData?.pcl_id && Array.isArray(compareData?.compare_vendors) && compareData.compare_vendors.length > 0) {
+        const allHistories: PriceCompareHistory[] = [];
+        for (const vendor of compareData.compare_vendors) {
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-histories?pricecompareId=${compareData.pcl_id}&vendorId=${vendor.vendor_id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              data.forEach((item: PriceCompareHistory) => {
+                allHistories.push({ ...item, VendorId: vendor.vendor_id });
+              });
+            }
+          } catch (err) {
+            console.error('Error refetching history for vendor', vendor.vendor_id, err);
+          }
+        }
+        setPriceCompareHistory(allHistories);
+      }
+    } catch (err) {
+      console.error('Error reloading price histories (autosave):', err);
     }
   };
 
@@ -2943,23 +3068,23 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 //   length: freeItemHistory?.length,
                                 //   firstItem: freeItemHistory?.[0]
                                 // });
-                                
+
                                 // Check if freeItemHistory is an object with data array inside
-                                const freeItems = Array.isArray(freeItemHistory) 
-                                  ? freeItemHistory 
+                                const freeItems = Array.isArray(freeItemHistory)
+                                  ? freeItemHistory
                                   : (freeItemHistory as any)?.data;
-                                
+
                                 console.log('🔍 Extracted freeItems:', {
                                   freeItems,
                                   isArray: Array.isArray(freeItems),
                                   length: freeItems?.length
                                 });
-                                
+
                                 if (!Array.isArray(freeItems) || freeItems.length === 0) {
                                   console.log('❌ No freeItems or empty array');
                                   return [];
                                 }
-                                
+
                                 const itemsForThisPR = freeItems.filter(fi => {
                                   const fiPrListId = (fi as any)?.pr_list_id;
                                   const match = Number(fiPrListId) === Number(prListId);
@@ -2981,7 +3106,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       </td>
                                       <td className={`px-4 py-2.5 font-bold text-xs text-center ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>{item.pr_no}</td>
                                       <td className={`px-4 py-2.5 font-bold text-xs text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{(fi as any)?.qty ?? '-'}</td>
-                                      <td className={`px-4 py-2.5 text-xs text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{item.unit}</td>
+                                                                            <td className={`px-4 py-2.5 text-xs text-center font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{!((fi as any)?.qty) || (fi as any)?.qty === '-' ? '-' : item.unit}</td>
                                       <td className={`px-4 py-2.5 text-center border-r ${isDarkMode ? 'border-slate-700' : 'border-black-200'}`}>
                                         <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-emerald-800/40 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>FREE</span>
                                       </td>
