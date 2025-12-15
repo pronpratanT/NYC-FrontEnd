@@ -860,7 +860,7 @@ export default function PurchaseOrderPage() {
                     {loading && (
                         <div className="mb-4 flex items-center justify-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mr-3"></div>
-                            <span className="text-green-700">กำลังโหลดข้อมูล PR...</span>
+                            <span className="text-green-700">กำลังโหลดข้อมูล PO...</span>
                         </div>
                     )}
                     {error && (

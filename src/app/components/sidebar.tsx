@@ -412,7 +412,7 @@ export default function Sidebar() {
             <div className={`flex items-center justify-between text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
               <span className="font-medium">Version</span>
               <span className={`px-2 py-1 rounded-md font-mono ${isDarkMode ? 'bg-slate-800/50 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
-                v0.1.0-beta
+                v0.3.2-beta
               </span>
             </div>
 
