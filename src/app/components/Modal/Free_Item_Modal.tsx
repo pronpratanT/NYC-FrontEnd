@@ -260,30 +260,19 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
 
     // Add free Item to DB (multi-item)
     const handleAddFreeItem = async () => {
-        if (selectedParts.length === 0) {
-            alert("กรุณาเลือก Part No. ที่ต้องการเพิ่มของแถม");
-            return;
-        }
         // สร้าง array ของ part_no ที่มีอยู่แล้วใน free_item
         const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
         let successCount = 0;
-        for (const partNoRaw of selectedParts) {
-            // Use only the first part_no before '|'
-            const partNo = partNoRaw.split('|')[0].trim();
-            // เช็คว่ามีอยู่แล้วใน free_item หรือไม่
-            if (existingFreeItems.includes(partNoRaw.trim())) {
-                alert(`Part No. ${partNoRaw} มีอยู่ในรายการของแถมแล้ว ไม่สามารถเพิ่มซ้ำได้`);
-                continue;
-            }
-            const qty = freebieQtys[partNoRaw] || 0;
-            if (qty <= 0) continue; // skip if qty is not set or zero
+
+        // ถ้าไม่มีการเลือก partNo ใด ๆ แต่มี remark ให้บันทึกของแถม remark อย่างเดียว (part_no="", qty=0)
+        if (selectedParts.length === 0 && remark.trim() !== "") {
             const body = {
                 pcl_id: part?.pcl_id,
-                part_no: partNo,
-                qty,
+                part_no: "",
+                qty: 0,
                 remark: remark.trim(),
             };
-            console.log("Adding free item with data:", body);
+            console.log("Adding free item with only remark:", body);
             try {
                 const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/add-free-item`, {
                     method: 'POST',
@@ -297,10 +286,47 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                     throw new Error(`Failed to add free item: ${response.statusText}`);
                 }
                 const data = await response.json();
-                console.log('Free item added successfully:', data);
+                console.log('Free item (remark only) added successfully:', data);
                 successCount++;
             } catch (error) {
-                console.error('Error adding free item:', error);
+                console.error('Error adding free item (remark only):', error);
+            }
+        } else {
+            for (const partNoRaw of selectedParts) {
+                // Use only the first part_no before '|'
+                const partNo = partNoRaw.split('|')[0].trim();
+                // เช็คว่ามีอยู่แล้วใน free_item หรือไม่
+                if (existingFreeItems.includes(partNoRaw.trim())) {
+                    alert(`Part No. ${partNoRaw} มีอยู่ในรายการของแถมแล้ว ไม่สามารถเพิ่มซ้ำได้`);
+                    continue;
+                }
+                const qty = freebieQtys[partNoRaw] || 0;
+                if (qty <= 0) continue; // skip if qty is not set or zero
+                const body = {
+                    pcl_id: part?.pcl_id,
+                    part_no: partNo,
+                    qty,
+                    remark: remark.trim(),
+                };
+                console.log("Adding free item with data:", body);
+                try {
+                    const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/add-free-item`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(body),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Failed to add free item: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    console.log('Free item added successfully:', data);
+                    successCount++;
+                } catch (error) {
+                    console.error('Error adding free item:', error);
+                }
             }
         }
         if (successCount > 0) {

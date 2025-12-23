@@ -571,7 +571,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
             return;
         }
         const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
-        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_id}/${endpointType}`;
+        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_pdf_pr/${pr_id}/${endpointType}`;
         try {
             const res = await fetch(previewUrl, {
                 method: 'GET',
@@ -806,7 +806,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-sky-400 bg-sky-900/30 border-sky-600/30 hover:bg-sky-800/50' : 'text-sky-700 bg-sky-50 border-sky-300 hover:bg-sky-100'}`}
                                                     onClick={() => setMultiApprovalModalOpen(true)}
                                                 >
-                                                    อนุมัติหลายรายการ ({allParts.filter(part => part.status === 'Compared' && selectedParts.includes(part.pcl_id)).length})
+                                                    อนุมัติ({allParts.filter(part => part.status === 'Compared' && selectedParts.includes(part.pcl_id)).length})รายการ
                                                 </button>
                                             )}
                                             <button
@@ -1215,7 +1215,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                         if (item.part_no && item.part_no.includes('|')) {
                                                                             return item.part_no.split('|')[0];
                                                                         }
-                                                                        return item.part_no;
+                                                                        return item.part_no || '-';
                                                                     })()}
                                                                 </td>
                                                                 <td className={`px-4 py-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
@@ -1244,10 +1244,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 </td>
                                                                 <td className={`px-4 py-2 text-left text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>* หมายเหตุ : {item.remark}</td>
                                                                 <td className={`px-4 py-2 text-center text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                                    {item.qty}
+                                                                    {(()=> {
+                                                                        if (item.qty === 0) return '-';
+                                                                        return item.qty;
+                                                                    })()}
                                                                 </td>
                                                                 <td className={`px-4 py-2 text-center text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                                    {part.unit}
+                                                                    {(()=> {
+                                                                        if (item.qty === 0) return '-';
+                                                                        return part.unit;
+                                                                    })()}
                                                                 </td>
                                                                 {/* Add empty vendor cell only if vendor column is visible */}
                                                                 {(departmentId === 10086 && prData?.manager_approve && prData?.supervisor_approve && user?.Department?.ID === 10086) && (
