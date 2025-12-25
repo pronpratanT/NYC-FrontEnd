@@ -286,7 +286,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [latestInventoryItem, setLatestInventoryItem] = useState<InventoryItem | null>(null);
   // qty
   // เพิ่ม state สำหรับ qtyHistory
-  const [qtyHistory, setQtyHistory] = useState<any[]>([]);
+  type QtyHistoryItem = { qty: number };
+  const [qtyHistory, setQtyHistory] = useState<QtyHistoryItem[]>([]);
   // ...existing code...
   // อัปเดต qtyValue จาก qtyHistory ล่าสุดเมื่อ qtyHistory เปลี่ยน
   useEffect(() => {
