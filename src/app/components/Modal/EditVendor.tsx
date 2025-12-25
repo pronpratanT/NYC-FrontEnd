@@ -335,7 +335,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                         ข้อมูลผู้ขาย
                                     </span>
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     <div className="space-y-2">
                                         <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
                                             }`}>
@@ -405,6 +405,23 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                         />
                                     </div>
                                 </div>
+                                <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Address
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={creditTerm}
+                                            onChange={e => setCreditTerm(e.target.value)}
+                                            placeholder="กรอกที่อยู่"
+                                        />
+                                    </div>
                             </div>
 
                             {/* Contact Information Section */}
