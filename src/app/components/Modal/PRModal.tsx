@@ -8,6 +8,10 @@ import { createPortal } from 'react-dom';
 // components
 import { useToken } from "../../context/TokenContext";
 import { useUser } from '../../context/UserContext';
+import { useTheme } from "../ThemeProvider";
+
+// heroui
+import { Tooltip } from "@heroui/react";
 
 // calendar
 import '@/app/styles/react-datepicker-dark.css';
@@ -26,14 +30,13 @@ import { IoTrashBinOutline } from "react-icons/io5";
 import { CiEdit } from "react-icons/ci";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import { TiPlus } from "react-icons/ti";
-import { useTheme } from "../ThemeProvider";
-import { Tooltip } from "@heroui/react";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { GoDownload } from "react-icons/go";
 import { CiCircleInfo } from "react-icons/ci";
 import { FaSave } from "react-icons/fa";
 import { SlOptionsVertical } from "react-icons/sl";
 import { LuNotebookPen } from "react-icons/lu";
+import { GiCancel } from "react-icons/gi";
 
 // Custom scrollbar styles
 const scrollbarStyles = `
@@ -220,7 +223,6 @@ export interface PriceHistoryItem {
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
-  // ...existing code...
   // Move hoveredPoint and mouseX state to top-level
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const [mouseX, setMouseX] = useState<number | null>(null);
@@ -282,6 +284,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   const [rowsPerPage, setRowsPerPage] = useState(25);
   // เก็บข้อมูลประวัติการซื้อสุดท้าย
   const [latestInventoryItem, setLatestInventoryItem] = useState<InventoryItem | null>(null);
+  // qty
+  // เพิ่ม state สำหรับ qtyHistory
+  const [qtyHistory, setQtyHistory] = useState<any[]>([]);
+  // ...existing code...
+  // อัปเดต qtyValue จาก qtyHistory ล่าสุดเมื่อ qtyHistory เปลี่ยน
+  useEffect(() => {
+    if (Array.isArray(qtyHistory) && qtyHistory.length > 0) {
+      setQtyValue(qtyHistory[qtyHistory.length - 1]?.qty?.toString() || '');
+    }
+  }, [qtyHistory]);
 
   //search vendor
   // เช็คสถานะ PR เพื่อ disabled ช่อง search และปุ่มเพิ่ม Vendor
@@ -1333,19 +1345,19 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Helper: get latest saved price for a vendor from priceCompareHistory
   const getLatestVendorPrice = (vendorId: number) => {
     const histories = Array.isArray(priceCompareHistory)
-      ? priceCompareHistory.filter((h: PriceCompareHistory) => 
-          (h.VendorId === vendorId)
-        )
+      ? priceCompareHistory.filter((h: PriceCompareHistory) =>
+        (h.VendorId === vendorId)
+      )
       : [];
     console.log('🔍 getLatestVendorPrice for vendor', vendorId, ':', histories);
     if (histories.length === 0) return null;
-    
+
     // Sort by ID descending to get the most recent
     const sorted = [...histories].sort((a, b) => {
       if (a.ID && b.ID) return b.ID - a.ID;
       return 0;
     });
-    
+
     const latest = sorted[0] as PriceCompareHistory;
     const latestPrice = latest.price;
     const num = Number(latestPrice);
@@ -1556,6 +1568,55 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     };
     fetchFreeItemHistory();
   }, [token, partNo]);
+
+  // TODO New QTY
+  const getQTYHistory = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/qty-history/detail?pricecompareId=${compareData?.pcl_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) throw new Error('Failed to fetch qty history');
+      const data = await res.json();
+      setQtyHistory(data);
+      console.log('Fetched QTY History:', data);
+    } catch (err) {
+      console.error('Error fetching qty history:', err);
+      setQtyHistory([]);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'compare' && compareData?.pcl_id) {
+      getQTYHistory();
+    } else {
+      setQtyHistory([]);
+    }
+  }, [activeTab, compareData?.pcl_id]);
+
+  const handleQtyChange = async () => {
+    const confirmSave = window.confirm('คุณต้องการบันทึกจำนวนสินค้าใช่หรือไม่?');
+    if (!confirmSave) return;
+
+    const payload = {
+      qty: qtyValue !== '' ? Number(qtyValue) : qty,
+      pricecompare_id: compareData?.pcl_id || null,
+    }
+    console.log('Saving qty history payload:', payload);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/qty-hist`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      alert('แก้ไขจำนวนสินค้าเรียบร้อยแล้ว');
+      setEditingQty(false);
+    } catch (err) {
+      console.error('Error saving qty history:', err);
+    }
+  }
 
   // TODO: PDF
   // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
@@ -4788,7 +4849,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <div className={`flex justify-between text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                     {!editingQty ? (
                                       <>
-                                        {qtyValue || '-'}
+                                        {Array.isArray(qtyHistory) && qtyHistory.length > 0
+                                          ? qtyHistory[qtyHistory.length - 1]?.qty ?? '-'
+                                          : qtyValue || '-'}
                                         <button
                                           type="button"
                                           className={`ml-2 px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
@@ -4808,20 +4871,20 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           className={`w-20 px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-100' : 'border-gray-300 bg-white text-gray-900'}`}
                                           style={{ marginRight: 8 }}
                                         />
-                                        {/* <button
-                                          type="button"
-                                          className={`px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-green-600 text-green-300 hover:bg-green-900/30' : 'border-green-300 text-green-700 hover:bg-green-50'}`}
-                                          onClick={() => {
-                                            // TODO: Call API to update qty here if needed
-                                            setEditingQty(false);
-                                          }}
-                                          style={{marginRight: 4}}
-                                        >
-                                          บันทึก
-                                        </button> */}
                                         <button
                                           type="button"
-                                          className={`px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+                                          className={`px-1.5 py-1 cursor-pointer rounded text-xs font-normal border ${isDarkMode ? 'border-green-600 text-green-300 hover:bg-green-900/30' : 'border-green-300 text-green-700 hover:bg-green-50'}`}
+                                          onClick={() => {
+                                            // TODO: Call API to update qty here if needed
+                                            handleQtyChange();
+                                          }}
+                                          style={{ marginRight: 4 }}
+                                        >
+                                          <FaSave className="inline-block text-lg align-middle" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={`px-1.5 py-1 cursor-pointer rounded text-xs font-normal border ${isDarkMode ? 'border-red-600 text-red-300 hover:bg-red-900/30' : 'border-red-300 text-red-700 hover:bg-red-50'}`}
                                           onClick={() => {
                                             // รีเซ็ตจากข้อมูลที่ตรงกับ pr_list_id
                                             const currentItem = compareData?.part_inventory_and_pr?.find(item => item.pr_list_id === pr_list_id);
@@ -4829,7 +4892,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                             setEditingQty(false);
                                           }}
                                         >
-                                          ยกเลิก
+                                          <GiCancel className="inline-block text-lg align-middle" />
                                         </button>
                                       </>
                                     )}
