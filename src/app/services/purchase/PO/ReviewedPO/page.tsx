@@ -4,6 +4,9 @@ import React from 'react';
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+// context
+import { useUser } from "@/app/context/UserContext";
+
 //components
 import { useToken } from "@/app/context/TokenContext";
 import Sidebar from "@/app/components/sidebar";
@@ -122,6 +125,8 @@ export default function ReviewedPOPage() {
     // const { user } = useUser(); // Removed unused variable
     const token = useToken();
     const { isDarkMode } = useTheme();
+    const { user } = useUser();
+    const departmentId = user?.Department?.ID;
 
     // Get PO No from URL (SSR-safe, Next.js App Router)
     const [poNo, setPoNo] = useState<string | null>(null);
@@ -200,6 +205,14 @@ export default function ReviewedPOPage() {
         fetchData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [poNo, token]);
+
+    // NOTE: Check department access
+    useEffect(() => {
+        if (departmentId !== undefined && departmentId !== 10086) {
+            alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
+            router.replace(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || "/services/purchase");
+        }
+    }, [departmentId, router]);
 
 
     // NOTE: Handler

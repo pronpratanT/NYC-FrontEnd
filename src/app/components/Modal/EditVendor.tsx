@@ -69,6 +69,7 @@ interface EditVendorProps {
         tel: string;
         fax_no: string;
     }>;
+    //onConfirm?: (data: { vendorId: number; vendorCode: string; vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; tel: string; faxNo: string; address1: string[]; address2: string[] }) => void;
     onConfirm?: (data: { vendorId: number; vendorCode: string; vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; tel: string; faxNo: string }) => void;
     onCancel?: () => void;
     source?: 'ReviewedPO' | 'PRModal'; // เพิ่ม prop สำหรับระบุแหล่งที่มา
@@ -82,6 +83,10 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
     const [contactName, setContactName] = useState(vendorData?.contact_name || "");
     const [taxId, setTaxId] = useState(vendorData?.tax_id || "");
     const [creditTerm, setCreditTerm] = useState(vendorData?.credit_term || "");
+    // const [city, setCity] = useState(vendorData?.city || "");
+    // const [country, setCountry] = useState(vendorData?.country || "");
+    // const [currencyCode, setCurrencyCode] = useState(vendorData?.currency_code || "");
+    // const [zipCode, setZipCode] = useState(vendorData?.zip_code || "");
     // ฟังก์ชันแยกข้อมูลที่มี delimiter
     const parseMultipleValues = (value: string | undefined): string[] => {
         if (!value || value.trim() === "") return [""];
@@ -91,6 +96,8 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
     };
 
     // เปลี่ยนเป็น array สำหรับ multiple emails, tel numbers และ fax numbers
+    // const [address1, setAddress1] = useState<string>(vendorData?.address1 || "");
+    // const [address2, setAddress2] = useState<string>(vendorData?.address2 || "");
     const [emails, setEmails] = useState<string[]>(parseMultipleValues(vendorData?.email));
     const [emailErrors, setEmailErrors] = useState<string[]>(parseMultipleValues(vendorData?.email).map(() => ""));
     const [telNos, setTelNos] = useState<string[]>(parseMultipleValues(vendorData?.tel));
@@ -134,11 +141,11 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
         setContactName(vendorData?.contact_name || "");
         setTaxId(vendorData?.tax_id || "");
         setCreditTerm(vendorData?.credit_term || "");
-        
+
         const parsedEmails = parseMultipleValues(vendorData?.email);
         const parsedTels = parseMultipleValues(vendorData?.tel);
         const parsedFaxes = parseMultipleValues(vendorData?.fax_no);
-        
+
         setEmails(parsedEmails);
         setEmailErrors(parsedEmails.map(() => ""));
         setTelNos(parsedTels);
@@ -350,7 +357,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                 }`}
                                             value={vendorName}
                                             onChange={e => setVendorName(e.target.value)}
-                                            placeholder="กรอกชื่อผู้ขาย"
+                                            placeholder="ชื่อผู้ขาย"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -367,7 +374,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                 }`}
                                             value={contactName}
                                             onChange={e => setContactName(e.target.value)}
-                                            placeholder="กรอกชื่อผู้ติดต่อ"
+                                            placeholder="ชื่อผู้ติดต่อ"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -384,7 +391,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                 }`}
                                             value={taxId}
                                             onChange={e => setTaxId(e.target.value)}
-                                            placeholder="กรอกเลขผู้เสียภาษี"
+                                            placeholder="เลขผู้เสียภาษี"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -401,15 +408,14 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                 }`}
                                             value={creditTerm}
                                             onChange={e => setCreditTerm(e.target.value)}
-                                            placeholder="กรอกเครดิตเทอม"
+                                            placeholder="เครดิตเทอม"
                                         />
                                     </div>
-                                </div>
-                                <div className="space-y-2">
+                                    {/* <div className="space-y-2">
                                         <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
                                             }`}>
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
-                                            Address
+                                            City
                                         </label>
                                         <input
                                             type="text"
@@ -417,11 +423,80 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                 ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
                                                 : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
                                                 }`}
-                                            value={creditTerm}
-                                            onChange={e => setCreditTerm(e.target.value)}
-                                            placeholder="กรอกที่อยู่"
+                                            value={city}
+                                            onChange={e => setCity(e.target.value)}
+                                            placeholder="ชื่อเมือง"
                                         />
                                     </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Country
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={country}
+                                            onChange={e => setCountry(e.target.value)}
+                                            placeholder="ชื่อประเทศ"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Currency Code
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={currencyCode}
+                                            onChange={e => setCurrencyCode(e.target.value)}
+                                            placeholder="สกุลเงิน"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Zip Code
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`}
+                                            value={zipCode}
+                                            onChange={e => setZipCode(e.target.value)}
+                                            placeholder="รหัสไปรษณีย์"
+                                        />
+                                    </div> */}
+                                </div>
+                                {/* <div className="space-y-2">
+                                    <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                        }`}>
+                                        <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                        Address
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                            ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                            : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                            }`}
+                                        value={address}
+                                        onChange={e => setAddress(e.target.value)}
+                                        placeholder="ที่อยู่"
+                                    />
+                                </div> */}
                             </div>
 
                             {/* Contact Information Section */}
@@ -431,7 +506,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                     : 'text-gray-800 border-gray-300'
                                     }`}>
                                     <span className="flex items-center gap-2">
-                                        <TbMail className="h-5 w-5"/>
+                                        <TbMail className="h-5 w-5" />
                                         ข้อมูลติดต่อ
                                     </span>
                                 </h3>

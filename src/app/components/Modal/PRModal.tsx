@@ -181,6 +181,12 @@ type VendorSelected = {
   fax_no: string;
   contact_person: string;
   email: string;
+  // address1: string;
+  // address2: string;
+  // city: string;
+  // country: string;
+  // currency_code: string;
+  // zip_code: string;
 }
 
 // --- Add type for editedPrices to support rawPrice ---
@@ -245,6 +251,11 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   const router = useRouter();
   const { user } = useUser();
+  // ดึง role_id เฉพาะ service_id = 2
+  const puRole = user?.role?.find?.(r => r.service_id === 2);
+  const roleID = puRole?.role_id;
+  const serviceID = puRole?.service_id;
+  const departmentId = user?.Department?.ID;
   // State สำหรับรายการที่เลือกใน Approved Dropdown
   const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string; part_name: string; prod_code: string }[]>([]);
 
@@ -379,6 +390,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   // State to track edited prices (support price and discounts array)
   const [editedPrices, setEditedPrices] = useState<EditedPrice[]>([]);
+  // Cache latest saved prices per vendor to prevent duplicate saves before history refetches
+  const lastSavedPricesRef = useRef<Record<number, number>>({});
 
   // Set isClient to true after mount (for createPortal)
   useEffect(() => {
@@ -1350,20 +1363,25 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
         (h.VendorId === vendorId)
       )
       : [];
-    console.log('🔍 getLatestVendorPrice for vendor', vendorId, ':', histories);
-    if (histories.length === 0) return null;
+    const pendingLatest = lastSavedPricesRef.current[vendorId];
+    let latestFromHistory: number | null = null;
 
-    // Sort by ID descending to get the most recent
-    const sorted = [...histories].sort((a, b) => {
-      if (a.ID && b.ID) return b.ID - a.ID;
-      return 0;
-    });
+    if (histories.length > 0) {
+      // Sort by ID descending to get the most recent
+      const sorted = [...histories].sort((a, b) => {
+        if (a.ID && b.ID) return b.ID - a.ID;
+        return 0;
+      });
 
-    const latest = sorted[0] as PriceCompareHistory;
-    const latestPrice = latest.price;
-    const num = Number(latestPrice);
-    console.log('💰 Latest price for vendor', vendorId, ':', num, 'from', latest);
-    return isNaN(num) ? null : num;
+      const latest = sorted[0] as PriceCompareHistory;
+      const latestPrice = latest.price;
+      const num = Number(latestPrice);
+      latestFromHistory = isNaN(num) ? null : num;
+    }
+
+    const finalLatest = pendingLatest !== undefined ? pendingLatest : latestFromHistory;
+    console.log('\u000f09 getLatestVendorPrice for vendor', vendorId, ': histories =', histories, 'pendingLatest =', pendingLatest, 'finalLatest =', finalLatest);
+    return finalLatest ?? null;
   };
   // Auto save compare prices when in 'compare' tab, no negotiation history, and all vendors have price
   const autoSaveRef = useRef(false);
@@ -1385,6 +1403,10 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   // Button handler to save all compare prices
   const saveAllComparePrices = async () => {
+    if (isSaving) {
+      alert('ระบบกำลังบันทึกราคาสินค้าอยู่ กรุณารอสักครู่');
+      return;
+    }
     if (!compareData || !Array.isArray(compareData.compare_vendors) || compareData.compare_vendors.length === 0) {
       alert('ไม่พบรายการผู้ขายสำหรับบันทึก');
       return;
@@ -1420,61 +1442,73 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
     console.log('✅ Filtered payloads to save:', payloads);
-
     console.log('Saving compare prices payloads:', payloads);
-    // Loop and send each payload separately
-    for (const payload of payloads) {
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-history`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-      } catch (err) {
-        console.error('Error saving compare price:', err);
-        alert('เกิดข้อผิดพลาดในการบันทึกราคาสินค้า');
-        return;
-      }
-    }
-    alert('บันทึกราคาสินค้าทุกรายการเรียบร้อยแล้ว');
-    // Reload compare list and price histories so charts and remarks reflect latest
-    if (typeof fetchCompareData === 'function') {
-      await fetchCompareData();
-    }
-    // Re-fetch price histories used by chart tooltips
+    setIsSaving(true);
     try {
-      // reuse the same logic as in useEffect; wrap in local function if needed
-      // Only run when have vendors and pcl_id
-      if (compareData?.pcl_id && Array.isArray(compareData?.compare_vendors) && compareData.compare_vendors.length > 0) {
-        const allHistories: PriceCompareHistory[] = [];
-        for (const vendor of compareData.compare_vendors) {
-          try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-histories?pricecompareId=${compareData.pcl_id}&vendorId=${vendor.vendor_id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) continue;
-            const data = await res.json();
-            if (Array.isArray(data)) {
-              data.forEach((item: PriceCompareHistory) => {
-                allHistories.push({ ...item, VendorId: vendor.vendor_id });
-              });
-            }
-          } catch (err) {
-            console.error('Error refetching history for vendor', vendor.vendor_id, err);
+      // Loop and send each payload separately
+      for (const payload of payloads) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-history`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+          const numericPrice = Number(payload.price);
+          if (!isNaN(numericPrice) && payload.vendor_id != null) {
+            lastSavedPricesRef.current[payload.vendor_id as number] = numericPrice;
           }
+        } catch (err) {
+          console.error('Error saving compare price:', err);
+          alert('เกิดข้อผิดพลาดในการบันทึกราคาสินค้า');
+          return;
         }
-        setPriceCompareHistory(allHistories);
       }
-    } catch (err) {
-      console.error('Error reloading price histories:', err);
+      alert('บันทึกราคาสินค้าทุกรายการเรียบร้อยแล้ว');
+      // Reload compare list and price histories so charts and remarks reflect latest
+      if (typeof fetchCompareData === 'function') {
+        await fetchCompareData();
+      }
+      // Re-fetch price histories used by chart tooltips
+      try {
+        // reuse the same logic as in useEffect; wrap in local function if needed
+        // Only run when have vendors and pcl_id
+        if (compareData?.pcl_id && Array.isArray(compareData?.compare_vendors) && compareData.compare_vendors.length > 0) {
+          const allHistories: PriceCompareHistory[] = [];
+          for (const vendor of compareData.compare_vendors) {
+            try {
+              const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-histories?pricecompareId=${compareData.pcl_id}&vendorId=${vendor.vendor_id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              if (!res.ok) continue;
+              const data = await res.json();
+              if (Array.isArray(data)) {
+                data.forEach((item: PriceCompareHistory) => {
+                  allHistories.push({ ...item, VendorId: vendor.vendor_id });
+                });
+              }
+            } catch (err) {
+              console.error('Error refetching history for vendor', vendor.vendor_id, err);
+            }
+          }
+          setPriceCompareHistory(allHistories);
+        }
+      } catch (err) {
+        console.error('Error reloading price histories:', err);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
   // Save compare prices for vendors with valid price only (skip missing/zero). Used by autosave.
   const saveValidComparePrices = async () => {
+    if (isSaving) {
+      // ถ้ากำลังบันทึกอยู่แล้ว (จากปุ่มกด) ให้ข้าม autosave รอบนี้
+      return;
+    }
     if (!compareData || !Array.isArray(compareData.compare_vendors) || compareData.compare_vendors.length === 0) {
       return;
     }
@@ -1501,49 +1535,58 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
 
-    for (const payload of payloads) {
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-history`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-      } catch (err) {
-        console.error('Error autosaving compare price:', err);
-        // For autosave, skip alert; continue with remaining vendors
-      }
-    }
-
-    // Refresh compare data and histories to reflect saved entries
-    if (typeof fetchCompareData === 'function') {
-      await fetchCompareData();
-    }
+    setIsSaving(true);
     try {
-      if (compareData?.pcl_id && Array.isArray(compareData?.compare_vendors) && compareData.compare_vendors.length > 0) {
-        const allHistories: PriceCompareHistory[] = [];
-        for (const vendor of compareData.compare_vendors) {
-          try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-histories?pricecompareId=${compareData.pcl_id}&vendorId=${vendor.vendor_id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) continue;
-            const data = await res.json();
-            if (Array.isArray(data)) {
-              data.forEach((item: PriceCompareHistory) => {
-                allHistories.push({ ...item, VendorId: vendor.vendor_id });
-              });
-            }
-          } catch (err) {
-            console.error('Error refetching history for vendor', vendor.vendor_id, err);
+      for (const payload of payloads) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-history`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+          const numericPrice = Number(payload.price);
+          if (!isNaN(numericPrice) && payload.vendor_id != null) {
+            lastSavedPricesRef.current[payload.vendor_id as number] = numericPrice;
           }
+        } catch (err) {
+          console.error('Error autosaving compare price:', err);
+          // For autosave, skip alert; continue with remaining vendors
         }
-        setPriceCompareHistory(allHistories);
       }
-    } catch (err) {
-      console.error('Error reloading price histories (autosave):', err);
+
+      // Refresh compare data and histories to reflect saved entries
+      if (typeof fetchCompareData === 'function') {
+        await fetchCompareData();
+      }
+      try {
+        if (compareData?.pcl_id && Array.isArray(compareData?.compare_vendors) && compareData.compare_vendors.length > 0) {
+          const allHistories: PriceCompareHistory[] = [];
+          for (const vendor of compareData.compare_vendors) {
+            try {
+              const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pc/price-histories?pricecompareId=${compareData.pcl_id}&vendorId=${vendor.vendor_id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              if (!res.ok) continue;
+              const data = await res.json();
+              if (Array.isArray(data)) {
+                data.forEach((item: PriceCompareHistory) => {
+                  allHistories.push({ ...item, VendorId: vendor.vendor_id });
+                });
+              }
+            } catch (err) {
+              console.error('Error refetching history for vendor', vendor.vendor_id, err);
+            }
+          }
+          setPriceCompareHistory(allHistories);
+        }
+      } catch (err) {
+        console.error('Error reloading price histories (autosave):', err);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -2292,24 +2335,27 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               </div>
 
                               {/* Action Buttons - แยกกรอบอิสระ */}
-                              <div className={`p-4`}>
-                                <div className="flex justify-center gap-4">
-                                  <button
-                                    type="button"
-                                    onClick={handleRejectCompare}
-                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-red-700 text-white border-red-600 hover:bg-red-800 focus:ring-red-600' : 'bg-red-500 text-white border-red-400 hover:bg-red-600 focus:ring-red-400'}`}
-                                  >
-                                    Reject
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={handleApproveSubmit}
-                                    className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'}`}
-                                  >
-                                    Approve
-                                  </button>
+                              {roleID === 5 && (
+                                <div className={`p-4`}>
+                                  <div className="flex justify-center gap-4">
+                                    <button
+                                      type="button"
+                                      onClick={handleRejectCompare}
+                                      className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-red-700 text-white border-red-600 hover:bg-red-800 focus:ring-red-600' : 'bg-red-500 text-white border-red-400 hover:bg-red-600 focus:ring-red-400'}`}
+                                    >
+                                      Reject
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleApproveSubmit}
+                                      className={`px-8 py-2 rounded-xl font-semibold shadow-lg transition-all duration-200 border text-base focus:outline-none focus:ring-2 cursor-pointer ${isDarkMode ? 'bg-green-700 text-white border-green-600 hover:bg-green-800 focus:ring-green-600' : 'bg-green-500 text-white border-green-400 hover:bg-green-600 focus:ring-green-400'}`}
+                                    >
+                                      Approve
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
+                              )}
+
                             </div>
 
                             {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}
@@ -3986,6 +4032,23 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                                     contact_person: vendor.contact_name ?? '',
                                                     email: vendor.email ?? '',
                                                   });
+                                                  // handleEditVendor({
+                                                  //   ID: vendor.vendor_id,
+                                                  //   vendor_code: vendor.vendor_code,
+                                                  //   vendor_name: vendor.vendor_name,
+                                                  //   tax_id: vendor.tax_id ?? null,
+                                                  //   credit_term: vendor.credit_term,
+                                                  //   tel_no: vendor.tel,
+                                                  //   fax_no: vendor.fax_no ?? '',
+                                                  //   contact_person: vendor.contact_name ?? '',
+                                                  //   email: vendor.email ?? '',
+                                                  //   address1: vendor.address1 ?? '',
+                                                  //   address2: vendor.address2 ?? '',
+                                                  //   city: vendor.city ?? '',
+                                                  //   country: vendor.country ?? '',
+                                                  //   currency_code: vendor.currency_code ?? '',
+                                                  //   zip_code: vendor.zip_code ?? '',
+                                                  // });
                                                   setOpenDropdown(null);
                                                 }}
                                                 className={`w-full text-left px-5 py-3 text-sm flex items-center gap-3 cursor-pointer transition-all duration-200 font-medium ${isDarkMode

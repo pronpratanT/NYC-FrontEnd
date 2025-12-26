@@ -33,6 +33,14 @@ type partData = {
 }
 
 export default function TestPage() {
+  // Check Role from User Context
+  const { user } = useUser();
+  // ดึง role_id เฉพาะ service_id = 2
+  const puRole = user?.role?.find?.(r => r.service_id === 2);
+  const roleID = puRole?.role_id;
+  const serviceID = puRole?.service_id;
+  console.log("User Role ID:", roleID, "Service ID:", serviceID);
+
   const { isCollapsed } = useSidebar();
   const router = useRouter();
   // สร้างหมายเลข PR mock: PR-YY-X000
@@ -49,7 +57,6 @@ export default function TestPage() {
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user } = useUser();
   const token = useToken();
   const [partsInfo, setPartsInfo] = useState<partData[]>([]);
   const [qtyData, setQtyData] = useState<(string | number)[]>([]);

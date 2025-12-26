@@ -58,7 +58,7 @@ const scrollbarStyles = `
 
 interface CreateVendorProps {
     pcl_id?: number;
-    onConfirm?: (data: { vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; telNo: string; faxNo: string }) => void;
+    onConfirm?: (data: { vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; telNo: string; faxNo: string; city: string; country: string; currencyCode: string; zipCode: string; addr1: string; addr2: string; }) => void;
     onCancel?: () => void;
 }
 
@@ -68,7 +68,12 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
     const [contactName, setContactName] = useState("");
     const [taxId, setTaxId] = useState("");
     const [creditTerm, setCreditTerm] = useState("");
+    const [city, setCity] = useState("");
+    const [country, setCountry] = useState("");
+    const [currencyCode, setCurrencyCode] = useState("");
+    const [zipCode, setZipCode] = useState("");
     // เปลี่ยนเป็น array สำหรับ multiple emails, tel numbers และ fax numbers
+    const [address, setAddress] = useState<string[]>([""]);
     const [emails, setEmails] = useState<string[]>([""]);
     const [emailErrors, setEmailErrors] = useState<string[]>([""]);
     const [telNos, setTelNos] = useState<string[]>([""]);
@@ -119,6 +124,23 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
         setEmailErrors(newErrors);
     };
 
+    // ฟังก์ชันสำหรับจัดการ multiple address
+    const addAddress = () => {
+        setAddress([...address, ""]);
+    };
+
+    const removeAddress = (index: number) => {
+        if (address.length > 1) {
+            setAddress(address.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateAddress = (index: number, value: string) => {
+        const newAddress = [...address];
+        newAddress[index] = value;
+        setAddress(newAddress);
+    };
+
     // ฟังก์ชันสำหรับจัดการ multiple tel nos
     const addTelNo = () => {
         setTelNos([...telNos, ""]);
@@ -156,13 +178,18 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
     const handlerConfirm = async () => {
         // Validate all fields
         const errors: { [key: string]: string } = {};
-        if (!vendorName.trim()) errors.vendorName = "กรุณากรอก Vendor Name";
-        if (!contactName.trim()) errors.contactName = "กรุณากรอก Contact Name";
-        if (!taxId.trim()) errors.taxId = "กรุณากรอก Tax ID";
-        if (!creditTerm.trim()) errors.creditTerm = "กรุณากรอก Credit Term";
-        if (!emails[0]?.trim()) errors.email = "กรุณากรอก Email";
-        if (!telNos[0]?.trim()) errors.telNo = "กรุณากรอก Tel No.";
-        if (!faxNos[0]?.trim()) errors.faxNo = "กรุณากรอก Fax No.";
+        if (!vendorName.trim()) errors.vendorName = "กรุณากรอกชื่อผู้ขาย";
+        if (!contactName.trim()) errors.contactName = "กรุณากรอกชื่อผู้ติดต่อ";
+        if (!taxId.trim()) errors.taxId = "กรุณากรอกเลขผู้เสียภาษี";
+        if (!creditTerm.trim()) errors.creditTerm = "กรุณากรอกเครดิตเทอม";
+        if (!emails[0]?.trim()) errors.email = "กรุณากรอกอีเมล";
+        if (!telNos[0]?.trim()) errors.telNo = "กรุณากรอกเบอร์โทรศัพท์";
+        if (!faxNos[0]?.trim()) errors.faxNo = "กรุณากรอกหมายเลขแฟกซ์";
+        if (!city.trim()) errors.city = "กรุณากรอกเมือง";
+        if (!country.trim()) errors.country = "กรุณากรอกประเทศ";
+        if (!currencyCode.trim()) errors.currencyCode = "กรุณากรอกรหัสสกุลเงิน";
+        if (!zipCode.trim()) errors.zipCode = "กรุณากรอกรหัสไปรษณีย์";
+        if (!address[0]?.trim()) errors.address = "กรุณากรอกที่อยู่";
 
         // ตรวจสอบ email errors
         const hasEmailErrors = emailErrors.some(error => error !== "");
@@ -177,6 +204,12 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
             contact_name: contactName,
             tax_id: taxId,
             credit_term: creditTerm,
+            city: city,
+            country: country,
+            cur_code: currencyCode,
+            zip: zipCode,
+            addr1: address[0] ? address[0].trim() : "",
+            addr2: address[1] ? address[1].trim() : "",
             email: emails.filter(e => e.trim()).join(", "),
             tel_no: telNos.filter(t => t.trim()).join(", "),
             fax_no: faxNos.filter(f => f.trim()).join(", ")
@@ -200,6 +233,12 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                     contactName,
                     taxId,
                     creditTerm,
+                    city,
+                    country,
+                    currencyCode,
+                    zipCode,
+                    addr1: address[0] ? address[0].trim() : "",
+                    addr2: address[1] ? address[1].trim() : "",
                     email: emails.filter(e => e.trim()).join(", "),
                     telNo: telNos.filter(t => t.trim()).join(", "),
                     faxNo: faxNos.filter(f => f.trim()).join(", ")
@@ -221,8 +260,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
             <style>{scrollbarStyles}</style>
             <div
                 className={`fixed inset-0 z-[99999] flex items-center justify-center backdrop-blur-md ${isDarkMode
-                        ? 'bg-gradient-to-br from-gray-950/80 via-slate-900/70 to-gray-950/80'
-                        : 'bg-gradient-to-br from-slate-900/70 via-gray-900/60 to-slate-800/70'
+                    ? 'bg-gradient-to-br from-gray-950/80 via-slate-900/70 to-gray-950/80'
+                    : 'bg-gradient-to-br from-slate-900/70 via-gray-900/60 to-slate-800/70'
                     }`}
                 onClick={e => {
                     // ถ้ากดที่พื้นหลัง (target === currentTarget) ให้ปิด modal
@@ -231,8 +270,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
             >
                 <div
                     className={`rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden ring-1 ${isDarkMode
-                            ? 'bg-gradient-to-br from-slate-900 to-slate-800 shadow-slate-900/50 border border-slate-600/50 ring-slate-700/50'
-                            : 'bg-white border border-slate-200 ring-slate-200/10'
+                        ? 'bg-gradient-to-br from-slate-900 to-slate-800 shadow-slate-900/50 border border-slate-600/50 ring-slate-700/50'
+                        : 'bg-white border border-slate-200 ring-slate-200/10'
                         }`}
                     onClick={e => e.stopPropagation()} // ป้องกัน modal ถูกปิดเมื่อกดใน modal
                 >
@@ -243,8 +282,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                         <div className="flex items-center justify-between relative z-10">
                             <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-lg backdrop-blur-sm ${isDarkMode
-                                        ? 'bg-white/10 border border-white/20'
-                                        : 'bg-white/20 border border-white/30'
+                                    ? 'bg-white/10 border border-white/20'
+                                    : 'bg-white/20 border border-white/30'
                                     }`}>
                                     <svg className="w-6 h-6 text-white drop-shadow-sm" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -259,8 +298,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                             <button
                                 onClick={onCancel}
                                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-white transition-all duration-200 hover:scale-105 ${isDarkMode
-                                        ? 'bg-white/10 hover:bg-white/20 border border-white/20'
-                                        : 'bg-white/20 hover:bg-white/30 border border-white/30'
+                                    ? 'bg-white/10 hover:bg-white/20 border border-white/20'
+                                    : 'bg-white/20 hover:bg-white/30 border border-white/30'
                                     }`}
                             >
                                 <svg className="w-5 h-5 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,22 +311,22 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
 
                     {/* Content */}
                     <div className={`p-6 max-h-[70vh] overflow-y-auto custom-scrollbar ${isDarkMode
-                            ? 'bg-gradient-to-br from-slate-800/50 to-slate-900/50'
-                            : 'bg-gradient-to-br from-slate-50 to-gray-50'
+                        ? 'bg-gradient-to-br from-slate-800/50 to-slate-900/50'
+                        : 'bg-gradient-to-br from-slate-50 to-gray-50'
                         }`}>
                         <form className="space-y-8">
                             {/* Basic Information Section */}
                             <div>
                                 <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${isDarkMode
-                                        ? 'text-slate-200 border-slate-600/50'
-                                        : 'text-gray-800 border-gray-300'
+                                    ? 'text-slate-200 border-slate-600/50'
+                                    : 'text-gray-800 border-gray-300'
                                     }`}>
                                     <span className="flex items-center gap-2">
                                         <IoInformationCircleOutline className="h-5 w-5" />
                                         ข้อมูลผู้ขาย
                                     </span>
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     <div className="space-y-2">
                                         <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
                                             }`}>
@@ -297,17 +336,17 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                         <input
                                             type="text"
                                             className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.vendorName
-                                                    ? isDarkMode
-                                                        ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                        : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
-                                                    : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                        ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
-                                                        : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
-                                                    }`
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
                                                 }`}
                                             value={vendorName}
                                             onChange={e => setVendorName(e.target.value)}
-                                            placeholder="กรอกชื่อผู้ขาย"
+                                            placeholder="ชื่อผู้ขาย"
                                         />
                                         {fieldErrors.vendorName && (
                                             <p className="text-xs text-red-500 mt-1">{fieldErrors.vendorName}</p>
@@ -322,17 +361,17 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                         <input
                                             type="text"
                                             className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.contactName
-                                                    ? isDarkMode
-                                                        ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                        : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
-                                                    : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                        ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
-                                                        : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
-                                                    }`
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
                                                 }`}
                                             value={contactName}
                                             onChange={e => setContactName(e.target.value)}
-                                            placeholder="กรอกชื่อผู้ติดต่อ"
+                                            placeholder="ชื่อผู้ติดต่อ"
                                         />
                                         {fieldErrors.contactName && (
                                             <p className="text-xs text-red-500 mt-1">{fieldErrors.contactName}</p>
@@ -347,17 +386,17 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                         <input
                                             type="text"
                                             className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.taxId
-                                                    ? isDarkMode
-                                                        ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                        : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
-                                                    : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                        ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
-                                                        : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
-                                                    }`
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
                                                 }`}
                                             value={taxId}
                                             onChange={e => setTaxId(e.target.value)}
-                                            placeholder="กรอกเลขผู้เสียภาษี"
+                                            placeholder="เลขผู้เสียภาษี"
                                         />
                                         {fieldErrors.taxId && (
                                             <p className="text-xs text-red-500 mt-1">{fieldErrors.taxId}</p>
@@ -372,21 +411,173 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                         <input
                                             type="text"
                                             className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.creditTerm
-                                                    ? isDarkMode
-                                                        ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                        : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
-                                                    : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                        ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
-                                                        : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
-                                                    }`
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
                                                 }`}
                                             value={creditTerm}
                                             onChange={e => setCreditTerm(e.target.value)}
-                                            placeholder="กรอกเครดิตเทอม"
+                                            placeholder="เครดิตเทอม"
                                         />
                                         {fieldErrors.creditTerm && (
                                             <p className="text-xs text-red-500 mt-1">{fieldErrors.creditTerm}</p>
                                         )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            City
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.city
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
+                                                }`}
+                                            value={city}
+                                            onChange={e => setCity(e.target.value)}
+                                            placeholder="ชื่อเมือง"
+                                        />
+                                        {fieldErrors.city && (
+                                            <p className="text-xs text-red-500 mt-1">{fieldErrors.city}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Country
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.country
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
+                                                }`}
+                                            value={country}
+                                            onChange={e => setCountry(e.target.value)}
+                                            placeholder="ชื่อประเทศ"
+                                        />
+                                        {fieldErrors.country && (
+                                            <p className="text-xs text-red-500 mt-1">{fieldErrors.country}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Currency Code
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.currencyCode
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
+                                                }`}
+                                            value={currencyCode}
+                                            onChange={e => setCurrencyCode(e.target.value)}
+                                            placeholder="สกุลเงิน เช่น THB, USD"
+                                        />
+                                        {fieldErrors.currencyCode && (
+                                            <p className="text-xs text-red-500 mt-1">{fieldErrors.currencyCode}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                            }`}>
+                                            <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                            Zip Code
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.zipCode
+                                                ? isDarkMode
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                }`
+                                                }`}
+                                            value={zipCode}
+                                            onChange={e => setZipCode(e.target.value)}
+                                            placeholder="รหัสไปรษณีย์"
+                                        />
+                                        {fieldErrors.zipCode && (
+                                            <p className="text-xs text-red-500 mt-1">{fieldErrors.zipCode}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                        }`}>
+                                        <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                        Address {address.length > 1 && <span className="text-xs opacity-70">({address.length})</span>}
+                                    </label>
+                                    <div className="space-y-2">
+                                        {address.map((addr, index) => (
+                                            <div key={index} className="flex gap-2 items-center">
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="text"
+                                                        className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                            ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                            : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                            }`}
+                                                        value={addr}
+                                                        onChange={e => updateAddress(index, e.target.value)}
+                                                        placeholder={`ที่อยู่${index > 0 ? ` ${index + 1}` : ''}`}
+                                                    />
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    {index === address.length - 1 && address.length < 2 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={addAddress}
+                                                            className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+                                                    {address.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeAddress(index)}
+                                                            className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
+                                                                ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                                : 'bg-red-500 hover:bg-red-600 text-white'
+                                                                } shadow-sm hover:shadow-md text-xs`}
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
@@ -394,8 +585,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                             {/* Contact Information Section */}
                             <div>
                                 <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${isDarkMode
-                                        ? 'text-slate-200 border-slate-600/50'
-                                        : 'text-gray-800 border-gray-300'
+                                    ? 'text-slate-200 border-slate-600/50'
+                                    : 'text-gray-800 border-gray-300'
                                     }`}>
                                     <span className="flex items-center gap-2">
                                         <TbMail className="h-5 w-5" />
@@ -417,13 +608,13 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                         <input
                                                             type="email"
                                                             className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${emailErrors[index]
-                                                                    ? isDarkMode
-                                                                        ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                                        : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
-                                                                    : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                                        ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                                        : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
-                                                                    }`
+                                                                ? isDarkMode
+                                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                                : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                                }`
                                                                 }`}
                                                             value={email}
                                                             onChange={e => updateEmail(index, e.target.value)}
@@ -450,8 +641,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                                 type="button"
                                                                 onClick={() => removeEmail(index)}
                                                                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
-                                                                        ? 'bg-red-600/80 hover:bg-red-600 text-white'
-                                                                        : 'bg-red-500 hover:bg-red-600 text-white'
+                                                                    ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                                    : 'bg-red-500 hover:bg-red-600 text-white'
                                                                     } shadow-sm hover:shadow-md text-xs`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -470,7 +661,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                         <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
                                             }`}>
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
-                                            โทรศัพท์ {telNos.length > 1 && <span className="text-xs opacity-70">({telNos.length})</span>}
+                                            Phone number {telNos.length > 1 && <span className="text-xs opacity-70">({telNos.length})</span>}
                                         </label>
                                         <div className="space-y-2">
                                             {telNos.map((telNo, index) => (
@@ -479,8 +670,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                         <input
                                                             type="text"
                                                             className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
                                                                 }`}
                                                             value={telNo}
                                                             onChange={e => updateTelNo(index, e.target.value)}
@@ -504,8 +695,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                                 type="button"
                                                                 onClick={() => removeTelNo(index)}
                                                                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
-                                                                        ? 'bg-red-600/80 hover:bg-red-600 text-white'
-                                                                        : 'bg-red-500 hover:bg-red-600 text-white'
+                                                                    ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                                    : 'bg-red-500 hover:bg-red-600 text-white'
                                                                     } shadow-sm hover:shadow-md text-xs`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -524,7 +715,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                         <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
                                             }`}>
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
-                                            แฟกซ์ {faxNos.length > 1 && <span className="text-xs opacity-70">({faxNos.length})</span>}
+                                            Fax number {faxNos.length > 1 && <span className="text-xs opacity-70">({faxNos.length})</span>}
                                         </label>
                                         <div className="space-y-2">
                                             {faxNos.map((faxNo, index) => (
@@ -533,8 +724,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                         <input
                                                             type="text"
                                                             className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                                ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
                                                                 }`}
                                                             value={faxNo}
                                                             onChange={e => updateFaxNo(index, e.target.value)}
@@ -558,8 +749,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                                 type="button"
                                                                 onClick={() => removeFaxNo(index)}
                                                                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
-                                                                        ? 'bg-red-600/80 hover:bg-red-600 text-white'
-                                                                        : 'bg-red-500 hover:bg-red-600 text-white'
+                                                                    ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                                    : 'bg-red-500 hover:bg-red-600 text-white'
                                                                     } shadow-sm hover:shadow-md text-xs`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -579,15 +770,15 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
 
                     {/* Footer */}
                     <div className={`px-6 py-4 border-t backdrop-blur-sm ${isDarkMode
-                            ? 'bg-gradient-to-r from-slate-800/80 via-slate-900/60 to-slate-800/80 border-slate-700/50'
-                            : 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200'
+                        ? 'bg-gradient-to-r from-slate-800/80 via-slate-900/60 to-slate-800/80 border-slate-700/50'
+                        : 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200'
                         }`}>
                         <div className="flex justify-end gap-3">
                             <button
                                 type="button"
                                 className={`px-6 py-2.5 rounded-lg border font-medium transition-all duration-200 focus:outline-none focus:ring-2 shadow-sm hover:shadow-md backdrop-blur-sm ${isDarkMode
-                                        ? 'border-slate-600/50 text-slate-200 bg-slate-700/50 hover:bg-slate-600/50 focus:ring-slate-500 shadow-slate-900/20 hover:shadow-slate-800/30'
-                                        : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-gray-500'
+                                    ? 'border-slate-600/50 text-slate-200 bg-slate-700/50 hover:bg-slate-600/50 focus:ring-slate-500 shadow-slate-900/20 hover:shadow-slate-800/30'
+                                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-gray-500'
                                     }`}
                                 onClick={onCancel}
                             >
