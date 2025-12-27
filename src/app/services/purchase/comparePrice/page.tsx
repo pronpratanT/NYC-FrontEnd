@@ -116,14 +116,34 @@ type FreeItems = {
 
 function ComparePriceContent({ token }: { token: string | null }) {
     const { isDarkMode } = useTheme();
-    // Assume user info is available from context or prop
-    // You may need to adjust this to your actual user context
+
     // Check Role from User Context
     const { user } = useUser();
-    // ดึง role_id เฉพาะ service_id = 2
-    const puRole = user?.role?.find?.(r => r.service_id === 2);
-    const roleID = puRole?.role_id;
-    const serviceID = puRole?.service_id;
+    // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
+    const rawRole: any = (user as any)?.role;
+    const permissions: any[] = Array.isArray(rawRole)
+        ? rawRole.flatMap((r: any) => r?.permissions ?? [])
+        : rawRole?.permissions ?? [];
+    const permission = permissions.find(
+        (p: any) => p && (p.service === 2 || p.service === "2")
+    );
+    // ดึงสิทธิ์เฉพาะ department = 10086
+    const department = permission?.departments?.find?.(
+        (d: any) => d && d.department === 10086
+    );
+    const roles: string[] = department?.roles ?? [];
+    const roleNames: string[] = department?.roles_name ?? [];
+    // roleID = ค่า role ที่เป็นตัวเลขมากที่สุดใน roles (เช่น ["2","4"] -> 4)
+    const numericRoles = roles
+        .map(r => parseInt(r, 10))
+        .filter(n => !Number.isNaN(n));
+    const roleID = numericRoles.length > 0
+        ? Math.max(...numericRoles)
+        : undefined;
+    // serviceID แปลงเป็น number เช่นกัน
+    const serviceID = permission
+        ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
+        : undefined;
     const departmentId = user?.Department?.ID;
     // console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
@@ -601,7 +621,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
             return;
         }
         const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
-        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_id}/${endpointType}`;
+        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf_pr/${pr_id}/${endpointType}`;
         try {
             const res = await fetch(previewUrl, {
                 method: 'GET',
@@ -971,7 +991,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         </div>
                                         <div className="flex items-center gap-3">
                                             {/* Multi Approval Button - Show only when parts are selected */}
-                                            {selectedParts.length > 0 && allParts.some(part => part.status === 'Compared') && (
+                                            {roleID === 5 && selectedParts.length > 0 && allParts.some(part => part.status === 'Compared') && (
                                                 <button
                                                     type="button"
                                                     className={`rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-sky-400 bg-sky-900/30 border-sky-600/30 hover:bg-sky-800/50' : 'text-sky-700 bg-sky-50 border-sky-300 hover:bg-sky-100'}`}
@@ -980,21 +1000,23 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     อนุมัติ({allParts.filter(part => part.status === 'Compared' && selectedParts.includes(part.pcl_id)).length})รายการ
                                                 </button>
                                             )}
-                                            <button
-                                                type="button"
-                                                className={`group relative rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
-                                                onClick={() => setGroupPRModalOpen(true)}
-                                            >
-                                                <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 opacity-100 group-hover:opacity-0">
-                                                    <LuUngroup className="w-7 h-7" />
-                                                </span>
-                                                <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 opacity-0 group-hover:opacity-100">
-                                                    <LuGroup className="w-7 h-7" />
-                                                </span>
-                                                <span className="invisible">
-                                                    <LuUngroup className="w-7 h-7" />
-                                                </span>
-                                            </button>
+                                            {roleID === 4 && (
+                                                <button
+                                                    type="button"
+                                                    className={`group relative rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
+                                                    onClick={() => setGroupPRModalOpen(true)}
+                                                >
+                                                    <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 opacity-100 group-hover:opacity-0">
+                                                        <LuUngroup className="w-7 h-7" />
+                                                    </span>
+                                                    <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 opacity-0 group-hover:opacity-100">
+                                                        <LuGroup className="w-7 h-7" />
+                                                    </span>
+                                                    <span className="invisible">
+                                                        <LuUngroup className="w-7 h-7" />
+                                                    </span>
+                                                </button>
+                                            )}
                                             {/* Group PR Modal */}
                                             <GroupPRModal
                                                 open={groupPRModalOpen}
@@ -1053,7 +1075,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             {hasActionableParts && (
                                                 <th className={`px-1 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                                                     {/* Header: show select all only if there is at least one Compared row */}
-                                                    {allParts.some(part => part.status === 'Compared') ? (
+                                                    {roleID === 5 && allParts.some(part => part.status === 'Compared') ? (
                                                         <input
                                                             type="checkbox"
                                                             className={`w-4 h-4 rounded border-2 transition-all duration-200 cursor-pointer ${isDarkMode
@@ -1150,7 +1172,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                         {/* Show action cell only if there are actionable items (Compared, pending, Rejected) */}
                                                         {hasActionableParts && (
                                                             <td className={`px-1 py-3 text-center w-12`}>
-                                                                {part.status === 'Compared' ? (
+                                                                {roleID === 5 && part.status === 'Compared' ? (
                                                                     <input
                                                                         type="checkbox"
                                                                         className={`w-4 h-4 rounded border-2 transition-all duration-200 ${isDarkMode
@@ -1163,7 +1185,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                             handlePartSelection(part.pcl_id, e.target.checked);
                                                                         }}
                                                                     />
-                                                                ) : (part.status === 'pending' || part.status === 'Rejected' || part.status === 'Po Rejected' || part.status === 'Recheck') ? (
+                                                                ) : (roleID === 4 && part.status === 'pending' || part.status === 'Rejected' || part.status === 'Po Rejected' || part.status === 'Recheck') ? (
                                                                     <div className="relative inline-block">
                                                                         <button
                                                                             ref={el => { buttonRef.current[part.pcl_id] = el; }}

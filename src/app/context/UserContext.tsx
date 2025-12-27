@@ -2,11 +2,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToken } from "./TokenContext";
 
-export type Role = {
-  role_id: number;
-  role_name: string;
-  service_id: number;
+export type Departments = {
+  department: number;
+  roles: string[];
+  roles_name: string[];
+};
+
+export type Permission = {
+  service: number;
   service_name: string;
+  departments: Departments[];
+};
+
+export type Role = {
+  user_id: number;
+  permissions: Permission[];
 };
 
 export type Department = {

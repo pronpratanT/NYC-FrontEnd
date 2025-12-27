@@ -56,6 +56,12 @@ type ReviewedPO = {
     vendor_id: number;
     vendor_code: string;
     vendor_name: string;
+    addr1: string;
+    addr2: string;
+    city: string;
+    country: string;
+    cur_code: string;
+    zip: string;
     tax_id: string;
     tel_no: string;
     fax_no: string;
@@ -125,8 +131,36 @@ export default function ReviewedPOPage() {
     // const { user } = useUser(); // Removed unused variable
     const token = useToken();
     const { isDarkMode } = useTheme();
+
+    // Check Role from User Context
     const { user } = useUser();
+    // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
+    const rawRole: any = (user as any)?.role;
+    const permissions: any[] = Array.isArray(rawRole)
+        ? rawRole.flatMap((r: any) => r?.permissions ?? [])
+        : rawRole?.permissions ?? [];
+    const permission = permissions.find(
+        (p: any) => p && (p.service === 2 || p.service === "2")
+    );
+    // ดึงสิทธิ์เฉพาะ department = 10086
+    const department = permission?.departments?.find?.(
+        (d: any) => d && d.department === 10086
+    );
+    const roles: string[] = department?.roles ?? [];
+    const roleNames: string[] = department?.roles_name ?? [];
+    // roleID = ค่า role ที่เป็นตัวเลขมากที่สุดใน roles (เช่น ["2","4"] -> 4)
+    const numericRoles = roles
+        .map(r => parseInt(r, 10))
+        .filter(n => !Number.isNaN(n));
+    const roleID = numericRoles.length > 0
+        ? Math.max(...numericRoles)
+        : undefined;
+    // serviceID แปลงเป็น number เช่นกัน
+    const serviceID = permission
+        ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
+        : undefined;
     const departmentId = user?.Department?.ID;
+    // console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
     // Get PO No from URL (SSR-safe, Next.js App Router)
     const [poNo, setPoNo] = useState<string | null>(null);
@@ -361,7 +395,7 @@ export default function ReviewedPOPage() {
             return;
         }
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_pdf/${po_no}`, {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -384,7 +418,7 @@ export default function ReviewedPOPage() {
             return;
         }
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf/${po_no}`, {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -527,7 +561,7 @@ export default function ReviewedPOPage() {
                                     </div>
                                     <div className="flex gap-3">
                                         {/* 1. แสดงปุ่ม ออก PO และ ยกเลิก เมื่อ pu_validated ไม่มีข้อมูล หรือ เมื่อแก้ไขเสร็จแล้ว (edited_at มีข้อมูล) */}
-                                        {(!poData.pu_validated && !poData.edited_at && !poData.edited_res && !poData.rejected_by) || (!poData.pu_validated && poData.edited_at && poData.edited_res) || (!poData.pu_validated && poData.edited_at && !poData.edited_res && poData.rejected_by) ? (
+                                        {roleID === 4 && (!poData.pu_validated && !poData.edited_at && !poData.edited_res && !poData.rejected_by) || (!poData.pu_validated && poData.edited_at && poData.edited_res) || (!poData.pu_validated && poData.edited_at && !poData.edited_res && poData.rejected_by) ? (
                                             <>
                                                 <button
                                                     type="button"
@@ -559,7 +593,7 @@ export default function ReviewedPOPage() {
                                         ) : null}
 
                                         {/* 2. แสดงปุ่ม อนุมัติ และ ปฏิเสธ เมื่อ pu_validated มีข้อมูลแต่ยังไม่ได้อนุมัติหรือปฏิเสธ */}
-                                        {(poData.pu_validated && !poData.approved_by) ? (
+                                        {roleID === 5 && (poData.pu_validated && !poData.approved_by) ? (
                                             <>
                                                 <button
                                                     type="button"
@@ -591,7 +625,7 @@ export default function ReviewedPOPage() {
                                         ) : null}
 
                                         {/* 3. แสดงปุ่ม ส่งอีเมล และ ขอแก้ไข/อนุมัติการแก้ไข หลังจากอนุมัติแล้ว */}
-                                        {(poData.approved_by && !poData.rejected_by) || (poData.approved_by && poData.rejected_by) ? (
+                                        {((poData.approved_by && !poData.rejected_by) || (poData.approved_by && poData.rejected_by)) ? (
                                             <div className="flex items-center gap-3 ml-3">
                                                 {/* Send Mail Button - แสดงเฉพาะเมื่อยังไม่ได้ส่งเมลและยังไม่มี edited_res */}
                                                 {!poData.mail_out_date ? (
@@ -636,7 +670,7 @@ export default function ReviewedPOPage() {
                                                 ) : null}
 
                                                 {/* Request Edit Button หรือ Response Edit Button */}
-                                                {poData.edit_reason && !poData.edited_res ? (
+                                                {roleID === 5 && poData.edit_reason && !poData.edited_res && (
                                                     <div className="relative group">
                                                         <button
                                                             type="button"
@@ -658,7 +692,8 @@ export default function ReviewedPOPage() {
                                                             <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-0 group-hover:opacity-20 group-hover:animate-ping transition-opacity duration-300"></div>
                                                         </button>
                                                     </div>
-                                                ) : (
+                                                )}
+                                                {roleID === 4 && (!poData.edit_reason || poData.edited_res) && (
                                                     <div className="relative group">
                                                         <button
                                                             type="button"
@@ -821,6 +856,28 @@ export default function ReviewedPOPage() {
                                                         ))
                                                         : poData.email
                                                 }</span>
+                                            </div>
+                                        </div>
+                                        <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/30' : 'bg-gray-50'}`}>
+                                            <div className="flex items-center justify-between">
+                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>ที่อยู่</span>
+                                                <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                                    {poData.addr1}
+                                                    {poData.addr2 && (
+                                                        <span className="inline-flex items-center gap-1 ml-2 relative group">
+                                                            <span 
+                                                                className={`px-2 py-0.5 rounded text-xs font-medium cursor-help transition-all duration-200 ${isDarkMode ? 'bg-slate-700/50 text-slate-400 border border-slate-600/50 hover:bg-slate-600/50 hover:border-slate-500/50' : 'bg-gray-200/60 text-gray-600 border border-gray-300/40 hover:bg-gray-300/60 hover:border-gray-400/50'}`}
+                                                            >
+                                                                +1
+                                                            </span>
+                                                            {/* Tooltip */}
+                                                            <span className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 shadow-lg ${isDarkMode ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-gray-800 text-white'}`}>
+                                                                {poData.addr2}
+                                                                <span className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent ${isDarkMode ? 'border-t-slate-700' : 'border-t-gray-800'}`}></span>
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

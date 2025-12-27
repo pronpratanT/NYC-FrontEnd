@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
 import {
   FaSearch, FaChevronDown, FaUser, FaCog, FaSignOutAlt,
-  FaBell, FaSun, FaMoon, FaUserAlt 
+  FaBell, FaSun, FaMoon, FaUserAlt
 } from 'react-icons/fa';
 import { useUser } from '../context/UserContext';
 import { deleteCookie } from '../utils/cookies';
@@ -25,13 +25,13 @@ export default function Header() {
   const handleSignOut = () => {
     // ลบ token ออกจาก cookies
     deleteCookie('authToken');
-    
+
     // Trigger event เพื่อให้ TokenContext อัพเดต
     window.dispatchEvent(new CustomEvent('tokenUpdated'));
-    
+
     // ปิด dropdown menu
     setShowUserMenu(false);
-    
+
     // Redirect ไปหน้า login
     router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
   };
@@ -117,7 +117,12 @@ export default function Header() {
                 ))}
               </div>
               <div className={`px-4 py-2 border-t ${isDarkMode ? 'border-gray-700' : 'border-[#D4E6DA]'}`}>
-                <button className={`text-xs font-medium ${isDarkMode ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700'}`}>
+                <button className={`text-xs font-medium cursor-pointer ${isDarkMode ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700'}`}
+                  onClick={() => {
+                    setShowNotifications(false);
+                    router.push(process.env.NEXT_PUBLIC_NOTIFICATION_REDIRECT || "/notification");
+                  }}
+                >
                   View all notifications
                 </button>
               </div>
@@ -146,7 +151,7 @@ export default function Header() {
                 {user?.employee_id}
               </span>
               <span className={`text-xs transition-colors ${isDarkMode ? 'text-gray-400 group-hover:text-gray-300' : 'text-gray-500 group-hover:text-gray-600'}`}>
-                Admin
+                {user?.Department?.short_name}
               </span>
             </div>
 
@@ -182,15 +187,21 @@ export default function Header() {
                   <FaCog className={`${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
                   Settings
                 </button>
-                <button className={`w-full flex items-center gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-[#F0F8F2]'}`}>
+                <button
+                  className={`w-full flex items-center cursor-pointer gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-[#F0F8F2]'}`}
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push(process.env.NEXT_PUBLIC_NOTIFICATION_REDIRECT || "/notification");
+                  }}
+                >
                   <FaBell className={`${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
                   Notification
                 </button>
               </div>
               <div className={`border-t pt-2 ${isDarkMode ? 'border-gray-700' : 'border-[#D4E6DA]'}`}>
-                <button 
+                <button
                   onClick={handleSignOut}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-red-400 hover:bg-red-900/40' : 'text-red-600 hover:bg-red-50/80'}`}
+                  className={`w-full flex items-center cursor-pointer gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-red-400 hover:bg-red-900/40' : 'text-red-600 hover:bg-red-50/80'}`}
                 >
                   <FaSignOutAlt className="text-red-500" />
                   Sign Out

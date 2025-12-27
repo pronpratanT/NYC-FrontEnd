@@ -5,6 +5,9 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 
+// theme
+import "@/app/styles/react-datepicker-orange.css";
+
 // components
 import { useToken } from "../../context/TokenContext";
 import { useUser } from '../../context/UserContext';
@@ -250,12 +253,36 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // console.log("PRModal rendered with props:", { partNo, prNumber, pr_list_id });
 
   const router = useRouter();
+  // Check Role from User Context
   const { user } = useUser();
-  // ดึง role_id เฉพาะ service_id = 2
-  const puRole = user?.role?.find?.(r => r.service_id === 2);
-  const roleID = puRole?.role_id;
-  const serviceID = puRole?.service_id;
+  // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
+  const rawRole: any = (user as any)?.role;
+  const permissions: any[] = Array.isArray(rawRole)
+    ? rawRole.flatMap((r: any) => r?.permissions ?? [])
+    : rawRole?.permissions ?? [];
+  const permission = permissions.find(
+    (p: any) => p && (p.service === 2 || p.service === "2")
+  );
+  // ดึงสิทธิ์เฉพาะ department = 10086
+  const departmentid = permission?.departments?.find?.(
+    (d: any) => d && d.department === 10086
+  );
+  const roles: string[] = departmentid?.roles ?? [];
+  const roleNames: string[] = departmentid?.roles_name ?? [];
+  // roleID = ค่า role ที่เป็นตัวเลขมากที่สุดใน roles (เช่น ["2","4"] -> 4)
+  const numericRoles = roles
+    .map(r => parseInt(r, 10))
+    .filter(n => !Number.isNaN(n));
+  const roleID = numericRoles.length > 0
+    ? Math.max(...numericRoles)
+    : undefined;
+  // serviceID แปลงเป็น number เช่นกัน
+  const serviceID = permission
+    ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
+    : undefined;
   const departmentId = user?.Department?.ID;
+  console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
+
   // State สำหรับรายการที่เลือกใน Approved Dropdown
   const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string; part_name: string; prod_code: string }[]>([]);
 
@@ -1662,32 +1689,6 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
   }
 
-  // TODO: PDF
-  // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
-  // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
-  const previewComparePdf = async () => {
-    // console.log('Generating preview PDF for partNo:', partNo, 'pr_list_id:', pr_list_id);
-    if (!token) {
-      alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
-      return;
-    }
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-compare/${partNo}/${pr_list_id}`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      window.open(objectUrl, '_blank', 'noopener');
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-    } catch (err) {
-      console.error('previewComparePdf error:', err);
-      // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
-      // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
-    }
-  }
-
   // TODO Save Compare Note
   const saveCompareNote = async (note: string, compare_id?: number) => {
     const payload = {
@@ -1720,6 +1721,32 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
   }
 
+  // TODO: PDF
+  // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
+  // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
+  const previewComparePdf = async () => {
+    // console.log('Generating preview PDF for partNo:', partNo, 'pr_list_id:', pr_list_id);
+    if (!token) {
+      alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+      return;
+    }
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_compare/${partNo}/${pr_list_id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (err) {
+      console.error('previewComparePdf error:', err);
+      // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
+      // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
+    }
+  }
+
   // Download PDF: ใช้ Authorization header + Blob เพื่อไม่ให้ token อยู่ใน URL
   const downloadComparePdf = async () => {
     if (!token) {
@@ -1727,7 +1754,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       return;
     }
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download-compare/${partNo}/${pr_list_id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_compare/${partNo}/${pr_list_id}`, {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2588,7 +2615,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               </div> */}
 
                               {/* Action Button */}
-                              {prWithPO.status !== 'Po Created' && prWithPO.status !== 'Po Updated' && (
+                              {roleID === 4 && prWithPO.status !== 'Po Created' && prWithPO.status !== 'Po Updated' && (
                                 <button
                                   type="button"
                                   onClick={async () => {
@@ -3206,14 +3233,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     ? (freeItemHistory as { data: FreeItem[] }).data
                                     : [];
 
-                                console.log('🔍 Extracted freeItems:', {
-                                  freeItems,
-                                  isArray: Array.isArray(freeItems),
-                                  length: freeItems?.length
-                                });
+                                // console.log('🔍 Extracted freeItems:', {
+                                //   freeItems,
+                                //   isArray: Array.isArray(freeItems),
+                                //   length: freeItems?.length
+                                // });
 
                                 if (!Array.isArray(freeItems) || freeItems.length === 0) {
-                                  console.log('❌ No freeItems or empty array');
+                                  // console.log('❌ No freeItems or empty array');
                                   return [];
                                 }
 
@@ -4916,14 +4943,16 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         {Array.isArray(qtyHistory) && qtyHistory.length > 0
                                           ? qtyHistory[qtyHistory.length - 1]?.qty ?? '-'
                                           : qtyValue || '-'}
-                                        <button
-                                          type="button"
-                                          className={`ml-2 px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
-                                          onClick={() => setEditingQty(true)}
-                                          style={{ marginLeft: 8 }}
-                                        >
-                                          แก้ไข
-                                        </button>
+                                        {roleID === 4 && (
+                                          <button
+                                            type="button"
+                                            className={`ml-2 px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+                                            onClick={() => setEditingQty(true)}
+                                            style={{ marginLeft: 8 }}
+                                          >
+                                            แก้ไข
+                                          </button>
+                                        )}
                                       </>
                                     ) : (
                                       <>
@@ -5040,28 +5069,30 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               )}
                             </div>
                             {/* Action buttons */}
-                            <div className={`flex justify-end space-x-3 mt-6 pt-4 border-t ${isDarkMode ? 'border-indigo-700/50' : 'border-indigo-200'}`}>
-                              <button
-                                type="button"
-                                className={`px-6 py-2.5 border-2 rounded-xl transition-all duration-200 text-sm font-semibold ${isDarkMode ? 'bg-slate-800 text-indigo-400 border-indigo-600 hover:bg-slate-700 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'}`}
-                                onClick={() => setSelectedReason("")}
-                              >
-                                ล้างการเลือก
-                              </button>
-                              <button
-                                type="button"
-                                className={`px-6 py-2.5 bg-gradient-to-r text-white rounded-xl transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900' : 'from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'}`}
-                                disabled={!selectedReason}
-                                onClick={() => handleSubmit()}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  <span>บันทึกเหตุผล</span>
-                                </div>
-                              </button>
-                            </div>
+                            {roleID === 4 && (
+                              <div className={`flex justify-end space-x-3 mt-6 pt-4 border-t ${isDarkMode ? 'border-indigo-700/50' : 'border-indigo-200'}`}>
+                                <button
+                                  type="button"
+                                  className={`px-6 py-2.5 border-2 rounded-xl transition-all duration-200 text-sm font-semibold ${isDarkMode ? 'bg-slate-800 text-indigo-400 border-indigo-600 hover:bg-slate-700 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'}`}
+                                  onClick={() => setSelectedReason("")}
+                                >
+                                  ล้างการเลือก
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`px-6 py-2.5 bg-gradient-to-r text-white rounded-xl transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900' : 'from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'}`}
+                                  disabled={!selectedReason}
+                                  onClick={() => handleSubmit()}
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span>บันทึกเหตุผล</span>
+                                  </div>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                         {/* Column 2 (Right) - ข้อมูลผู้ขาย + สถานะและข้อมูลเพิ่มเติม */}

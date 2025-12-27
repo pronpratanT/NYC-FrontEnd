@@ -710,7 +710,7 @@ function PurchasePageContent() {
             return;
         }
         const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
-        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_id}/${endpointType}`;
+        const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf_pr/${pr_id}/${endpointType}`;
         try {
             const res = await fetch(previewUrl, {
                 method: 'GET',

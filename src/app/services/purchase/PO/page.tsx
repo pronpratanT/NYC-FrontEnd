@@ -793,7 +793,7 @@ export default function PurchaseOrderPage() {
             return;
         }
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_pdf/${po_no}`, {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -816,7 +816,7 @@ export default function PurchaseOrderPage() {
             return;
         }
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf/${po_no}`, {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${token}` }
             });

@@ -67,11 +67,12 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
     const [vendorName, setVendorName] = useState("");
     const [contactName, setContactName] = useState("");
     const [taxId, setTaxId] = useState("");
-    const [creditTerm, setCreditTerm] = useState("");
+    // const [creditTerm, setCreditTerm] = useState("");
     const [city, setCity] = useState("");
     const [country, setCountry] = useState("");
     const [currencyCode, setCurrencyCode] = useState("");
     const [zipCode, setZipCode] = useState("");
+    const [selectedCredit, setSelectedCredit] = useState("");
     // เปลี่ยนเป็น array สำหรับ multiple emails, tel numbers และ fax numbers
     const [address, setAddress] = useState<string[]>([""]);
     const [emails, setEmails] = useState<string[]>([""]);
@@ -181,7 +182,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
         if (!vendorName.trim()) errors.vendorName = "กรุณากรอกชื่อผู้ขาย";
         if (!contactName.trim()) errors.contactName = "กรุณากรอกชื่อผู้ติดต่อ";
         if (!taxId.trim()) errors.taxId = "กรุณากรอกเลขผู้เสียภาษี";
-        if (!creditTerm.trim()) errors.creditTerm = "กรุณากรอกเครดิตเทอม";
+        if (!selectedCredit.trim()) errors.selectedCredit = "กรุณาเลือกเครดิตเทอม";
         if (!emails[0]?.trim()) errors.email = "กรุณากรอกอีเมล";
         if (!telNos[0]?.trim()) errors.telNo = "กรุณากรอกเบอร์โทรศัพท์";
         if (!faxNos[0]?.trim()) errors.faxNo = "กรุณากรอกหมายเลขแฟกซ์";
@@ -203,7 +204,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
             vendor_name: vendorName,
             contact_name: contactName,
             tax_id: taxId,
-            credit_term: creditTerm,
+            credit_term: selectedCredit,
             city: city,
             country: country,
             cur_code: currencyCode,
@@ -232,7 +233,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                     vendorName,
                     contactName,
                     taxId,
-                    creditTerm,
+                    creditTerm: selectedCredit,  
                     city,
                     country,
                     currencyCode,
@@ -408,23 +409,55 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
                                             Credit Term
                                         </label>
-                                        <input
-                                            type="text"
-                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${fieldErrors.creditTerm
+                                        <select
+                                            value={selectedCredit}
+                                            onChange={(e) => {
+                                                setSelectedCredit(e.target.value);
+                                            }}
+                                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm font-medium appearance-none cursor-pointer ${fieldErrors.selectedCredit
                                                 ? isDarkMode
-                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100 placeholder-slate-400'
-                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900 placeholder-gray-500'
+                                                    ? 'border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100'
+                                                    : 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900'
                                                 : `${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
-                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
-                                                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                    ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 shadow-slate-800/20 hover:shadow-slate-700/30'
+                                                    : 'border-gray-300 bg-white text-gray-900'
                                                 }`
-                                                }`}
-                                            value={creditTerm}
-                                            onChange={e => setCreditTerm(e.target.value)}
-                                            placeholder="เครดิตเทอม"
-                                        />
-                                        {fieldErrors.creditTerm && (
-                                            <p className="text-xs text-red-500 mt-1">{fieldErrors.creditTerm}</p>
+                                            }`}
+                                            style={{
+                                                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                                                backgroundPosition: 'right 1rem center',
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundSize: '1.5em 1.5em'
+                                            }}
+                                        >
+                                            <option value="">-- กรุณาเลือกเครดิตเทอม --</option>
+                                            <option value="10 วัน D/D">1. 10 วัน D/D</option>
+                                            <option value="15 วัน D/D POST">2. 15 วัน D/D POST</option>
+                                            <option value="2%Dis. WITH T/T">3. 2%Dis. WITH T/T</option>
+                                            <option value="30 D/M ตัด 25">4. 30 D/M ตัด 25</option>
+                                            <option value="30 วัน D/D">5. 30 วัน D/D</option>
+                                            <option value="30 วัน D/D POST">6. 30 วัน D/D POST</option>
+                                            <option value="30 วัน D/M">7. 30 วัน D/M</option>
+                                            <option value="30 วัน D/M POST">8. 30 วัน D/M POST</option>
+                                            <option value="45 D/M ตัด 25">9. 45 D/M ตัด 25</option>
+                                            <option value="60 D/M ตัด 1-15">10. 60 D/M ตัด 1-15</option>
+                                            <option value="60 D/M ตัด 25">11. 60 D/M ตัด 25</option>
+                                            <option value="60 D/M ตัด 16-30">12. 60 D/M ตัด 16-30</option>
+                                            <option value="60 วัน D/D">13. 60 วัน D/D</option>
+                                            <option value="60 วัน D/M">14. 60 วัน D/M</option>
+                                            <option value="60 วัน D/M POST">15. 60 วัน D/M POST</option>
+                                            <option value="7 วัน D/D">16. 7 วัน D/D</option>
+                                            <option value="90 D/M ตัด 25">17. 90 D/M ตัด 25</option>
+                                            <option value="90 วัน D/M">18. 90 วัน D/M</option>
+                                            <option value="EX-WORK">19. EX-WORK</option>
+                                            <option value="FOB">20. FOB</option>
+                                            <option value="L/C AT SIGHT">21. L/C AT SIGHT</option>
+                                            <option value="NET-10">22. NET-10</option>
+                                            <option value="เงินสด">23. เงินสด</option>
+                                            <option value="ตามเงื่อนไข">24. ตามเงื่อนไข</option>
+                                        </select>
+                                        {fieldErrors.selectedCredit && (
+                                            <p className="text-xs text-red-500 mt-1">{fieldErrors.selectedCredit}</p>
                                         )}
                                     </div>
                                     <div className="space-y-2">
@@ -658,8 +691,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
 
                                     {/* Multiple Tel No. Fields - Compact */}
                                     <div className="space-y-3">
-                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
-                                            }`}>
+                                        <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
                                             Phone number {telNos.length > 1 && <span className="text-xs opacity-70">({telNos.length})</span>}
                                         </label>
