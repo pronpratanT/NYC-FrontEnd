@@ -256,16 +256,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   // Check Role from User Context
   const { user } = useUser();
   // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
-  const rawRole: any = (user as any)?.role;
-  const permissions: any[] = Array.isArray(rawRole)
-    ? rawRole.flatMap((r: any) => r?.permissions ?? [])
-    : rawRole?.permissions ?? [];
+  const rawRole = user?.role;
+  let permissions: import("@/app/context/UserContext").Permission[] = [];
+  if (Array.isArray(rawRole)) {
+    permissions = rawRole.flatMap((r: import("@/app/context/UserContext").Role) => r?.permissions ?? []);
+  }
   const permission = permissions.find(
-    (p: any) => p && (p.service === 2 || p.service === "2")
+    (p: import("@/app/context/UserContext").Permission) => p && p.service === 2
   );
   // ดึงสิทธิ์เฉพาะ department = 10086
   const departmentid = permission?.departments?.find?.(
-    (d: any) => d && d.department === 10086
+    (d: import("@/app/context/UserContext").Departments) => d && d.department === 10086
   );
   const roles: string[] = departmentid?.roles ?? [];
   const roleNames: string[] = departmentid?.roles_name ?? [];

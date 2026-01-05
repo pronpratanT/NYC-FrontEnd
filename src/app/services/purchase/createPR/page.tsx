@@ -35,11 +35,34 @@ type partData = {
 export default function TestPage() {
   // Check Role from User Context
   const { user } = useUser();
-  // ดึง role_id เฉพาะ service_id = 2
-  const puRole = user?.role?.find?.(r => r.service_id === 2);
-  const roleID = puRole?.role_id;
-  const serviceID = puRole?.service_id;
-  console.log("User Role ID:", roleID, "Service ID:", serviceID);
+  // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
+  const rawRole = user?.role;
+  let permissions: import("@/app/context/UserContext").Permission[] = [];
+  if (Array.isArray(rawRole)) {
+    permissions = rawRole.flatMap((r: import("@/app/context/UserContext").Role) => r?.permissions ?? []);
+  }
+  const permission = permissions.find(
+    (p: import("@/app/context/UserContext").Permission) => p && p.service === 2
+  );
+  // ดึงสิทธิ์เฉพาะ department = 10086
+  const departmentid = permission?.departments?.find?.(
+    (d: import("@/app/context/UserContext").Departments) => d && d.department === 10086
+  );
+  const roles: string[] = departmentid?.roles ?? [];
+  const roleNames: string[] = departmentid?.roles_name ?? [];
+  // roleID = ค่า role ที่เป็นตัวเลขมากที่สุดใน roles (เช่น ["2","4"] -> 4)
+  const numericRoles = roles
+    .map(r => parseInt(r, 10))
+    .filter(n => !Number.isNaN(n));
+  const roleID = numericRoles.length > 0
+    ? Math.max(...numericRoles)
+    : undefined;
+  // serviceID แปลงเป็น number เช่นกัน
+  const serviceID = permission
+    ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
+    : undefined;
+  const departmentId = user?.Department?.ID;
+  console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
   const { isCollapsed } = useSidebar();
   const router = useRouter();
@@ -239,7 +262,7 @@ export default function TestPage() {
       try {
         setLoading(true);
         // setError(null); // error state removed
-        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(search)}`, { 
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(search)}`, {
           cache: "no-store",
           headers: {
             'Content-Type': 'application/json',
