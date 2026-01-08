@@ -8,6 +8,8 @@ import { SidebarProvider } from "./context/SidebarContext";
 
 import { UserProvider } from "./context/UserContext";
 import { TokenProvider } from "./context/TokenContext";
+import { ToastProvider } from "./components/toast/Notify";
+import NotificationListener from "./components/toast/NotificationListener";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,10 +41,10 @@ export default function RootLayout({
             <ThemeProvider>
               <BackgroundSwitcher />
               <SidebarProvider>
-                
-                {/* <Sidebar />
-                <Header /> */}
-                {children}
+                <ToastProvider>
+                  <NotificationListener />
+                  {children}
+                </ToastProvider>
               </SidebarProvider>
             </ThemeProvider>
           </UserProvider>

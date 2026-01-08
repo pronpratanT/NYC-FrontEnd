@@ -141,11 +141,11 @@ export default function ReviewedPOPage() {
         permissions = rawRole.flatMap((r: import("@/app/context/UserContext").Role) => r?.permissions ?? []);
     }
     const permission = permissions.find(
-        (p: import("@/app/context/UserContext").Permission) => p && p.service === 2
+        (p: import("@/app/context/UserContext").Permission) => p && Number(p.service) === 2
     );
-    // ดึงสิทธิ์เฉพาะ department = 10086
+    // ดึงสิทธิ์เฉพาะ department ตาม Department.ID ของ user
     const department = permission?.departments?.find?.(
-        (d: import("@/app/context/UserContext").Departments) => d && d.department === 10086
+        (d: import("@/app/context/UserContext").Departments) => d && d.department === user?.Department?.ID
     );
     const roles: string[] = department?.roles ?? [];
     const roleNames: string[] = department?.roles_name ?? [];
@@ -161,7 +161,7 @@ export default function ReviewedPOPage() {
         ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
         : undefined;
     const departmentId = user?.Department?.ID;
-    // console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
+    console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
     // Get PO No from URL (SSR-safe, Next.js App Router)
     const [poNo, setPoNo] = useState<string | null>(null);
@@ -866,7 +866,7 @@ export default function ReviewedPOPage() {
                                                     {poData.addr1}
                                                     {poData.addr2 && (
                                                         <span className="inline-flex items-center gap-1 ml-2 relative group">
-                                                            <span 
+                                                            <span
                                                                 className={`px-2 py-0.5 rounded text-xs font-medium cursor-help transition-all duration-200 ${isDarkMode ? 'bg-slate-700/50 text-slate-400 border border-slate-600/50 hover:bg-slate-600/50 hover:border-slate-500/50' : 'bg-gray-200/60 text-gray-600 border border-gray-300/40 hover:bg-gray-300/60 hover:border-gray-400/50'}`}
                                                             >
                                                                 +1

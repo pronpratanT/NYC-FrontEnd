@@ -126,11 +126,11 @@ function ComparePriceContent({ token }: { token: string | null }) {
         permissions = rawRole.flatMap((r: import("@/app/context/UserContext").Role) => r?.permissions ?? []);
     }
     const permission = permissions.find(
-        (p: import("@/app/context/UserContext").Permission) => p && p.service === 2
+        (p: import("@/app/context/UserContext").Permission) => p && Number(p.service) === 2
     );
-    // ดึงสิทธิ์เฉพาะ department = 10086
+    // ดึงสิทธิ์เฉพาะ department ตาม Department.ID ของ user
     const department = permission?.departments?.find?.(
-        (d: import("@/app/context/UserContext").Departments) => d && d.department === 10086
+        (d: import("@/app/context/UserContext").Departments) => d && d.department === user?.Department?.ID
     );
     const roles: string[] = department?.roles ?? [];
     const roleNames: string[] = department?.roles_name ?? [];
@@ -146,7 +146,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
         ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
         : undefined;
     const departmentId = user?.Department?.ID;
-    // console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
+    console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
     const searchParams = useSearchParams();
     const prId = searchParams.get("id");

@@ -9,7 +9,7 @@ export type Departments = {
 };
 
 export type Permission = {
-  service: number;
+  service: number | string;
   service_name: string;
   departments: Departments[];
 };
@@ -83,7 +83,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         // Merge role array into user object for context
         setUser({
           ...data.data,
-          role: data.role
+          // ให้ role เป็น array เสมอ แม้ API ส่ง object เดียวมา
+          role: Array.isArray(data.role) ? data.role : data.role ? [data.role] : []
         });
         console.log("Fetched user data:", data);
       } catch {

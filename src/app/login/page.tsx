@@ -130,21 +130,21 @@ function AnimatedBackground({ isDarkMode }: { isDarkMode: boolean }): React.Reac
   }, [targetMousePos.x, targetMousePos.y]);
 
   // Dynamic luxury pattern
-    const dynamicLuxuryPattern: React.CSSProperties = {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      backgroundImage: isDarkMode ? (
-        `radial-gradient(circle at ${25 + Math.sin(time) * 10}% ${25 + Math.cos(time * 0.8) * 10}%, rgba(33, 192, 99, ${0.15 + Math.sin(time * 0.5) * 0.05}) 0%, transparent 50%),
+  const dynamicLuxuryPattern: React.CSSProperties = {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundImage: isDarkMode ? (
+      `radial-gradient(circle at ${25 + Math.sin(time) * 10}% ${25 + Math.cos(time * 0.8) * 10}%, rgba(33, 192, 99, ${0.15 + Math.sin(time * 0.5) * 0.05}) 0%, transparent 50%),
         radial-gradient(circle at ${75 + Math.cos(time * 0.7) * 15}% ${75 + Math.sin(time * 0.6) * 15}%, rgba(255, 215, 0, ${0.08 + Math.cos(time * 0.3) * 0.03}) 0%, transparent 50%)`
-      ) : (
-        `radial-gradient(circle at ${25 + Math.sin(time) * 10}% ${25 + Math.cos(time * 0.8) * 10}%, rgba(33, 192, 99, ${0.03 + Math.sin(time * 0.5) * 0.02}) 0%, transparent 50%),
+    ) : (
+      `radial-gradient(circle at ${25 + Math.sin(time) * 10}% ${25 + Math.cos(time * 0.8) * 10}%, rgba(33, 192, 99, ${0.03 + Math.sin(time * 0.5) * 0.02}) 0%, transparent 50%),
         radial-gradient(circle at ${75 + Math.cos(time * 0.7) * 15}% ${75 + Math.sin(time * 0.6) * 15}%, rgba(255, 215, 0, ${0.02 + Math.cos(time * 0.3) * 0.01}) 0%, transparent 50%)`
-      ),
-      zIndex: 0
-    };
+    ),
+    zIndex: 0
+  };
 
   // Dynamic grid overlay
   const dynamicGridOverlay: React.CSSProperties = {
@@ -167,15 +167,15 @@ function AnimatedBackground({ isDarkMode }: { isDarkMode: boolean }): React.Reac
   };
 
   // Floating elements container
-    const floatingElements: React.CSSProperties = {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      pointerEvents: "none",
-      zIndex: 2
-    };
+  const floatingElements: React.CSSProperties = {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    pointerEvents: "none",
+    zIndex: 2
+  };
 
   return (
     <>
@@ -362,42 +362,44 @@ export default function Home() {
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setError("");
-      setIsLoading(true);
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: empID, password })
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          // กรณี login ผิด ให้แสดงข้อความแบบเดียวกันเสมอ
-          setError("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
-          setIsLoading(false);
-          return;
-        }
-        // เก็บ token ถ้ามี
-        if (data.token) {
-          // เก็บ token ลง cookies (expired ใน 7 วัน)
-          setCookie("authToken", data.token, 7);
-          console.log("Token saved to cookies:", data.token);
-          // Trigger custom event เพื่อให้ TokenContext รับรู้การเปลี่ยนแปลง
-          window.dispatchEvent(new CustomEvent('tokenUpdated'));
-          // รอสักครู่ให้ context อัพเดตก่อน redirect
-          setTimeout(() => {
-            router.push(process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || "/");
-          }, 100);
-        } else {
-          router.push(process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || "/");
-        }
-      } catch {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_USER_SERVICE}/api/user/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: empID, password })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        // กรณี login ผิด ให้แสดงข้อความแบบเดียวกันเสมอ
         setError("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
-      } finally {
         setIsLoading(false);
+        return;
       }
-    };
+      // WebSocket จะถูกเปิดจาก NotificationListener แบบ global เมื่อ token ถูกตั้งค่าแล้ว
+      // console.log("token", data.token);
+      // เก็บ token ถ้ามี
+      if (data.token) {
+        // เก็บ token ลง cookies (expired ใน 7 วัน)
+        setCookie("authToken", data.token, 7);
+        console.log("Token saved to cookies:", data.token);
+        // Trigger custom event เพื่อให้ TokenContext รับรู้การเปลี่ยนแปลง
+        window.dispatchEvent(new CustomEvent('tokenUpdated'));
+        // รอสักครู่ให้ context อัพเดตก่อน redirect
+        setTimeout(() => {
+          router.push(process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || "/");
+        }, 100);
+      } else {
+        router.push(process.env.NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT || "/");
+      }
+    } catch {
+      setError("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -439,8 +441,8 @@ export default function Home() {
       <div style={dynamicBgMain}>
         {/* Loading spinner */}
         {isLoading && (
-          <div style={{position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.15)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-            <div style={{width: 60, height: 60, border: '6px solid #21C063', borderRadius: '50%', borderTop: '6px solid #FFD700', animation: 'spin 1s linear infinite'}} />
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.15)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 60, height: 60, border: '6px solid #21C063', borderRadius: '50%', borderTop: '6px solid #FFD700', animation: 'spin 1s linear infinite' }} />
             <style>{`@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`}</style>
           </div>
         )}
@@ -563,11 +565,11 @@ export default function Home() {
                 fontFamily: "'Inter', sans-serif"
               }}>Sign in to your account</p>
             </div>
-              <div style={{ width: "100%" }}>
-                {/* Error message */}
-                {error && (
-                  <div style={{color: 'red', textAlign: 'center', marginBottom: 16, fontWeight: 500}}>{error}</div>
-                )}
+            <div style={{ width: "100%" }}>
+              {/* Error message */}
+              {error && (
+                <div style={{ color: 'red', textAlign: 'center', marginBottom: 16, fontWeight: 500 }}>{error}</div>
+              )}
               <FloatingLabelInput
                 label="Employee ID"
                 type="text"

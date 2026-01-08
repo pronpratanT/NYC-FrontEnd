@@ -14,6 +14,7 @@ import "flatpickr/dist/flatpickr.min.css";
 import Sidebar from "../../components/sidebar";
 import Header from "../../components/header";
 import { useTheme } from "../../components/ThemeProvider";
+import { useToast } from "../../components/toast/Notify";
 import { useToken } from "../../context/TokenContext";
 import { useUser } from "../../context/UserContext";
 
@@ -84,6 +85,7 @@ const departmentColors: { [key: string]: string } = {
 function PurchasePageContent() {
     // Theme context
     const { isDarkMode } = useTheme();
+    const { showToast } = useToast();
     // อ่านค่าจาก localStorage ตอน mount
     const [isListView, setIsListView] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -118,9 +120,35 @@ function PurchasePageContent() {
     const [prCards, setPrCards] = useState<PRCard[]>([]);
     // const [totalPrCount, setTotalPrCount] = useState<number>(0);
     const token = useToken();
+
+    // NOTE Check Role from User Context
     const { user } = useUser();
+    // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
+    const rawRole = user?.role;
+    let permissions: import("@/app/context/UserContext").Permission[] = [];
+    if (Array.isArray(rawRole)) {
+        permissions = rawRole.flatMap((r: import("@/app/context/UserContext").Role) => r?.permissions ?? []);
+    }
+    const permission = permissions.find(
+        (p: import("@/app/context/UserContext").Permission) => p && Number(p.service) === 2
+    );
+    // ดึง department ทั้งหมดใน service=2 พร้อม roleID ของแต่ละ department
+    const allDepartments = (permission?.departments ?? []).map(dep => {
+        const roleIDs = (dep.roles ?? []).map(r => parseInt(r, 10)).filter(n => !Number.isNaN(n));
+        return {
+            department: dep.department,
+            roleIDs,
+            roleNames: dep.roles_name ?? []
+        };
+    });
+    const hasMultiDepartments = allDepartments.length > 1;
+    // serviceID แปลงเป็น number เช่นกัน
+    const serviceID = permission
+        ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
+        : undefined;
     const departmentId = user?.Department?.ID;
     const [departments, setDepartments] = useState<Department[]>([]);
+    console.log("Departments & Roles:", allDepartments, "Service ID:", serviceID, "Department ID:", departmentId);
 
     // NOTE: Search and filter states
     const [search, setSearch] = useState("");
@@ -133,6 +161,14 @@ function PurchasePageContent() {
     const [statusSortDropdownOpen, setStatusSortDropdownOpen] = useState(false);
     const [sortBy, setSortBy] = useState("newest");
     const [statusFilter, setStatusFilter] = useState<string>("");
+
+    // TEMP: Toast test button handler (ง่ายต่อการลบทีหลัง)
+    const handleTestToast = () => {
+        showToast(
+            "บันทึกข้อมูลสำเร็จ (Mock)",
+            "นี่คือข้อความแจ้งเตือนแบบทดสอบสำหรับปรับแต่งดีไซน์ Toast."
+        );
+    };
 
     // TODO: Card Display Logic
     // Filtered and searched PR cards
@@ -844,7 +880,11 @@ function PurchasePageContent() {
                                         <span>
                                             {departmentId === 10086
                                                 ? (departmentFilter ? departmentFilter : "ทุกแผนก")
-                                                : (departmentFilter ? departmentFilter : (departments.find(dep => dep.ID === departmentId)?.name || ""))
+                                                : hasMultiDepartments
+                                                    ? (departmentFilter ? departmentFilter : "ทุกแผนก")
+                                                    : (departmentFilter
+                                                        ? departmentFilter
+                                                        : (departments.find(dep => dep.ID === departmentId)?.name || ""))
                                             }
                                         </span>
                                         <svg className={`ml-2 h-5 w-5 transition-transform duration-200 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'} ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -882,23 +922,28 @@ function PurchasePageContent() {
                                                         ))}
                                                 </>
                                             ) : (
-                                                departments
-                                                    .filter(dep => dep.ID === departmentId)
-                                                    .map(dep => (
+                                                <>
+                                                    {hasMultiDepartments && (
                                                         <li
-                                                            key={dep.ID}
-                                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 bg-emerald-900/30 text-emerald-400 flex items-center justify-between`}
-                                                            onClick={() => { setDepartmentFilter(dep.name); setDropdownOpen(false); }}
+                                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${!departmentFilter ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                                            onClick={() => { setDepartmentFilter(''); setDropdownOpen(false); }}
                                                         >
-                                                            <span>{dep.name}</span>
-                                                            <span className="ml-2 flex items-center">
-                                                                <span
-                                                                    className="inline-block w-3 h-3 rounded-full border"
-                                                                    style={{ backgroundColor: departmentColors[dep.name] || '#38bdf8', borderColor: isDarkMode ? '#334155' : '#e5e7eb' }}
-                                                                ></span>
-                                                            </span>
+                                                            ทุกแผนก
                                                         </li>
-                                                    ))
+                                                    )}
+                                                    {departments
+                                                        // แสดงเฉพาะ department ที่อยู่ใน allDepartments (สิทธิ์ของ user)
+                                                        .filter(dep => allDepartments.some(ad => ad.department === dep.ID))
+                                                        .map(dep => (
+                                                            <li
+                                                                key={dep.ID}
+                                                                className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 ${departmentFilter === dep.name ? (isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-green-50 text-green-700') : (isDarkMode ? 'text-slate-300 hover:bg-slate-800/50 hover:text-emerald-400' : 'text-gray-700 hover:bg-gray-100 hover:text-green-700')}`}
+                                                                onClick={() => { setDepartmentFilter(dep.name); setDropdownOpen(false); }}
+                                                            >
+                                                                <span>{dep.name}</span>
+                                                            </li>
+                                                        ))}
+                                                </>
                                             )}
                                         </ul>
                                     )}
@@ -1098,6 +1143,12 @@ function PurchasePageContent() {
                         {/* Pagination Controls - Top */}
                         {(totalItems > 0 || currentPage === 1) && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                <button
+                                    onClick={handleTestToast}
+                                    className="ml-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-xs hover:bg-emerald-700"
+                                >
+                                    ทดสอบ Toast
+                                </button>
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                     <div className="flex items-center space-x-2">
