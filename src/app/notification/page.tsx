@@ -2,16 +2,22 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import "react-datepicker/dist/react-datepicker.css";
-import "@/app/styles/react-datepicker-dark.css";
-import "@/app/styles/react-datepicker-light.css";
-import "@/app/styles/react-datepicker-orange.css";
+
+// components
 import { useTheme } from '@/app/components/ThemeProvider';
 import Sidebar from '@/app/components/sidebar';
 import Header from '@/app/components/header';
-import { useSidebar } from '@/app/context/SidebarContext';
 import { useUser } from '@/app/context/UserContext';
 import { useToken } from '@/app/context/TokenContext';
+
+// context
+import { useSidebar } from '@/app/context/SidebarContext';
+
+// icons
+import { IoMdNotifications } from "react-icons/io";
+
+// hero ui
+import { Tabs, Tab, Card, CardBody } from "@heroui/react";
 
 type partData = {
     part_no: string | null;
@@ -25,6 +31,10 @@ type partData = {
 }
 
 export default function NotificationPage() {
+    const { isCollapsed } = useSidebar();
+    const { isDarkMode } = useTheme();
+    const token = useToken();
+
     // Check Role from User Context
     const { user } = useUser();
     // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
@@ -56,43 +66,11 @@ export default function NotificationPage() {
     const departmentId = user?.Department?.ID;
     console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
-    const { isCollapsed } = useSidebar();
-    const router = useRouter();
-    const { isDarkMode } = useTheme();
-    const [partNos, setPartNos] = useState<string[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [search, setSearch] = useState<string>("");
-    const [selectedParts, setSelectedParts] = useState<string[]>([]);
-    const [rowDueDates, setRowDueDates] = useState<(Date | null)[]>([]);
-    const [showDropdown, setShowDropdown] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    const token = useToken();
-    const [partsInfo, setPartsInfo] = useState<partData[]>([]);
-    const [qtyData, setQtyData] = useState<(string | number)[]>([]);
-    const [objectiveData, setObjectiveData] = useState<string[]>([]);
-    const [destinationData, setDestinationData] = useState<string[]>([]);
-    const [stockData, setStockData] = useState<string[]>([]);
-    const [priceData, setPriceData] = useState<string[]>([]);
-    const [unitData, setUnitData] = useState<string[]>([]);
-    const [isSaving, setIsSaving] = useState(false)
-
-    // ROOT PATH from .env
-    // Removed unused variable apiUrl
-
-    // Pagination
-    const [page, setPage] = useState(1);
-    const rowsPerPage = 10;
-    const totalPages = Math.ceil(selectedParts.length / rowsPerPage);
-    const pagedParts = selectedParts.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-    const pagedDueDates = rowDueDates.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-    const pagedQty = qtyData.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-    const pagedObjective = objectiveData.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-
-    // Create Part No. Modal
-    const [showCreatPartNo, setShowCreatPartNo] = useState(false);
-
-    const isSelectedPartsEmpty = selectedParts.length === 0;
+    //tabs state
+    const tabs = [
+        { id: 'all', label: 'All Notifications', content: 'All Notifications Content' },
+        { id: 'unread', label: 'Unread Notifications', content: 'Unread Notifications Content' },
+    ];
 
     return (
         <div className="min-h-screen relative">
@@ -108,7 +86,28 @@ export default function NotificationPage() {
                 }}
             >
                 <div className="max-w-none w-full space-y-8 mb-6 relative z-10">
-
+                    {/* Notifications Header */}
+                    <div className="flex items-center space-x-3">
+                        <div>
+                            <IoMdNotifications className="inline w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-semibold inline text-white">Notifications</h1>
+                            <h1 className='text-md'>ติดตามข่าวสารล่าสุดเกี่ยวกับกิจกรรมของคุณอยู่เสมอ</h1>
+                        </div>
+                    </div>
+                    {/* Tab All / Unread */}
+                    <div>
+                        <Tabs aria-label="Dynamic tabs" items={tabs}>
+                            {(item) => (
+                                <Tab key={item.id} title={item.label}>
+                                    <Card>
+                                        <CardBody>{item.content}</CardBody>
+                                    </Card>
+                                </Tab>
+                            )}
+                        </Tabs>
+                    </div>
                 </div>
             </main>
         </div>

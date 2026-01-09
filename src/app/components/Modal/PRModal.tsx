@@ -1819,9 +1819,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <div className="relative">
                           {(() => {
                             // กรองเฉพาะรายการที่ group_id ตรงกันและ status = 'Approved'
-                            // หา reference จากรายการแรกที่ part_no ตรงกับ currentPartNo
-                            // ANCHOR filtered OPEN multople PO
-                            const refItem = selectedToPO.find(item => item.part_no === currentPartNo);
+                            // หา reference จากรายการที่ตรงกับ currentPartNo และ currentPrListId
+                            // ANCHOR filtered OPEN multiple PO
+                            const refItem = selectedToPO.find(item => item.part_no === currentPartNo && item.pr_list_id === currentPrListId);
                             const filteredToPO = refItem && refItem.group_id
                               ? selectedToPO.filter(item =>
                                 item.group_id === refItem.group_id &&

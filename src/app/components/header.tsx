@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
+import { useToken } from '../context/TokenContext';
 import {
   FaSearch, FaChevronDown, FaUser, FaCog, FaSignOutAlt,
   FaBell, FaSun, FaMoon, FaUserAlt
@@ -11,7 +12,43 @@ import { useUser } from '../context/UserContext';
 import { deleteCookie } from '../utils/cookies';
 import { useSidebar } from '../context/SidebarContext';
 
+type Notification = {
+  amount_unread_notify: number;
+  notify_list: Array<{
+    notify_id: number;
+    notify_title: string;
+    notify_message: string;
+    created_at: string;
+    status: string;
+  }>;
+};
+
+type NotificationResponse = {
+  data: Notification;
+};
+
+function formatRelativeTime(createdAt: string): string {
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return '';
+
+  const now = new Date();
+  const diffMs = now.getTime() - created.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+
+  if (diffSec < 60) return `${diffSec}s ago`;
+
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} m ago`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} d ago`;
+}
+
 export default function Header() {
+  const token = useToken();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const { isDarkMode, toggleTheme } = useTheme();
@@ -20,6 +57,9 @@ export default function Header() {
   const { isCollapsed } = useSidebar();
   const sidebarWidth = isCollapsed ? 80 : 288;
   const left = sidebarWidth + 55; // px (เพิ่มระยะห่างอีก 16px)
+
+  //notification data
+  const [notificationsData, setNotificationsData] = useState<NotificationResponse>()
 
   // ฟังก์ชัน Sign Out
   const handleSignOut = () => {
@@ -35,16 +75,34 @@ export default function Header() {
     // Redirect ไปหน้า login
     router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
   };
-  // Mock notifications data
-  const notifications = [
-    { id: 1, title: 'System Update', message: 'New features available', time: '5m ago', unread: true },
-    { id: 2, title: 'User Registration', message: 'New user joined the system', time: '15m ago', unread: true },
-    { id: 3, title: 'Backup Complete', message: 'Daily backup successfully completed', time: '1h ago', unread: false },
-    { id: 4, title: 'Security Alert', message: 'Failed login attempts detected', time: '2h ago', unread: false },
-  ];
+  const unreadNotifyCount = notificationsData?.data?.amount_unread_notify ?? 0;
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadNotifications = (notificationsData?.data?.notify_list ?? [])
+    .filter((notification) => notification.status === 'UNREAD' || notification.status === 'unread')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 4);
 
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/history`, { headers: { Authorization: `Bearer ${token}` } });
+        if (response.ok) {
+          const data: NotificationResponse = await response.json();
+          setNotificationsData(data);
+        } else {
+          console.error('Failed to fetch notifications');
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
+
+  useEffect(() => {
+    console.log('Fetched notifications data:', notificationsData);
+  }, [notificationsData]);
   // toggleTheme now comes from context
 
   return (
@@ -87,9 +145,9 @@ export default function Header() {
             className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-[#D4E6DA] hover:bg-[#F0F8F2]'}`}
           >
             <FaBell className={`text-base group-hover:text-gray-800 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
-            {unreadCount > 0 && (
+            {unreadNotifyCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-red-500 to-pink-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                {unreadCount}
+                {unreadNotifyCount}
               </span>
             )}
           </button>
@@ -99,19 +157,19 @@ export default function Header() {
             <div className={`absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-xl py-3 z-50 border transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}>
               <div className={`px-4 py-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-[#D4E6DA]'}`}>
                 <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Notifications</h3>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{unreadCount} unread messages</p>
+                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{unreadNotifyCount} ข้อความ ที่ยังไม่ได้อ่าน</p>
               </div>
               <div className="max-h-96 overflow-y-auto">
-                {notifications.map((notification) => (
+                {unreadNotifications.map((notification) => (
                   <button
-                    key={notification.id}
+                    key={notification.notify_id}
                     className={`w-full px-4 py-3 flex items-start gap-3 transition-colors border-b last:border-b-0 ${isDarkMode ? 'hover:bg-gray-800 border-gray-800' : 'hover:bg-[#F0F8F2] border-[#F0F8F2]'}`}
                   >
-                    <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-green-500' : isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`} />
+                    <div className={`w-2 h-2 rounded-full mt-2 ${notification.status === 'UNREAD' || notification.status === 'unread' ? 'bg-green-500' : isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`} />
                     <div className="flex-1 text-left">
-                      <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{notification.title}</div>
-                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{notification.message}</div>
-                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{notification.time}</div>
+                      <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{notification.notify_title}</div>
+                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{notification.notify_message}</div>
+                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{formatRelativeTime(notification.created_at)}</div>
                     </div>
                   </button>
                 ))}

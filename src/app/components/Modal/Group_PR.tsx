@@ -726,8 +726,8 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                                                 <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                                                     จำนวน: {item.qty} {item.unit}
                                                                 </div>
-                                                                <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                                    {item.objective}
+                                                                <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                                    Vendor: {item.vendor}
                                                                 </div>
                                                                 {isLocked && (
                                                                     <div className={`text-xs mt-1 font-medium ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
@@ -965,10 +965,11 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                                     )}
                                                 </div>
                                                 <div className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                    <div>จำนวน: {item.qty} {item.unit}</div>
+                                                    <div className='mt-1'>จำนวน: {item.qty} {item.unit}</div>
                                                     {/* <div>วัตถุประสงค์: {item.objective}</div> */}
                                                     {/* <div>ผู้จัดจำหน่าย: {item.vendor}</div> */}
-                                                    <div>Plant: {item.plant}</div>
+                                                    <div className='mt-1'>Plant: {item.plant}</div>
+                                                    <div className='mt-1'>Vendor: {item.vendor}</div>
                                                     {isLocked && (
                                                         <div className={`font-medium mt-1 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
                                                             สถานะ: {item.status} (ไม่สามารถย้ายได้)

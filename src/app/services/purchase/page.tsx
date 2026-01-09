@@ -164,10 +164,34 @@ function PurchasePageContent() {
 
     // TEMP: Toast test button handler (ง่ายต่อการลบทีหลัง)
     const handleTestToast = () => {
-        showToast(
-            "บันทึกข้อมูลสำเร็จ (Mock)",
-            "นี่คือข้อความแจ้งเตือนแบบทดสอบสำหรับปรับแต่งดีไซน์ Toast."
-        );
+        let message = "";
+        for (let i = 0; i < 9; i++) {
+            if (i === 0) {
+                message = "มีการอนุมัติ PR หมายเลข PR256A123";
+            } else if (i === 1) {
+                message = "มีการไม่อนุมัติ PR หมายเลข PR256A123";
+            } else if (i === 2) {
+                message = "มีรายการเปรียบเทียบราคาใหม่ PR หมายเลข PR256A123";
+            } else if (i === 3) {
+                message = "รายการเปรียบเทียบราคาของท่านได้รับการอนุมัติ PR หมายเลข PR256A123";
+            } else if (i === 4) {
+                message = "รายการเปรียบเทียบราคาของท่านไม่ได้รับการอนุมัติ เนื่องจาก: ราคาสูงเกินงบประมาณ PR หมายเลข PR256A123";
+            } else if (i === 5) {
+                message = "มีการขออนุมัติ PO เลขที่ PO256A123";
+            } else if (i === 6) {
+                message = "มีการอนุมัติ PO เลขที่ PO256A123";
+            } else if (i === 7) {
+                message = "มีการไม่อนุมัติ PO เลขที่ PO256A123";
+            } else if (i === 8) {
+                message = "มีการขอแก้ไข PO เลขที่ PO256A123";
+            } else {
+                message = "มีการอนุมัติคำขอแก้ไข PO เลขที่ PO256A123";
+            }
+            showToast(
+                "ระบบจัดซื้อ",
+                message
+            );
+        }
     };
 
     // TODO: Card Display Logic
@@ -1143,12 +1167,12 @@ function PurchasePageContent() {
                         {/* Pagination Controls - Top */}
                         {(totalItems > 0 || currentPage === 1) && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                <button
+                                {/* <button
                                     onClick={handleTestToast}
                                     className="ml-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-xs hover:bg-emerald-700"
                                 >
                                     ทดสอบ Toast
-                                </button>
+                                </button> */}
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                     <div className="flex items-center space-x-2">
