@@ -13,6 +13,7 @@
     "@heroui/code": "^2.2.20",
     "@heroui/date-picker": "^2.3.27",
     "@heroui/react": "^2.8.4",
+    "@heroui/tabs": "^2.2.26",
     "@internationalized/date": "^3.9.0",
     "@react-aria/calendar": "^3.9.1",
     "@react-aria/i18n": "^3.12.12",

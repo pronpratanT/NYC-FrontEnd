@@ -10,6 +10,9 @@ import Header from '@/app/components/header';
 import { useUser } from '@/app/context/UserContext';
 import { useToken } from '@/app/context/TokenContext';
 
+// css
+import './notification.css';
+
 // context
 import { useSidebar } from '@/app/context/SidebarContext';
 
@@ -98,9 +101,24 @@ export default function NotificationPage() {
                     </div>
                     {/* Tab All / Unread */}
                     <div>
-                        <Tabs aria-label="Dynamic tabs" items={tabs}>
+                        <Tabs
+                            aria-label="Dynamic tabs"
+                            items={tabs}
+                            variant="solid"
+                            color="primary"
+                            classNames={{
+                                base: "notification-tabs bg-[#232326] rounded-xl p-1 w-fit",
+                                tabList: "gap-1 w-full relative rounded-lg p-0 bg-transparent",
+                                cursor: "bg-[#35353a] outline-offset-[-2px] rounded-lg",
+                                tab: "px-6 py-2 h-10",
+                                tabContent: "group-data-[selected=true]:text-white text-gray-400 font-medium"
+                            }}
+                        >
                             {(item) => (
-                                <Tab key={item.id} title={item.label}>
+                                <Tab
+                                    key={item.id}
+                                    title={item.label}
+                                >
                                     <Card>
                                         <CardBody>{item.content}</CardBody>
                                     </Card>

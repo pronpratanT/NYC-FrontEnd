@@ -2585,38 +2585,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
                             {/* Right Section - Status Badge and Action Button */}
                             <div className="flex items-center space-x-4">
-                              {/* Status Badge */}
-                              {/* <div className={`px-4 py-2 rounded-full border ${
-                                prWithPO.status === 'Po Created' 
-                                  ? isDarkMode 
-                                    ? 'bg-green-900/60 border-green-700 text-green-300' 
-                                    : 'bg-green-100 border-green-300 text-green-700'
-                                  : prWithPO.status === 'Approved'
-                                    ? isDarkMode 
-                                      ? 'bg-orange-900/60 border-orange-700 text-orange-300'
-                                      : 'bg-orange-100 border-orange-300 text-orange-700'
-                                    : isDarkMode 
-                                      ? 'bg-slate-800/60 border-slate-600 text-slate-300'
-                                      : 'bg-slate-100 border-slate-300 text-slate-700'
-                              }`}>
-                                <div className="flex items-center space-x-2">
-                                  <div className={`w-2 h-2 rounded-full ${
-                                    prWithPO.status === 'Po Created' 
-                                      ? 'bg-green-500' 
-                                      : prWithPO.status === 'Approved'
-                                        ? 'bg-orange-500'
-                                        : 'bg-slate-500'
-                                  }`}></div>
-                                  <span className="text-sm font-semibold">
-                                    {prWithPO.status === 'Po Created' ? 'PO สร้างแล้ว' : 
-                                     prWithPO.status === 'Approved' ? 'อนุมัติแล้ว' : 
-                                     prWithPO.status}
-                                  </span>
-                                </div>
-                              </div> */}
 
                               {/* Action Button */}
-                              {roleID === 4 && prWithPO.status !== 'Po Created' && prWithPO.status !== 'Po Updated' && (
+                              {(roleID === 4 || roleID === 5) && prWithPO.status !== 'Po Created' && prWithPO.status !== 'Po Updated' && (
                                 <button
                                   type="button"
                                   onClick={async () => {
@@ -4944,7 +4915,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         {Array.isArray(qtyHistory) && qtyHistory.length > 0
                                           ? qtyHistory[qtyHistory.length - 1]?.qty ?? '-'
                                           : qtyValue || '-'}
-                                        {roleID === 4 && (
+                                        {(roleID === 4 || roleID === 5) && (
                                           <button
                                             type="button"
                                             className={`ml-2 px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
@@ -5070,7 +5041,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               )}
                             </div>
                             {/* Action buttons */}
-                            {roleID === 4 && (
+                            {(roleID === 4 || roleID === 5) && (
                               <div className={`flex justify-end space-x-3 mt-6 pt-4 border-t ${isDarkMode ? 'border-indigo-700/50' : 'border-indigo-200'}`}>
                                 <button
                                   type="button"

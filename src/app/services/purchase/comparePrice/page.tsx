@@ -686,54 +686,56 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     {!(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at) && (
                                         <>
                                             {/* Supervisor (roleID = 2) - เห็นแค่ปุ่ม Sup Approve */}
-                                            {roleID === 2 && !prData?.supervisor_approve && (
+                                            {(roleID === 2 && !prData?.supervisor_approve) || (departmentId === 10086 && !prData?.supervisor_approve) && (
                                                 <div className="flex items-center gap-2 relative">
                                                     <div className="flex items-center">
                                                         <button
                                                             type="button"
-                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
+                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
+                                                                {/* absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0 */}
                                                                 <IoIosCheckmark size={40} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
-                                                                Sup Approve
-                                                            </span>
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                                Approve
+                                                            </span> */}
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
+                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
+                                                                {/* absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0 */}
                                                                 <FaXmark size={20} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
                                                                 Reject
-                                                            </span>
+                                                            </span> */}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -745,103 +747,103 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     <div className="flex items-center">
                                                         <button
                                                             type="button"
-                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
+                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <IoIosCheckmark size={40} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
-                                                                Sup Approve
-                                                            </span>
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                                Approve
+                                                            </span> */}
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
+                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <FaXmark size={20} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
                                                                 Reject
-                                                            </span>
+                                                            </span> */}
                                                         </button>
                                                     </div>
                                                 </div>
                                             )}
 
                                             {/* Manager (roleID = 3) - เห็น Mana Approve หลัง Sup Approve */}
-                                            {roleID === 3 && prData?.supervisor_approve && !prData?.manager_approve && (
+                                            {(roleID === 3 && prData?.supervisor_approve && !prData?.manager_approve) || (departmentId === 10086 && prData?.supervisor_approve && !prData?.manager_approve) && (
                                                 <div className="flex items-center gap-2 relative">
                                                     <div className="flex items-center">
                                                         <button
                                                             type="button"
-                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
+                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <IoIosCheckmark size={40} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
-                                                                Mana Approve
-                                                            </span>
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                                Approve
+                                                            </span> */}
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
+                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <FaXmark size={20} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
                                                                 Reject
-                                                            </span>
+                                                            </span> */}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -853,49 +855,49 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     <div className="flex items-center">
                                                         <button
                                                             type="button"
-                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
+                                                            className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                                if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <IoIosCheckmark size={40} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
-                                                                Pu Approve
-                                                            </span>
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                                Approve
+                                                            </span> */}
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
+                                                            className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            onMouseEnter={e => {
-                                                                e.currentTarget.style.width = '112px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            }}
-                                                            onMouseLeave={e => {
-                                                                e.currentTarget.style.width = '40px';
-                                                                const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                                if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            }}
+                                                            // onMouseEnter={e => {
+                                                            //     e.currentTarget.style.width = '112px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                            // }}
+                                                            // onMouseLeave={e => {
+                                                            //     e.currentTarget.style.width = '40px';
+                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                            // }}
                                                         >
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0">
+                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <FaXmark size={20} />
                                                             </span>
-                                                            <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
+                                                            {/* <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-base font-bold tracking-wide">
                                                                 Reject
-                                                            </span>
+                                                            </span> */}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1001,7 +1003,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     อนุมัติ({allParts.filter(part => part.status === 'Compared' && selectedParts.includes(part.pcl_id)).length})รายการ
                                                 </button>
                                             )}
-                                            {roleID === 4 && (
+                                            {(roleID === 4 || roleID === 5) && (
                                                 <button
                                                     type="button"
                                                     className={`group relative rounded-lg px-6 py-2 font-semibold border focus:outline-none transition-colors duration-150 cursor-pointer hover:shadow ${isDarkMode ? 'text-emerald-400 bg-slate-800 border-emerald-600/30 hover:bg-slate-700' : 'text-green-700 bg-white border-green-300 hover:bg-green-50'}`}
@@ -1186,7 +1188,8 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                             handlePartSelection(part.pcl_id, e.target.checked);
                                                                         }}
                                                                     />
-                                                                ) : (roleID === 4 && part.status === 'pending' || part.status === 'Rejected' || part.status === 'Po Rejected' || part.status === 'Recheck') ? (
+                                                                ) : ((roleID === 4 || roleID === 5) && part.status === 'pending' || part.status === 'Rejected' || part.status === 'Po Rejected' || part.status === 'Recheck') ? (
+                                                                    // Action Dropdown for แบ่งจำนวน and ของแถม
                                                                     <div className="relative inline-block">
                                                                         <button
                                                                             ref={el => { buttonRef.current[part.pcl_id] = el; }}
@@ -1348,7 +1351,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             <div className="font-medium leading-relaxed">{part.part_name}</div>
                                                         </td>
                                                         <td className={`px-3 py-4 w-48 align-middle ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                                            <div className="text-sm leading-relaxed">{part.objective}</div>
+                                                            <div className="text-sm leading-relaxed" style={{ whiteSpace: 'pre-line' }}>{part.objective}</div>
                                                         </td>
                                                         <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
                                                             <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/30 border border-slate-600/50 group-hover:bg-slate-600/40' : 'bg-gray-50 border border-gray-200 group-hover:bg-gray-100'}`}>

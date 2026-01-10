@@ -1,0 +1,34 @@
+/* Custom styling for HeroUI Tabs in notification page */
+
+/* Container */
+.notification-tabs {
+  border-radius: 12px;
+  padding: 4px;
+  width: fit-content;
+  position: relative;
+}
+
+
+/* Sliding pill background for active tab */
+.notification-tabs [data-slot="cursor"] {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #35353a !important;
+  border-radius: 8px !important;
+  border: 1px solid #3b82f6 !important;
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: -2px !important;
+  z-index: 0 !important;
+  transition:
+    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.2s,
+    border 0.2s;
+}
+
+/* Hover effect on tabs */
+.notification-tabs [role="tab"]:hover [data-slot="tabContent"] {
+  color: #d1d5db !important; /* lighter gray on hover */
+}
