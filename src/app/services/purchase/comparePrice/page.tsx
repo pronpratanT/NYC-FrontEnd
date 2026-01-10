@@ -101,6 +101,7 @@ type List = {
     price_per_unit: number;
     plant: string;
     status: string;
+    due_date: string;
     free_item: FreeItems[];
 }
 
@@ -1100,8 +1101,9 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-40 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-40 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
-                                            <th className={`px-2 py-3 text-left font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
-                                            <th className={`px-2 py-3 text-left font-semibold w-48 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-48 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
+                                            <th className={`px-2 py-3 text-left font-semibold w-55 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
                                             {(departmentId === 10086 && prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
@@ -1255,7 +1257,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             </td>
                                                         )}
                                                         {prData.supervisor_approve && prData.manager_approve && prData.pu_operator_approve && (
-                                                            <td className={`px-2 py-3 text-center w-26`}>
+                                                            <td className={`px-2 py-3 text-center w-26 align-top`}>
                                                                 <div className="flex items-center justify-center">
                                                                     {(() => {
                                                                         switch (part.status) {
@@ -1263,63 +1265,63 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-yellow-900/60 via-yellow-800/50 to-yellow-900/60 border-yellow-700/60' : 'from-yellow-50 via-yellow-100 to-yellow-50 border-yellow-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-yellow-400' : 'bg-yellow-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>waiting</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>Waiting</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'Compared':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-blue-900/60 via-blue-800/50 to-blue-900/60 border-blue-700/60' : 'from-blue-50 via-blue-100 to-blue-50 border-blue-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>compared</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>Compared</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'Approved':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-green-900/60 via-green-800/50 to-green-900/60 border-green-700/60' : 'from-green-50 via-green-100 to-green-50 border-green-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-green-400' : 'bg-green-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>approved</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>Approved</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'Rejected':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>rejected</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>Rejected</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'Recheck':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-orange-900/60 via-orange-800/50 to-orange-900/60 border-orange-700/60' : 'from-orange-50 via-orange-100 to-orange-50 border-orange-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-orange-400' : 'bg-orange-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>recheck</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>Recheck</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'PO Created':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-teal-900/60 via-teal-800/50 to-teal-900/60 border-teal-700/60' : 'from-teal-50 via-teal-100 to-teal-50 border-teal-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-teal-400' : 'bg-teal-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>po created</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>PO Created</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'Po Approved':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-purple-900/60 via-purple-800/50 to-purple-900/60 border-purple-700/60' : 'from-purple-50 via-purple-100 to-purple-50 border-purple-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-purple-400' : 'bg-purple-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>po approved</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>PO Approved</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'Po Rejected':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-red-900/60 via-red-800/50 to-red-900/60 border-red-700/60' : 'from-red-50 via-red-100 to-red-50 border-red-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>po rejected</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>PO Rejected</span>
                                                                                     </div>
                                                                                 );
                                                                             case 'Po Updated':
                                                                                 return (
                                                                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border min-w-[80px] justify-center bg-gradient-to-r ${isDarkMode ? 'from-fuchsia-900/60 via-fuchsia-800/50 to-fuchsia-900/60 border-fuchsia-700/60' : 'from-fuchsia-50 via-fuchsia-100 to-fuchsia-50 border-fuchsia-300'}`}>
                                                                                         <div className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? 'bg-fuchsia-400' : 'bg-fuchsia-500'}`}></div>
-                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-fuchsia-300' : 'text-fuchsia-700'}`}>po updated</span>
+                                                                                        <span className={`text-xs font-medium ${isDarkMode ? 'text-fuchsia-300' : 'text-fuchsia-700'}`}>PO Updated</span>
                                                                                     </div>
                                                                                 );
                                                                             default:
@@ -1334,39 +1336,47 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 </div>
                                                             </td>
                                                         )}
-                                                        <td className={`px-3 py-4 text-center w-12 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                        <td className={`px-3 py-4 text-center w-12 align-top ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                             <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/40 text-slate-200 group-hover:bg-slate-600/50' : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'}`}>
                                                                 {(page - 1) * rowsPerPage + idx + 1}
                                                             </span>
                                                         </td>
-                                                        <td className={`px-3 py-4 font-mono font-semibold w-40 text-left align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
+                                                        <td className={`px-3 py-4 font-mono font-semibold w-40 text-left align-top ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="tracking-wide">{part.part_no}</span>
                                                             </div>
                                                         </td>
-                                                        <td className={`px-3 py-4 font-mono font-medium w-40 text-left align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                        <td className={`px-3 py-4 font-mono font-medium w-40 text-left align-top ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                             <span className="tracking-wide">{part.prod_code}</span>
                                                         </td>
-                                                        <td className={`px-3 py-4 w-64 align-middle ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                        <td className={`px-3 py-4 w-48 align-top ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                             <div className="font-medium leading-relaxed">{part.part_name}</div>
                                                         </td>
-                                                        <td className={`px-3 py-4 w-48 align-middle ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                        <td className={`px-3 py-4 w-12 align-top text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                            <div className="font-medium leading-relaxed">
+                                                                {part.due_date ? (() => {
+                                                                    const d = new Date(part.due_date);
+                                                                    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
+                                                                })() : '-'}
+                                                            </div>
+                                                        </td>
+                                                        <td className={`px-3 py-4 w-55 align-top ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                             <div className="text-sm leading-relaxed" style={{ whiteSpace: 'pre-line' }}>{part.objective}</div>
                                                         </td>
-                                                        <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
+                                                        <td className={`px-3 py-4 w-16 text-center align-top ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
                                                             <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${isDarkMode ? 'bg-slate-700/30 border border-slate-600/50 group-hover:bg-slate-600/40' : 'bg-gray-50 border border-gray-200 group-hover:bg-gray-100'}`}>
                                                                 {part.qty}
                                                             </span>
                                                         </td>
-                                                        <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                        <td className={`px-3 py-4 w-16 text-center align-top font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                             <span className="text-sm font-semibold">{part.unit}</span>
                                                         </td>
                                                         {(departmentId === 10086 && prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
-                                                            <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                            <td className={`px-3 py-4 w-16 text-center align-top font-medium ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                                 <div className="text-sm font-semibold">{part.vendor}</div>
                                                             </td>
                                                         )}
-                                                        <td className={`px-3 py-4 w-16 text-center align-middle ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
+                                                        <td className={`px-3 py-4 w-16 text-center align-top ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>
                                                             <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 ${part.stock > 0
                                                                 ? isDarkMode
                                                                     ? 'bg-green-900/30 text-green-400 border border-green-700/50'
@@ -1379,11 +1389,11 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             </span>
                                                         </td>
                                                         {(departmentId === 10086 && prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) && (
-                                                            <td className={`px-3 py-4 w-16 text-right align-middle font-mono font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                            <td className={`px-3 py-4 w-16 text-right align-top font-mono font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                                 <div className="text-sm">{part.price_per_unit}</div>
                                                             </td>
                                                         )}
-                                                        <td className={`px-3 py-4 w-16 text-center align-middle font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                        <td className={`px-3 py-4 w-16 text-center align-top font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                             <span className="text-sm font-semibold">{part.plant === 'Plant 1' ? 'P1' : part.plant === 'Plant 2' ? 'P2' : part.plant}</span>
                                                         </td>
                                                     </tr>
@@ -1439,6 +1449,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                         </div>
                                                                     </div>
                                                                 </td>
+                                                                <td className={`px-4 py-2 text-right text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}></td>
                                                                 <td className={`px-4 py-2 text-left text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>* หมายเหตุ : {item.remark}</td>
                                                                 <td className={`px-4 py-2 text-center text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
                                                                     {(() => {

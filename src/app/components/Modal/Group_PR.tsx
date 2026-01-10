@@ -38,6 +38,7 @@ type List = {
     price_per_unit: number;
     plant: string;
     status: string;
+    due_date: string;
 }
 
 interface GroupPRModalProps {
@@ -707,33 +708,38 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                                             <div
                                                                 key={item.id}
                                                                 className={`p-3 rounded-xl border-l-4 transition-all duration-200 relative ${isLocked
-                                                                        ? `border-gray-400 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100/50'} cursor-not-allowed opacity-75`
-                                                                        : `border-blue-400 hover:border-blue-500 cursor-grab hover:shadow-md hover:scale-[1.01] ${isDarkMode
-                                                                            ? 'bg-gradient-to-r from-blue-900/20 to-indigo-900/20'
-                                                                            : 'bg-gradient-to-r from-blue-50 to-indigo-50'
-                                                                        }`
+                                                                    ? `border-gray-400 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100/50'} cursor-not-allowed opacity-75`
+                                                                    : `border-blue-400 hover:border-blue-500 cursor-grab hover:shadow-md hover:scale-[1.01] ${isDarkMode
+                                                                        ? 'bg-gradient-to-r from-blue-900/20 to-indigo-900/20'
+                                                                        : 'bg-gradient-to-r from-blue-50 to-indigo-50'
+                                                                    }`
                                                                     }`}
                                                                 draggable={!isLocked}
                                                                 onDragStart={() => !isLocked && setDraggedItem(item)}
                                                                 onDragEnd={() => setDraggedItem(null)}
                                                             >
-                                                                <div className={`font-semibold text-sm flex items-center justify-between ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-                                                                    <span>{item.part_no} - {item.part_name}</span>
+                                                                <div className={`font-semibold text-sm flex items-center ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                                                                    <span className="flex-1 truncate">{item.part_no} - {item.part_name}</span>
                                                                     {isLocked && (
-                                                                        <MdLockOutline className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                                        <MdLockOutline className={`w-4 h-4 ml-3 flex-shrink-0 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                                                                     )}
                                                                 </div>
-                                                                <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                                    จำนวน: {item.qty} {item.unit}
-                                                                </div>
-                                                                <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                                    Vendor: {item.vendor}
-                                                                </div>
-                                                                {isLocked && (
-                                                                    <div className={`text-xs mt-1 font-medium ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                                                                        สถานะ: {item.status} (ไม่สามารถย้ายได้)
+                                                                <div className={`text-xs mt-1 mr-30 space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}> 
+                                                                    <div className="flex flex-row gap-4 w-full">
+                                                                        <div className="flex-1 font-medium">จำนวน : <span className="font-normal">{item.qty} {item.unit}</span></div>
+                                                                        <div className="font-medium text-right" style={{minWidth:'90px',maxWidth:'120px',marginRight:'8px'}}>Plant : <span className="font-normal">{item.plant}</span></div>
                                                                     </div>
-                                                                )}
+                                                                    <div className="flex flex-row gap-4 w-full">
+                                                                        <div className="flex-1 font-medium">Vendor : <span className="font-normal">{item.vendor}</span></div>
+                                                                        <div className="font-medium text-right" style={{minWidth:'90px',maxWidth:'120px',marginRight:'8px'}}>Date : <span className="font-normal">{item.due_date ? (() => {
+                                                                            const d = new Date(item.due_date);
+                                                                            return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
+                                                                        })() : '-'}</span></div>
+                                                                    </div>
+                                                                    <div className="flex flex-row w-full">
+                                                                        <div className={`flex-1 font-medium ${isLocked ? (isDarkMode ? 'text-yellow-400' : 'text-yellow-600') : ''}`}>สถานะ : {item.status}{isLocked ? ' (ไม่สามารถย้ายได้)' : ''}</div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}
@@ -945,36 +951,42 @@ const GroupPRModal: React.FC<GroupPRModalProps> = ({ open, onClose, pr_id, pr_no
                                             <div
                                                 key={item.id}
                                                 className={`p-4 rounded-2xl border-2 shadow-md transition-all duration-300 relative group ${isLocked
-                                                        ? `cursor-not-allowed opacity-75 ${isDarkMode
-                                                            ? 'bg-gray-800 border-gray-600'
-                                                            : 'bg-gray-100 border-gray-300'
-                                                        }`
-                                                        : `cursor-grab hover:shadow-lg hover:scale-[1.02] ${isDarkMode
-                                                            ? 'bg-gray-700 border-gray-600 hover:border-orange-400'
-                                                            : 'bg-white border-gray-100 hover:border-orange-200'
-                                                        }`
+                                                    ? `cursor-not-allowed opacity-75 ${isDarkMode
+                                                        ? 'bg-gray-800 border-gray-600'
+                                                        : 'bg-gray-100 border-gray-300'
+                                                    }`
+                                                    : `cursor-grab hover:shadow-lg hover:scale-[1.02] ${isDarkMode
+                                                        ? 'bg-gray-700 border-gray-600 hover:border-orange-400'
+                                                        : 'bg-white border-gray-100 hover:border-orange-200'
+                                                    }`
                                                     }`}
                                                 draggable={!isLocked}
                                                 onDragStart={() => !isLocked && setDraggedItem(item)}
                                                 onDragEnd={() => setDraggedItem(null)}
                                             >
-                                                <div className={`font-medium flex items-center justify-between ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-                                                    <span>{item.part_no} - {item.part_name}</span>
+                                                <div className={`font-medium flex items-center ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                                                    <span className="flex-1 truncate">{item.part_no} - {item.part_name}</span>
                                                     {isLocked && (
-                                                        <MdLockOutline className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                        <MdLockOutline className={`w-5 h-5 ml-3 flex-shrink-0 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                                                     )}
                                                 </div>
-                                                <div className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                    <div className='mt-1'>จำนวน: {item.qty} {item.unit}</div>
-                                                    {/* <div>วัตถุประสงค์: {item.objective}</div> */}
-                                                    {/* <div>ผู้จัดจำหน่าย: {item.vendor}</div> */}
-                                                    <div className='mt-1'>Plant: {item.plant}</div>
-                                                    <div className='mt-1'>Vendor: {item.vendor}</div>
-                                                    {isLocked && (
-                                                        <div className={`font-medium mt-1 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                                                            สถานะ: {item.status} (ไม่สามารถย้ายได้)
+                                                <div className={`text-sm mt-1 space-y-1 mr-30 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                    <div className="flex flex-row gap-4 w-full">
+                                                        <div className="flex-1 font-medium">จำนวน : <span className="font-normal">{item.qty} {item.unit}</span></div>
+                                                        <div className="font-medium text-right" style={{minWidth:'120px',maxWidth:'160px',marginRight:'12px'}}>Plant : <span className="font-normal">{item.plant}</span></div>
+                                                    </div>
+                                                    <div className="flex flex-row gap-4 w-full">
+                                                        <div className="flex-1 font-medium">Vendor : <span className="font-normal">{item.vendor}</span></div>
+                                                        <div className="font-medium text-right" style={{minWidth:'120px',maxWidth:'160px',marginRight:'12px'}}>Date : <span className="font-normal">{item.due_date ? (() => {
+                                                            const d = new Date(item.due_date);
+                                                            return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
+                                                        })() : '-'}</span></div>
+                                                    </div>
+                                                    <div className="flex flex-row w-full">
+                                                        <div className={`flex-1 font-medium ${isLocked ? (isDarkMode ? 'text-yellow-400' : 'text-yellow-600') : ''}`}>
+                                                            สถานะ : {item.status}{isLocked ? ' (ไม่สามารถย้ายได้)' : ''}
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
 
                                                 {/* Quick Move Buttons - Show only for unlocked items */}
