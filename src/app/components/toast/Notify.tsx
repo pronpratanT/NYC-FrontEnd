@@ -81,7 +81,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             : "linear-gradient(90deg, #FCA5A5 0%, #FFFFFF 25%, #FFFFFF 100%)";
                         bar = "linear-gradient(90deg, #ef4444 100%, rgba(239, 68, 68, 0) 100%)";
                     } else if (toast.message.includes("มีรายการเปรียบเทียบราคาใหม่") || toast.message.includes("มีการขออนุมัติ")) {
-                        icon = <GoClockFill className="w-7 h-7 text-yellow-500" />;
+                        icon = <IoAlertCircle className="w-7 h-7 text-yellow-500" />;
                         border = "5px solid rgba(234, 179, 8, 0.3)";
                         background = isDarkMode
                             ? "radial-gradient(ellipse 200px 150px at 0% 50%, rgba(234, 179, 8, 0.5) 0%, transparent 60%), linear-gradient(90deg, #1a2033ff 0%, #2a3044ff 100%)"

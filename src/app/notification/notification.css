@@ -8,20 +8,40 @@
   position: relative;
 }
 
-
-/* Sliding pill background for active tab */
-.notification-tabs [data-slot="cursor"] {
-  position: absolute !important;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: #35353a !important;
-  outline-offset: -2px !important;
-  z-index: 0 !important;
-  transition: none;
+/* Custom scrollbar - Light mode */
+.scrollbar-light::-webkit-scrollbar {
+  width: 8px;
 }
 
-/* Hover effect on tabs */
-.notification-tabs [role="tab"]:hover [data-slot="tabContent"] {
-  color: #d1d5db !important; /* lighter gray on hover */
+.scrollbar-light::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.scrollbar-light::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.scrollbar-light::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom scrollbar - Dark mode */
+.scrollbar-dark::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 4px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }

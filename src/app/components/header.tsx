@@ -8,6 +8,8 @@ import {
   FaSearch, FaChevronDown, FaUser, FaCog, FaSignOutAlt,
   FaBell, FaSun, FaMoon, FaUserAlt
 } from 'react-icons/fa';
+import { GoArrowRight } from "react-icons/go";
+import { IoMdNotifications } from "react-icons/io";
 import { useUser } from '../context/UserContext';
 import { deleteCookie } from '../utils/cookies';
 import { useSidebar } from '../context/SidebarContext';
@@ -20,6 +22,7 @@ type Notification = {
     notify_message: string;
     created_at: string;
     status: string;
+    related: string;
   }>;
 };
 
@@ -82,28 +85,70 @@ export default function Header() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 4);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/history`, { headers: { Authorization: `Bearer ${token}` } });
-        if (response.ok) {
-          const data: NotificationResponse = await response.json();
-          setNotificationsData(data);
-        } else {
-          console.error('Failed to fetch notifications');
-        }
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
+  const fetchNotifications = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/history`, { headers: { Authorization: `Bearer ${token}` } });
+      if (response.ok) {
+        const data: NotificationResponse = await response.json();
+        setNotificationsData(data);
+      } else {
+        console.error('Failed to fetch notifications');
       }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return;
+    fetchNotifications();
+  }, [token]);
+
+  useEffect(() => {
+    const handleNotificationsUpdated = () => {
+      if (!token) return;
+      fetchNotifications();
     };
 
-    fetchNotifications();
-  }, []);
+    window.addEventListener('notificationsUpdated', handleNotificationsUpdated);
+    return () => {
+      window.removeEventListener('notificationsUpdated', handleNotificationsUpdated);
+    };
+  }, [token]);
 
   useEffect(() => {
     console.log('Fetched notifications data:', notificationsData);
   }, [notificationsData]);
   // toggleTheme now comes from context
+
+  const handleRelatedToPage = (relatedLink: string) => {
+    if (!relatedLink) return;
+    if (!/^D|^I/.test(relatedLink)) {
+      router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/comparePrice?id=${relatedLink}`);
+    }
+    else {
+      router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
+    }
+  }
+
+  const handleReadNotification = async (notify_id: number) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/read/${notify_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        // แจ้งให้ทุกส่วนที่ฟัง event นี้ reload ข้อมูลแจ้งเตือน
+        window.dispatchEvent(new CustomEvent('notificationsUpdated'));
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
 
   return (
     <header
@@ -160,19 +205,36 @@ export default function Header() {
                 <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{unreadNotifyCount} ข้อความ ที่ยังไม่ได้อ่าน</p>
               </div>
               <div className="max-h-96 overflow-y-auto">
-                {unreadNotifications.map((notification) => (
-                  <button
-                    key={notification.notify_id}
-                    className={`w-full px-4 py-3 flex items-start gap-3 transition-colors border-b last:border-b-0 ${isDarkMode ? 'hover:bg-gray-800 border-gray-800' : 'hover:bg-[#F0F8F2] border-[#F0F8F2]'}`}
-                  >
-                    <div className={`w-2 h-2 rounded-full mt-2 ${notification.status === 'UNREAD' || notification.status === 'unread' ? 'bg-green-500' : isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`} />
-                    <div className="flex-1 text-left">
-                      <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{notification.notify_title}</div>
-                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{notification.notify_message}</div>
-                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{formatRelativeTime(notification.created_at)}</div>
-                    </div>
-                  </button>
-                ))}
+                {unreadNotifications.length === 0 ? (
+                  <div className={`py-8 text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <IoMdNotifications className="mx-auto mb-2 text-3xl" />
+                    <span>ไม่มีการแจ้งเตือนใหม่</span>
+                  </div>
+                ) : (
+                  unreadNotifications.map((notification) => (
+                    <button
+                      key={notification.notify_id}
+                      className={`group w-full px-4 py-3 flex items-start cursor-pointer gap-3 transition-colors border-b last:border-b-0 ${isDarkMode ? 'hover:bg-gray-800 border-gray-800' : 'hover:bg-[#F0F8F2] border-[#F0F8F2]'}`}
+                      onClick={() => {
+                        handleRelatedToPage(notification.related);
+                        handleReadNotification(notification.notify_id);
+                        setShowNotifications(false);
+                      }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mt-2 ${notification.status === 'UNREAD' || notification.status === 'unread' ? 'bg-green-500' : isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`} />
+                      <div className="flex-1 text-left">
+                        <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{notification.notify_title}</div>
+                        <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{notification.notify_message}</div>
+                        <div className='flex justify-between'>
+                          <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{formatRelativeTime(notification.created_at)}</div>
+                          <div className='invisible group-hover:visible'>
+                            <GoArrowRight className='w-4 h-4 text-slate-500' />
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
               <div className={`px-4 py-2 border-t ${isDarkMode ? 'border-gray-700' : 'border-[#D4E6DA]'}`}>
                 <button className={`text-xs font-medium cursor-pointer ${isDarkMode ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700'}`}

@@ -9,6 +9,7 @@ import "@/app/styles/react-datepicker-light.css";
 import "@/app/styles/react-datepicker-orange.css";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import { RiDeleteBin6Line } from "react-icons/ri";
+import { IoReloadOutline } from "react-icons/io5";
 import { useTheme } from '../../../components/ThemeProvider';
 import { BsCalendar2Event } from "react-icons/bs";
 import { MdOutlineGroups3 } from "react-icons/md";
@@ -28,8 +29,18 @@ type partData = {
   qty: number | null;
   unit: string | null;
   vendor: string | null;
+  rempo: string | null;
   stock: number | null;
   price_per_unit: number | null;
+}
+
+type partDataNew = {
+  concat: string;
+  rempo: string | null;
+}
+
+type Unit = {
+  measure_name: string;
 }
 
 export default function TestPage() {
@@ -72,7 +83,7 @@ export default function TestPage() {
     return `PR${year}X000`;
   }
   const { isDarkMode } = useTheme();
-  const [partNos, setPartNos] = useState<string[]>([]);
+  const [partNos, setPartNos] = useState<partDataNew[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [search, setSearch] = useState<string>("");
   const [selectedParts, setSelectedParts] = useState<string[]>([]);
@@ -88,10 +99,11 @@ export default function TestPage() {
   const [stockData, setStockData] = useState<string[]>([]);
   const [priceData, setPriceData] = useState<string[]>([]);
   const [unitData, setUnitData] = useState<string[]>([]);
+  const [rempoData, setRempoData] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false)
 
-  // ROOT PATH from .env
-  // Removed unused variable apiUrl
+  // unit data from API
+  const [unitOptions, setUnitOptions] = useState<Unit[]>([]);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -107,6 +119,7 @@ export default function TestPage() {
 
   const isSelectedPartsEmpty = selectedParts.length === 0;
   useEffect(() => {
+    if (!isSelectedPartsEmpty) return; // reset เฉพาะตอนที่ไม่มีรายการแล้วเท่านั้น
     setPartsInfo([]); // reset ข้อมูล part info
     setQtyData([]);   // reset QTY
     setObjectiveData([]); // reset objective
@@ -115,6 +128,7 @@ export default function TestPage() {
     setStockData([]); // reset stock
     setPriceData([]); // reset price
     setUnitData([]); // reset unit
+    setRempoData([]); // reset rempo
   }, [isSelectedPartsEmpty]);
 
   useEffect(() => {
@@ -126,6 +140,7 @@ export default function TestPage() {
     setStockData(s => selectedParts.map((_, idx) => s[idx] || ''));
     setPriceData(p => selectedParts.map((_, idx) => p[idx] || ''));
     setUnitData(u => selectedParts.map((_, idx) => u[idx] || ''));
+    setRempoData(r => selectedParts.map((_, idx) => r[idx] || ''));
 
     const fetchPartData = async () => {
       try {
@@ -185,6 +200,7 @@ export default function TestPage() {
                       qty: item.qty ?? null,
                       unit: item.unit ?? null,
                       vendor: item.vendor ?? null,
+                      rempo: item.rempo ?? null,
                       stock: item.stock ?? null,
                       price_per_unit: item.price_per_unit ?? null,
                     };
@@ -261,8 +277,8 @@ export default function TestPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // setError(null); // error state removed
-        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(search)}`, {
+        // data fetch part no
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/inven?keyword=${encodeURIComponent(search)}`, {
           cache: "no-store",
           headers: {
             'Content-Type': 'application/json',
@@ -273,9 +289,24 @@ export default function TestPage() {
           throw new Error(`PartNo API error: HTTP ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
-        const arr = Array.isArray(data.data) ? data.data : [];
+        const arr: partDataNew[] = Array.isArray(data.data) ? data.data : [];
         setPartNos(arr);
         setShowDropdown(true);
+        // unit options fetch
+        const resUnit = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/measure-unit`, {
+          cache: "no-store",
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (!resUnit.ok) {
+          throw new Error(`Unit API error: HTTP ${resUnit.status} ${resUnit.statusText}`);
+        }
+        const dataUnit = await resUnit.json();
+        const unitArr = Array.isArray(dataUnit.data) ? dataUnit.data : [];
+        setUnitOptions(unitArr);
+
       } catch (err: unknown) {
         if (err instanceof Error) {
           // setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
@@ -307,10 +338,17 @@ export default function TestPage() {
     };
   }, [showDropdown]);
 
-  // ฟังก์ชันลบแถว
+  // ฟังก์ชันลบแถว (ลบข้อมูลทุกชุดที่อิงตาม index เดียวกัน)
   const handleDeleteRow = (idx: number) => {
-    setSelectedParts(selectedParts.filter((_, i) => i !== idx));
-    setRowDueDates(rowDueDates.filter((_, i) => i !== idx));
+    setSelectedParts(prev => prev.filter((_, i) => i !== idx));
+    setRowDueDates(prev => prev.filter((_, i) => i !== idx));
+    setQtyData(prev => prev.filter((_, i) => i !== idx));
+    setObjectiveData(prev => prev.filter((_, i) => i !== idx));
+    setDestinationData(prev => prev.filter((_, i) => i !== idx));
+    setStockData(prev => prev.filter((_, i) => i !== idx));
+    setPriceData(prev => prev.filter((_, i) => i !== idx));
+    setUnitData(prev => prev.filter((_, i) => i !== idx));
+    setRempoData(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleDestinationChange = (idx: number, value: string) => {
@@ -339,7 +377,8 @@ export default function TestPage() {
         console.log(`กรุณาเลือก Due Date ในแถวที่ ${idx + 1}`);
         return false;
       }
-      if (!objectiveData[idx] || objectiveData[idx] === '') {
+      const objectiveValue = objectiveData[idx] || rempoData[idx] || partInfo?.rempo || '';
+      if (!objectiveValue || objectiveValue === '') {
         console.log(`กรุณากรอก Objective ในแถวที่ ${idx + 1}`);
         return false;
       }
@@ -381,19 +420,20 @@ export default function TestPage() {
       dept_id: user?.Department?.ID,
       pr_list: selectedParts.map((part, idx) => {
         const partInfo = partsInfo.find(p => p.part_no === part);
+        const objectiveValue = objectiveData[idx] || rempoData[idx] || partInfo?.rempo || '';
         return {
           part_no: part.indexOf(' |') !== -1 ? part.slice(0, part.indexOf(' |')) : part,
           qty: parseFloat(String(qtyData[idx] !== '' ? qtyData[idx] : (partInfo?.qty ?? '0'))),
           unit: unitData[idx] !== '' ? unitData[idx] : (partInfo?.unit ?? ''),
           due_date: rowDueDates[idx] ? rowDueDates[idx]?.toLocaleDateString('en-CA') : null,
-          objective: objectiveData[idx],
+          objective: objectiveValue,
           destination: destinationData[idx],
           stock: parseFloat(String(stockData[idx] !== '' ? stockData[idx] : (partInfo?.stock ?? '0'))),
           price_per_unit: parseFloat(String(priceData[idx] !== '' ? priceData[idx] : (partInfo?.price_per_unit ?? '0'))),
         };
       })
     }
-    console.log("Payload to submit:", payload);
+    // console.log("Payload to submit:", payload);
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/create-pr`, {
@@ -429,7 +469,23 @@ export default function TestPage() {
     }
   };
 
-  //Create Part No Modal
+  const handleSyncInventory = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/sync/inventory-econs`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Sync inventory failed');
+      }
+      alert('Sync Inventory clicked!');
+    } catch (error) {
+      console.error("Error syncing inventory:", error);
+    }
+  }
 
   return (
     <div className="min-h-screen relative">
@@ -499,6 +555,17 @@ export default function TestPage() {
               <div className="flex items-center gap-3">
                 <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
                 <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800/50' : 'text-green-700 bg-green-50 border-green-200'}`}>{selectedParts.length} รายการ</span>
+                {/* Sync button */}
+                <button
+                  type="button"
+                  className={`px-4 py-2 font-medium border rounded-md cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300 hover:bg-amber-600/50 hover:text-white' : 'text-amber-700 hover:bg-amber-100 hover:text-amber-600'}`}
+                  onClick={() => {
+                    handleSyncInventory()
+                  }}
+                >
+                  <IoReloadOutline className="inline-block text-lg align-middle mr-2" />
+                  <span>Sync Inventory</span>
+                </button>
               </div>
               <div className="w-full md:w-96 relative">
                 <div className="relative w-full">
@@ -534,16 +601,17 @@ export default function TestPage() {
                       </div>
                       {partNos.map((part, idx) => (
                         <div
-                          key={part + '-' + idx}
+                          key={part.concat + '-' + idx}
                           className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-800/50 text-slate-300' : 'hover:bg-green-50'}`}
                           onClick={() => {
-                            setSelectedParts([...selectedParts, part]);
+                            setSelectedParts(prev => [...prev, part.concat]);
+                            setRempoData(prev => [...prev, part.rempo ?? '']);
                           }}
                         >
-                          {selectedParts.includes(part) && (
+                          {selectedParts.includes(part.concat) && (
                             <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-emerald-500' : 'bg-green-500'}`} title="เลือกแล้ว"></span>
                           )}
-                          <span className={`${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{part}</span>
+                          <span className={`${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{part.concat}</span>
                         </div>
                       ))}
                     </div>
@@ -574,6 +642,7 @@ export default function TestPage() {
                       const partInfo = partsInfo.find(p => p.part_no === part);
                       const hasRealData = partInfo && (partInfo.vendor !== null || partInfo.unit !== null || partInfo.stock !== null || partInfo.price_per_unit !== null);
                       if (hasRealData) {
+                        const globalIdx = (page - 1) * rowsPerPage + idx;
                         return (
                           <tr key={part + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-green-50'}`}>
                             <td className="px-2 py-3 text-center w-12">
@@ -637,8 +706,12 @@ export default function TestPage() {
                                 className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
                                 placeholder="วัตถุประสงค์"
                                 rows={1}
-                                value={pagedObjective[idx] || ''}
-                                onChange={(e) => handleObjectiveChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                value={
+                                  pagedObjective[idx] !== undefined && pagedObjective[idx] !== ''
+                                    ? pagedObjective[idx]
+                                    : (rempoData[globalIdx] || partInfo.rempo || '')
+                                }
+                                onChange={(e) => handleObjectiveChange(globalIdx, e.target.value)}
                               />
                             </td>
                             {/* <td className="px-2 py-3 w-16">
@@ -668,6 +741,7 @@ export default function TestPage() {
                           </tr>
                         );
                       } else {
+                        const globalIdx = (page - 1) * rowsPerPage + idx;
                         return (
                           <tr key={part + '-nodata-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>
                             <td className="px-2 py-3 text-center w-12">
@@ -707,13 +781,18 @@ export default function TestPage() {
                               />
                             </td>
                             <td className="px-2 py-3 w-20">
-                              <input
-                                type="text"
+                              <select
                                 value={unitData[(page - 1) * rowsPerPage + idx] || ''}
-                                onChange={e => handleUnitChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                onChange={(e) => handleUnitChange((page - 1) * rowsPerPage + idx, e.target.value)}
                                 className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
-                                placeholder="หน่วย"
-                              />
+                              >
+                                <option value="">เลือก</option>
+                                {unitOptions.map((unit, unitIdx) => (
+                                  <option key={unitIdx} value={unit.measure_name}>
+                                    {unit.measure_name}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td className={`px-2 py-5 whitespace-nowrap text-sm w-30`}>
                               <div className="relative w-full">
@@ -737,8 +816,12 @@ export default function TestPage() {
                                 className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
                                 placeholder="วัตถุประสงค์"
                                 rows={1}
-                                value={pagedObjective[idx] || ''}
-                                onChange={(e) => handleObjectiveChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                value={
+                                  pagedObjective[idx] !== undefined && pagedObjective[idx] !== ''
+                                    ? pagedObjective[idx]
+                                    : (rempoData[globalIdx] || '')
+                                }
+                                onChange={(e) => handleObjectiveChange(globalIdx, e.target.value)}
                               />
                             </td>
                             {/* <td className="px-2 py-3 w-16">

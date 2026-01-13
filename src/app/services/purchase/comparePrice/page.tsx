@@ -1102,7 +1102,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                             <th className={`px-2 py-3 text-left font-semibold w-40 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-40 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-48 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
-                                            <th className={`px-2 py-3 text-left font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
+                                            <th className={`px-2 py-3 text-center font-semibold w-18 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
                                             <th className={`px-2 py-3 text-left font-semibold w-55 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
                                             <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
@@ -1161,7 +1161,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
 
                                                 rows.push(
                                                     <tr key={part.part_no + '-row-' + ((page - 1) * rowsPerPage + idx)}
-                                                        className={`transition-all duration-300 group border-b border-opacity-20 ${!(prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086)
+                                                        className={`transition-all duration-300 group border-b border-opacity-20 align-top ${!(prData.manager_approve && prData.supervisor_approve && prData.pu_operator_approve)
                                                             ? 'cursor-not-allowed opacity-50'
                                                             : 'cursor-pointer hover:shadow-md'
                                                             } ${isDarkMode
@@ -1169,7 +1169,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                                 : 'bg-white/70 hover:bg-green-100/50 hover:shadow-green-900/10 border-gray-200/50'
                                                             }`}
                                                         onClick={() => {
-                                                            if (prData.manager_approve && prData.supervisor_approve && user?.Department?.ID === 10086) {
+                                                            if (prData.manager_approve && prData.supervisor_approve && prData.pu_operator_approve) {
                                                                 handleItemClick(part);
                                                             }
                                                         }}
@@ -1352,7 +1352,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                         <td className={`px-3 py-4 w-48 align-top ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                             <div className="font-medium leading-relaxed">{part.part_name}</div>
                                                         </td>
-                                                        <td className={`px-3 py-4 w-12 align-top text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                                                        <td className={`px-3 py-4 w-18 align-top text-center ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
                                                             <div className="font-medium leading-relaxed">
                                                                 {part.due_date ? (() => {
                                                                     const d = new Date(part.due_date);

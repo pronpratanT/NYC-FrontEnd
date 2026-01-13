@@ -19,28 +19,12 @@ import { useSidebar } from '@/app/context/SidebarContext';
 // icons
 import { IoMdNotifications } from "react-icons/io";
 import { GoArrowRight } from "react-icons/go";
-import { GoCheckCircleFill } from "react-icons/go";
-import { GoXCircleFill } from "react-icons/go";
-import { GoClockFill } from "react-icons/go";
-import { GoAlertFill } from "react-icons/go";
-import { IoAlertCircle } from "react-icons/io5";
-import { IoIosCheckmarkCircle } from "react-icons/io";
-import { IoIosCloseCircle } from "react-icons/io";
-import { FaShoppingCart } from 'react-icons/fa';
+import { IoAlertCircleOutline } from "react-icons/io5";
+import { IoIosCheckmarkCircleOutline } from "react-icons/io";
+import { IoIosCloseCircleOutline } from "react-icons/io";
 
 // hero ui
 import { Tabs, Tab, Card, CardBody } from "@heroui/react";
-
-type partData = {
-    part_no: string | null;
-    part_name: string | null;
-    prod_code: string | null;
-    qty: number | null;
-    unit: string | null;
-    vendor: string | null;
-    stock: number | null;
-    price_per_unit: number | null;
-}
 
 type Notification = {
     amount_unread_notify: number;
@@ -50,7 +34,7 @@ type Notification = {
         notify_message: string;
         created_at: string;
         status: string;
-        link?: string;
+        related?: string;
     }>;
 };
 
@@ -140,29 +124,71 @@ export default function NotificationPage() {
     //tabs state
     const tabs = [
         { id: 'all', label: 'All' },
-        { id: 'read', label: 'Read' },
+        // { id: 'read', label: 'Read' },
         { id: 'unread', label: 'Unread' },
     ];
 
     //NOTE notification data
     //notification data
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/history`, { headers: { Authorization: `Bearer ${token}` } });
-                if (response.ok) {
-                    const data: NotificationResponse = await response.json();
-                    setNotificationsData(data);
-                } else {
-                    console.error('Failed to fetch notifications');
-                }
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
+    const fetchNotifications = async () => {
+        if (!token) return;
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/history`, { headers: { Authorization: `Bearer ${token}` } });
+            if (response.ok) {
+                const data: NotificationResponse = await response.json();
+                setNotificationsData(data);
+            } else {
+                console.error('Failed to fetch notifications');
             }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (!token) return;
+        fetchNotifications();
+    }, [token]);
+
+    useEffect(() => {
+        const handleNotificationsUpdated = () => {
+            if (!token) return;
+            fetchNotifications();
         };
 
-        fetchNotifications();
-    }, []);
+        window.addEventListener('notificationsUpdated', handleNotificationsUpdated);
+        return () => {
+            window.removeEventListener('notificationsUpdated', handleNotificationsUpdated);
+        };
+    }, [token]);
+
+    const handleRelatedToPage = (relatedLink: string) => {
+        if (!relatedLink) return;
+        if (!/^D|^I/.test(relatedLink)) {
+            router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/comparePrice?id=${relatedLink}`);
+        }
+        else {
+            router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
+        }
+    }
+
+    const handleReadNotification = async (notify_id: number) => {
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/read/${notify_id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (response.ok) {
+                // แจ้งให้ทุกส่วนที่ฟัง event นี้ reload ข้อมูลแจ้งเตือน
+                window.dispatchEvent(new CustomEvent('notificationsUpdated'));
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    };
 
     return (
         <div className="min-h-screen relative">
@@ -177,16 +203,29 @@ export default function NotificationPage() {
                     marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
                 }}
             >
-                <div className="max-w-none w-full space-y-8 mb-6 relative z-10">
+                <div className="max-w-none w-full space-y-3 relative z-10">
                     {/* Notifications Header */}
-                    <div className="flex items-center space-x-3">
-                        <div>
-                            <IoMdNotifications className="inline w-8 h-8 text-white" />
+                    <div className={`flex items-center justify-between px-6 py-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-200'
+                        }`}>
+                        <div className="flex items-center gap-4">
+                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-slate-800/30' : 'bg-gray-100'}`}>
+                                <IoMdNotifications className={`w-6 h-6 ${isDarkMode ? 'text-slate-300' : 'text-yellow-500'}`} />
+                            </div>
+                            <div>
+                                <h1 className={`text-xl font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-900'
+                                    }`}>Notifications</h1>
+                                <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'
+                                    }`}>ติดตามข่าวสารล่าสุดเกี่ยวกับกิจกรรมของคุณอยู่เสมอ</p>
+                            </div>
                         </div>
-                        <div>
-                            <h1 className="text-xl font-semibold inline text-white">Notifications</h1>
-                            <h1 className='text-md'>ติดตามข่าวสารล่าสุดเกี่ยวกับกิจกรรมของคุณอยู่เสมอ</h1>
-                        </div>
+                        {notificationsData?.data?.amount_unread_notify ? (
+                            <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDarkMode
+                                ? 'bg-green-900/30 text-green-400 border border-green-700/50'
+                                : 'bg-green-50 text-green-700 border border-green-200'
+                                }`}>
+                                {notificationsData.data.amount_unread_notify} Unread
+                            </div>
+                        ) : null}
                     </div>
                     {/* Tab All / Unread */}
                     <div>
@@ -196,18 +235,25 @@ export default function NotificationPage() {
                             variant="solid"
                             color="primary"
                             classNames={{
-                                base: "notification-tabs bg-[#232326] rounded-xl p-1 w-fit",
+                                base: `notification-tabs rounded-xl p-1 w-fit ${isDarkMode
+                                    ? 'bg-slate-900/50 border border-slate-700/50'
+                                    : 'bg-white border border-gray-200'
+                                    }`,
                                 tabList: "gap-1 w-full relative rounded-lg p-0 bg-transparent",
-                                cursor: "bg-[#35353a] outline-offset-[-2px] rounded-lg",
+                                cursor: `outline-offset-[-2px] rounded-lg ${isDarkMode ? 'bg-slate-800/50' : 'bg-gray-100'
+                                    }`,
                                 tab: "px-6 py-2 h-10",
-                                tabContent: "group-data-[selected=true]:text-white text-gray-400 font-medium"
+                                tabContent: `group-data-[selected=true]:font-medium ${isDarkMode
+                                    ? 'group-data-[selected=true]:text-slate-200 text-slate-500'
+                                    : 'group-data-[selected=true]:text-gray-900 text-gray-500'
+                                    }`
                             }}
                         >
                             {(item) => {
                                 const notifications = getFilteredNotifications(item.id);
                                 return (
                                     <Tab key={item.id} title={item.label}>
-                                        <div className="grid grid-cols-12 gap-6 mt-6">
+                                        <div className="grid grid-cols-12 gap-6">
                                             {/* Left Side - Notification List */}
                                             <div className="col-span-12 md:col-span-5">
                                                 <div className={`rounded-2xl border overflow-hidden ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
@@ -216,12 +262,21 @@ export default function NotificationPage() {
                                                             Notifications ({notifications.length})
                                                         </h2>
                                                     </div>
-                                                    <div className="max-h-[600px] overflow-y-auto">
+                                                    <div
+                                                        className={`max-h-[600px] overflow-y-auto custom-scrollbar ${isDarkMode ? 'scrollbar-dark' : 'scrollbar-light'}`}
+                                                        style={{
+                                                            scrollbarWidth: 'thin',
+                                                            scrollbarColor: isDarkMode ? '#4b5563 #1f2937' : '#cbd5e1 #f1f5f9'
+                                                        }}
+                                                    >
                                                         {notifications.length > 0 ? (
                                                             notifications.map((notification) => (
                                                                 <div
                                                                     key={notification.notify_id}
-                                                                    onClick={() => setSelectedNotification(notification)}
+                                                                    onClick={() => {
+                                                                        setSelectedNotification(notification);
+                                                                        handleReadNotification(notification.notify_id);
+                                                                    }}
                                                                     className={`px-6 py-4 border-b cursor-pointer transition-all duration-200 ${selectedNotification?.notify_id === notification.notify_id
                                                                         ? isDarkMode
                                                                             ? 'bg-blue-900/30 border-blue-700/50'
@@ -236,21 +291,63 @@ export default function NotificationPage() {
                                                                             <div className="flex items-center gap-2 mb-1">
                                                                                 <div className="flex flex-1 items-center justify-between min-w-0">
                                                                                     <div className="flex items-center min-w-0 flex-1">
-                                                                                        {notification.status === 'unread' && (
+                                                                                        {/* {notification.status === 'unread' && (
                                                                                             <span className={`w-2 h-2 rounded-full flex-shrink-0 mr-2 ${isDarkMode ? 'bg-green-500' : 'bg-green-500'}`}></span>
-                                                                                        )}
-                                                                                        <span className="truncate">{notification.notify_title}</span>
+                                                                                        )} */}
+                                                                                        <span className={`truncate mr-2 ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{notification.notify_title}</span>
+                                                                                        <div>
+                                                                                            {(() => {
+                                                                                                if (
+                                                                                                    notification.notify_message.includes('มีการอนุมัติ') ||
+                                                                                                    notification.notify_message.includes('รายการเปรียบเทียบราคาของท่านได้รับการอนุมัติ') ||
+                                                                                                    notification.notify_message.includes('มีการอนุมัติคำขอแก้ไข')
+                                                                                                ) {
+                                                                                                    return (
+                                                                                                        <div className={`flex items-center justify-center min-w-[100px] gap-1 px-2 py-0.5 rounded-md border text-xs font-medium ${isDarkMode ? 'border-green-700/50 bg-green-900/30 text-green-300' : 'border-green-200 bg-green-50 text-green-700'}`}>
+                                                                                                            <IoIosCheckmarkCircleOutline className={`inline w-4 h-4 ${isDarkMode ? 'text-green-300' : 'text-green-600'}`} />
+                                                                                                            <span className={`truncate ${isDarkMode ? 'text-green-300' : 'text-green-600'}`}>Approve</span>
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                } else if (
+                                                                                                    notification.notify_message.includes('มีการไม่อนุมัติ') ||
+                                                                                                    notification.notify_message.includes('รายการเปรียบเทียบราคาของท่านไม่ได้รับการอนุมัติ')
+                                                                                                ) {
+                                                                                                    return (
+                                                                                                        <div className={`flex items-center justify-center min-w-[100px] gap-1 px-2 py-0.5 rounded-md border text-xs font-medium ${isDarkMode ? 'border-red-700/50 bg-red-900/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                                                                                                            <IoIosCloseCircleOutline className={`inline w-4 h-4 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`} />
+                                                                                                            <span className={`truncate ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>Reject</span>
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                } else if (
+                                                                                                    notification.notify_message.includes('มีรายการเปรียบเทียบราคาใหม่') ||
+                                                                                                    notification.notify_message.includes('มีการขออนุมัติ') ||
+                                                                                                    notification.notify_message.includes('มีการขอแก้ไข')
+                                                                                                ) {
+                                                                                                    return (
+                                                                                                        <div className={`flex items-center justify-center min-w-[100px] gap-1 px-2 py-0.5 rounded-md border text-xs font-medium ${isDarkMode ? 'border-yellow-700/50 bg-yellow-900/30 text-yellow-300' : 'border-yellow-200 bg-yellow-50 text-yellow-700'}`}>
+                                                                                                            <IoAlertCircleOutline className={`inline w-4 h-4 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`} />
+                                                                                                            <span className={`truncate ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`}>Request</span>
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                } else {
+                                                                                                    return null;
+                                                                                                }
+                                                                                            })()}
+                                                                                        </div>
                                                                                     </div>
-                                                                                    {notification.notify_title === 'ระบบจัดซื้อ' && (
+                                                                                    {/* {notification.notify_title === 'ระบบจัดซื้อ' && (
                                                                                         <FaShoppingCart className={`inline w-4 h-4 ml-2 ${isDarkMode ? 'text-green-500' : 'text-green-600'}`} />
+                                                                                    )} */}
+                                                                                    {notification.status === 'unread' && (
+                                                                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 mr-2 ${isDarkMode ? 'bg-green-500' : 'bg-green-500'}`}></span>
                                                                                     )}
                                                                                 </div>
                                                                             </div>
-                                                                            <div className='flex items-center gap-2 mb-1'>
-                                                                                    {notification.notify_message.includes('มีการอนุมัติ') && (
-                                                                                        <IoIosCheckmarkCircle className={`inline w-4 h-4 ml-2 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-                                                                                    )}
-                                                                            </div>
+                                                                            {/* <div className='flex items-center gap-2 mb-1'>
+                                                                                {notification.notify_message.includes('มีการอนุมัติ') && (
+                                                                                    <IoIosCheckmarkCircleOutline className={`inline w-4 h-4 ml-2 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                                                                                )}
+                                                                            </div> */}
                                                                             <p className={`text-xs line-clamp-2 mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
                                                                                 {notification.notify_message}
                                                                             </p>
@@ -282,63 +379,106 @@ export default function NotificationPage() {
                                                         <div>
                                                             <div className={`px-6 py-4 border-b ${isDarkMode ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-200 bg-gray-50'}`}>
                                                                 <div className="flex items-center justify-between">
-                                                                    <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                                                    <h2 className={`flex items-center gap-2 text-lg font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                                        <IoMdNotifications className={`w-6 h-6 ${isDarkMode ? 'text-slate-200' : 'text-yellow-500'}`} />
                                                                         Notification Detail
                                                                     </h2>
-                                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedNotification.status === 'unread'
-                                                                        ? isDarkMode
-                                                                            ? 'bg-green-900/30 text-green-300 border border-green-700/50'
-                                                                            : 'bg-green-50 text-green-700 border border-green-200'
-                                                                        : isDarkMode
-                                                                            ? 'bg-gray-700/30 text-gray-400 border border-gray-600/50'
-                                                                            : 'bg-gray-100 text-gray-600 border border-gray-200'
-                                                                        }`}>
-                                                                        {selectedNotification.status === 'unread' ? 'Unread' : 'Read'}
-                                                                    </span>
+                                                                    <div>
+                                                                        {(() => {
+                                                                            if (
+                                                                                selectedNotification.notify_message.includes('มีการอนุมัติ') ||
+                                                                                selectedNotification.notify_message.includes('รายการเปรียบเทียบราคาของท่านได้รับการอนุมัติ') ||
+                                                                                selectedNotification.notify_message.includes('มีการอนุมัติคำขอแก้ไข')
+                                                                            ) {
+                                                                                return (
+                                                                                    <div className={`flex items-center justify-center min-w-[100px] gap-1 px-3 py-1 rounded-full border text-xs font-medium ${isDarkMode ? 'border-green-700/50 bg-green-900/30 text-green-300' : 'border-green-200 bg-green-50 text-green-700'}`}>
+                                                                                        <IoIosCheckmarkCircleOutline className={`inline w-4.5 h-4.5 ${isDarkMode ? 'text-green-300' : 'text-green-600'}`} />
+                                                                                        <span className={`truncate ${isDarkMode ? 'text-green-300' : 'text-green-600'}`}>Approve</span>
+                                                                                    </div>
+                                                                                );
+                                                                            } else if (
+                                                                                selectedNotification.notify_message.includes('มีการไม่อนุมัติ') ||
+                                                                                selectedNotification.notify_message.includes('รายการเปรียบเทียบราคาของท่านไม่ได้รับการอนุมัติ')
+                                                                            ) {
+                                                                                return (
+                                                                                    <div className={`flex items-center justify-center min-w-[100px] gap-1 px-3 py-1 rounded-full border text-xs font-medium ${isDarkMode ? 'border-red-700/50 bg-red-900/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                                                                                        <IoIosCloseCircleOutline className={`inline w-4.5 h-4.5 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`} />
+                                                                                        <span className={`truncate ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>Reject</span>
+                                                                                    </div>
+                                                                                );
+                                                                            } else if (
+                                                                                selectedNotification.notify_message.includes('มีรายการเปรียบเทียบราคาใหม่') ||
+                                                                                selectedNotification.notify_message.includes('มีการขออนุมัติ') ||
+                                                                                selectedNotification.notify_message.includes('มีการขอแก้ไข')
+                                                                            ) {
+                                                                                return (
+                                                                                    <div className={`flex items-center justify-center min-w-[100px] gap-1 px-3 py-1 rounded-full border text-xs font-medium ${isDarkMode ? 'border-yellow-700/50 bg-yellow-900/30 text-yellow-300' : 'border-yellow-200 bg-yellow-50 text-yellow-700'}`}>
+                                                                                        <IoAlertCircleOutline className={`inline w-4.5 h-4.5 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`} />
+                                                                                        <span className={`truncate ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`}>Request</span>
+                                                                                    </div>
+                                                                                );
+                                                                            } else {
+                                                                                return null;
+                                                                            }
+                                                                        })()}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <div className="px-6 py-6 space-y-4">
                                                                 <div>
-                                                                    <label className={`text-sm font-medium block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                                                                    <label className={`text-sm font-medium block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                                                                         หัวข้อ
                                                                     </label>
-                                                                    <h3 className={`text-xl font-bold ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                                                    <h3 className={`text-md font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                                                         {selectedNotification.notify_title}
                                                                     </h3>
                                                                 </div>
                                                                 <div>
-                                                                    <label className={`text-sm font-medium block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                                                                    <label className={`text-sm font-medium block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                                                                         ข้อความ
                                                                     </label>
-                                                                    <p className={`text-base leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                                                        {selectedNotification.notify_message}
-                                                                    </p>
+                                                                    {selectedNotification.notify_message.includes('เนื่องจาก') ? (
+                                                                        (() => {
+                                                                            const [before, after] = selectedNotification.notify_message.split('เนื่องจาก');
+                                                                            return (
+                                                                                <span className={`text-base leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                                                    {before.trim()}<br />
+                                                                                    <span className="block mt-1">เนื่องจาก{after ? after.trim() : ''}</span>
+                                                                                </span>
+                                                                            );
+                                                                        })()
+                                                                    ) : (
+                                                                        <span className={`text-base leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                                            {selectedNotification.notify_message}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                                 <div>
-                                                                    <label className={`text-sm font-medium block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                                                                    <label className={`text-sm font-medium block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                                                                         วันที่และเวลา
                                                                     </label>
-                                                                    <p className={`text-base ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                                                    <p className={`text-base ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                                                                         {formatDateTime(selectedNotification.created_at)}
                                                                     </p>
                                                                 </div>
-                                                                {selectedNotification.link && (
+                                                                {selectedNotification.related && (
                                                                     <div className="pt-4">
                                                                         <button
-                                                                            onClick={() => router.push(selectedNotification.link!)}
-                                                                            className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${isDarkMode
+                                                                            onClick={() => handleRelatedToPage(selectedNotification.related!)}
+                                                                            className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer ${isDarkMode
                                                                                 ? 'bg-blue-600 hover:bg-blue-700 text-white'
                                                                                 : 'bg-blue-500 hover:bg-blue-600 text-white'
                                                                                 }`}
                                                                         >
                                                                             ดูรายละเอียด
+                                                                            <GoArrowRight className="inline w-5 h-5 ml-2" />
                                                                         </button>
                                                                     </div>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className={`flex items-center justify-center h-full min-h-[400px] ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                        <div className={`flex items-center justify-center h-full min-h-[400px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                                                             <div className="text-center">
                                                                 <IoMdNotifications className="w-16 h-16 mx-auto mb-4 opacity-30" />
                                                                 <p className="text-lg">เลือกการแจ้งเตือนเพื่อดูรายละเอียด</p>
