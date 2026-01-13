@@ -165,7 +165,7 @@ function PurchasePageContent() {
     // TEMP: Toast test button handler (ง่ายต่อการลบทีหลัง)
     const handleTestToast = () => {
         let message = "";
-        for (let i = 0; i < 9; i++) {
+        for (let i = 0; i < 1; i++) {
             if (i === 0) {
                 message = "มีการอนุมัติ PR หมายเลข PR256A123";
             } else if (i === 1) {
@@ -1167,12 +1167,12 @@ function PurchasePageContent() {
                         {/* Pagination Controls - Top */}
                         {(totalItems > 0 || currentPage === 1) && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                {/* <button
+                                <button
                                     onClick={handleTestToast}
                                     className="ml-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-xs hover:bg-emerald-700"
                                 >
                                     ทดสอบ Toast
-                                </button> */}
+                                </button>
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                     <div className="flex items-center space-x-2">
