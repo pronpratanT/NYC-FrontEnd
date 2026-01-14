@@ -47,8 +47,9 @@ export default function NotificationListener() {
         const payload = JSON.parse(event.data as string);
         const title = payload?.title ?? "Notification";
         const message = payload?.message ?? "";
+        const related_type = payload?.related_type ?? "";
         if (message) {
-          showToast(title, message);
+          showToast(title, message, related_type);
         }
       } catch (err) {
         console.error("[NotificationListener] Failed to parse message", err);

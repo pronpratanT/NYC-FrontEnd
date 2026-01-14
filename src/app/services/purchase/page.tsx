@@ -14,9 +14,9 @@ import "flatpickr/dist/flatpickr.min.css";
 import Sidebar from "../../components/sidebar";
 import Header from "../../components/header";
 import { useTheme } from "../../components/ThemeProvider";
-import { useToast } from "../../components/toast/Notify";
 import { useToken } from "../../context/TokenContext";
 import { useUser } from "../../context/UserContext";
+import { useToast } from "../../components/toast/Notify";
 
 // icons
 import { LuCalendarFold } from "react-icons/lu";
@@ -85,7 +85,7 @@ const departmentColors: { [key: string]: string } = {
 function PurchasePageContent() {
     // Theme context
     const { isDarkMode } = useTheme();
-    const { showToast } = useToast();
+    const { showToast, showPDFToast, setPDFToastSuccess } = useToast();
     // อ่านค่าจาก localStorage ตอน mount
     const [isListView, setIsListView] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -148,7 +148,7 @@ function PurchasePageContent() {
         : undefined;
     const departmentId = user?.Department?.ID;
     const [departments, setDepartments] = useState<Department[]>([]);
-    console.log("Departments & Roles:", allDepartments, "Service ID:", serviceID, "Department ID:", departmentId);
+    // console.log("Departments & Roles:", allDepartments, "Service ID:", serviceID, "Department ID:", departmentId);
 
     // NOTE: Search and filter states
     const [search, setSearch] = useState("");
@@ -189,7 +189,8 @@ function PurchasePageContent() {
             }
             showToast(
                 "ระบบจัดซื้อ",
-                message
+                message,
+                "11077"
             );
         }
     };
@@ -738,12 +739,20 @@ function PurchasePageContent() {
     // TODO: PDF
     // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
     // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
-    const previewPrPdf = async (pr_id: number) => {
+    const previewPrPdf = async (pr_id: number, pr_no: string) => {
         console.log('previewPrPdf called for PR:', pr_id);
         if (!token) {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Preview PDF ${pr_no}`,
+            `กำลังสร้างตัวอย่างไฟล์ PDF PR หมายเลข ${pr_no} กรุณารอสักครู่...`,
+            true // loading = true
+        );
+
         const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
         const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_pdf_pr/${pr_id}/${endpointType}`;
         try {
@@ -756,10 +765,19 @@ function PurchasePageContent() {
             const objectUrl = URL.createObjectURL(blob);
             window.open(objectUrl, '_blank', 'noopener');
             setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ (PiCheckCircleBold)
+            setPDFToastSuccess(
+                toastId,
+                `เปิดตัวอย่างไฟล์ PDF PR หมายเลข ${pr_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('previewPrPdf error:', err);
-            // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
+            // แจ้งเตือนว่าไม่สำเร็จ แต่ใช้ icon success ตาม requirement (เฉพาะ spinner→check)
+            setPDFToastSuccess(
+                toastId,
+                `ไม่สามารถเปิดตัวอย่างไฟล์ PDF PR หมายเลข ${pr_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
@@ -769,6 +787,14 @@ function PurchasePageContent() {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Download PDF PR ${pr_no}`,
+            `กำลังดาวน์โหลดไฟล์ PDF PR หมายเลข ${pr_no} กรุณารอสักครู่...`,
+            true
+        );
+
         const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
         const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf_pr/${pr_id}/${endpointType}`;
         try {
@@ -790,10 +816,18 @@ function PurchasePageContent() {
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ
+            setPDFToastSuccess(
+                toastId,
+                `ดาวน์โหลดไฟล์ PR หมายเลข ${pr_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('downloadPrPdf error:', err);
-            // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${pr_id}/${token}`, '_blank', 'noopener');
+            setPDFToastSuccess(
+                toastId,
+                `ไม่สามารถดาวน์โหลดไฟล์ PR หมายเลข ${pr_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
@@ -1390,7 +1424,7 @@ function PurchasePageContent() {
                                                 className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    previewPrPdf(Number(pr.id));
+                                                    previewPrPdf(Number(pr.id), pr.pr_no);
                                                 }}
                                             >
                                                 <MdOutlineRemoveRedEye className="w-7 h-7" />
@@ -1557,7 +1591,7 @@ function PurchasePageContent() {
                                                             className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md transition-colors ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'}`}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                previewPrPdf(Number(pr.id));
+                                                                previewPrPdf(Number(pr.id), pr.pr_no);
                                                             }}
                                                         >
                                                             <MdOutlineRemoveRedEye className="w-4 h-4" />

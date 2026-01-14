@@ -1,78 +1,44 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from "react";
-import { useTheme } from "../ThemeProvider";
-import { useRouter } from 'next/navigation';
-
-// context
-import { useToken } from "../../context/TokenContext";
-
-// icons
-import { GoArrowRight } from "react-icons/go";
-import { IoClose, IoChevronDown, IoReloadOutline } from "react-icons/io5";
+import { IoChevronDown, IoClose, IoReloadOutline } from "react-icons/io5";
 import { PiCheckCircleBold } from "react-icons/pi";
-import { PiXCircleBold } from "react-icons/pi";
-import { PiWarningBold } from "react-icons/pi";
-
-type ToastType = "notify" | "pdf";
+import { useTheme } from "../ThemeProvider";
 
 type Toast = {
     id: number;
     title: string;
     message: string;
-    related_type?: string;
     expanded: boolean;
     paused: boolean;
     remainingTime: number;
     exiting?: boolean;
-    type: ToastType;
-    loading?: boolean; // สำหรับ PDF toast ระหว่างประมวลผล
+    loading?: boolean;
 };
 
 type ToastContextType = {
-    // Toast ปกติจากระบบแจ้งเตือน
-    showToast: (title: string, message: string, related_type: string) => void;
-    // Toast สำหรับงาน PDF (แสดง spinner แล้วเปลี่ยนเป็น success)
+    // แสดง toast แบบ PDF loading และคืน id กลับมา
     showPDFToast: (title: string, message: string, loading?: boolean) => number;
+    // เปลี่ยน toast loading ให้เป็นสถานะสำเร็จ (icon check) พร้อมอัปเดตข้อความได้
     setPDFToastSuccess: (id: number, message?: string) => void;
+    // ปิด toast เองแบบ manual
+    dismissToast: (id: number) => void;
 };
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export const useToast = () => {
+export const usePdfToast = () => {
     const ctx = useContext(ToastContext);
-    if (!ctx) throw new Error("useToast must be used within ToastProvider");
+    if (!ctx) throw new Error("usePdfToast must be used within ToastProvider");
     return ctx;
 };
 
 const TOAST_DURATION = 14; // seconds
-
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function PdfGen({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const counterRef = useRef(0);
     const { isDarkMode } = useTheme();
-    const router = useRouter();
-    const token = useToken();
 
-    const showToast = useCallback((title: string, message: string, related_type: string) => {
-        counterRef.current += 1;
-        const id = counterRef.current;
-        const toast: Toast = {
-            id,
-            title,
-            message,
-            related_type,
-            expanded: false,
-            paused: false,
-            remainingTime: TOAST_DURATION,
-            exiting: false,
-            type: "notify",
-            loading: false,
-        };
-        setToasts(prev => [...prev, toast]);
-    }, []);
-
-    // Toast สำหรับ PDF: ใช้ array เดียวกัน แต่มีสถานะ loading
     const showPDFToast = useCallback((title: string, message: string, loading?: boolean) => {
         counterRef.current += 1;
         const id = counterRef.current;
@@ -80,28 +46,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             id,
             title,
             message,
-            related_type: undefined,
             expanded: false,
             paused: false,
             remainingTime: TOAST_DURATION,
             exiting: false,
-            type: "pdf",
             loading: !!loading,
         };
         setToasts(prev => [...prev, toast]);
         return id;
     }, []);
 
+    // ใช้ตอนงานเสร็จ เพื่อเปลี่ยน icon เป็น PiCheckCircleBold และอัปเดตข้อความ
     const setPDFToastSuccess = useCallback((id: number, message?: string) => {
         setToasts(prev =>
             prev.map(t =>
                 t.id === id
                     ? {
                         ...t,
-                        type: "pdf",
                         loading: false,
                         message: message ?? t.message,
-                        // เริ่มนับถอยหลังใหม่หลังจากสำเร็จ
+                        // เริ่มนับถอยหลังใหม่ได้ถ้าต้องการให้ค้างสักพัก
                         remainingTime: TOAST_DURATION,
                     }
                     : t
@@ -109,14 +73,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         );
     }, []);
 
-    // Timer effect for countdown and auto-dismiss
+    // Timer effect สำหรับนับถอยหลังและ auto-dismiss เฉพาะ toast ที่ไม่ใช่ loading
     useEffect(() => {
         const interval = setInterval(() => {
             setToasts(prev => {
-                // หา toast ที่จะหมดเวลาและยังไม่ exiting
-                const toastsToExit = prev.filter(t => !t.paused && t.remainingTime === 1 && !t.exiting);
+                const toastsToExit = prev.filter(
+                    t => !t.paused && !t.loading && t.remainingTime === 1 && !t.exiting
+                );
                 if (toastsToExit.length > 0) {
-                    // mark exiting ก่อน แล้วค่อยลบหลัง animation
                     toastsToExit.forEach(t => {
                         setTimeout(() => {
                             setToasts(current => current.filter(x => x.id !== t.id));
@@ -124,10 +88,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     });
                 }
                 return prev.map(t => {
-                    // ข้ามนับเวลาให้ toast ที่ pause หรือ PDF ที่กำลังโหลดอยู่
-                    if (t.paused || (t.type === "pdf" && t.loading)) return t;
+                    if (t.paused || t.loading) return t;
                     if (t.remainingTime === 1 && !t.exiting) {
-                        // mark exiting
                         return { ...t, exiting: true };
                     }
                     if (t.remainingTime > 1) {
@@ -142,57 +104,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
     const toggleExpanded = (id: number) => {
         setToasts(prev =>
-            prev.map(t => t.id === id ? { ...t, expanded: !t.expanded } : t)
+            prev.map(t => (t.id === id ? { ...t, expanded: !t.expanded } : t))
         );
     };
 
     const togglePaused = (id: number) => {
         setToasts(prev =>
-            prev.map(t => t.id === id ? { ...t, paused: !t.paused } : t)
+            prev.map(t => (t.id === id ? { ...t, paused: !t.paused } : t))
         );
     };
 
     const dismissToast = (id: number) => {
-        // ทำ animation slide ออกไปทางขวาก่อน แล้วค่อยลบออกจาก state
         setToasts(prev => prev.map(t => (
             t.id === id ? { ...t, exiting: true } : t
         )));
 
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
-        }, 300); // ให้เวลาตาม duration ของ animation slideOutRight
-    };
-
-    const handleRelatedToPage = (relatedLink: string) => {
-        if (!relatedLink) return;
-        if (!/^D|^I/.test(relatedLink)) {
-            router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/comparePrice?id=${relatedLink}`);
-        }
-        else {
-            router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
-        }
-    }
-
-    const handleReadNotification = async (notify_id: number) => {
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/notify/read/${notify_id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            if (response.ok) {
-                // แจ้งให้ทุกส่วนที่ฟัง event นี้ reload ข้อมูลแจ้งเตือน
-                window.dispatchEvent(new CustomEvent('notificationsUpdated'));
-            }
-        } catch (error) {
-            console.error('Error marking notification as read:', error);
-        }
+        }, 300);
     };
 
     return (
-        <ToastContext.Provider value={{ showToast, showPDFToast, setPDFToastSuccess }}>
+        <ToastContext.Provider value={{ showPDFToast, setPDFToastSuccess, dismissToast }}>
             {children}
             {/* Toast container bottom-right */}
             <div
@@ -207,49 +140,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 }}
             >
                 {toasts.map(toast => {
-                    // Logic for style/icon by message / PDF
-                    let icon: React.ReactNode = <PiCheckCircleBold className="w-7 h-7 text-emerald-500" />;
-                    let border = "2px solid rgba(34, 197, 94, 0.4)"; // icon border
-                    let iconBg = isDarkMode ? "rgba(34, 197, 94, 0.16)" : "rgba(34, 197, 94, 0.08)";
-                    // พื้นหลังการ์ดและสีขอบแบบเรียบง่าย ใกล้เคียงดีไซน์ตัวอย่าง
+                    // สำหรับ PDF: มีแค่ 2 สถานะหลัก loading (หมุน) และ success (check)
+                    let icon = <PiCheckCircleBold className="w-7 h-7 text-sky-500" />;
                     let background = isDarkMode ? "#0d1320" : "#FFFFFF";
-                    let cardBorderColor = isDarkMode ? "rgba(55, 65, 81, 1)" : "rgba(209, 213, 219, 1)";
                     let bar = "linear-gradient(90deg, #22c55e 0%, #22c55e 100%)";
-
-                    // PDF toast: ใช้สี/ไอคอนเฉพาะ (spinner -> success)
-                    if (toast.type === "pdf") {
-                        if (toast.loading) {
-                            icon = <IoReloadOutline className="w-7 h-7 text-sky-500 toast-loading-spin" />;
-                            border = "2px solid rgba(56, 189, 248, 0.6)";
-                            iconBg = isDarkMode ? "rgba(56, 189, 248, 0.24)" : "rgba(56, 189, 248, 0.12)";
-                            cardBorderColor = isDarkMode ? "rgba(56, 189, 248, 0.7)" : "rgba(56, 189, 248, 0.7)";
-                            bar = "#0ea5e9";
-                        } else {
-                            icon = <PiCheckCircleBold className="w-7 h-7 text-sky-500" />;
-                            border = "2px solid rgba(56, 189, 248, 0.6)";
-                            iconBg = isDarkMode ? "rgba(56, 189, 248, 0.24)" : "rgba(56, 189, 248, 0.12)";
-                            cardBorderColor = isDarkMode ? "rgba(56, 189, 248, 0.7)" : "rgba(56, 189, 248, 0.7)";
-                            bar = "#0ea5e9";
-                        }
-                    } else if (toast.message.includes("มีการอนุมัติ") || toast.message.includes("รายการเปรียบเทียบราคาของท่านได้รับการอนุมัติ") || toast.message.includes("มีการอนุมัติคำขอแก้ไข")) {
-                        icon = <PiCheckCircleBold className="w-7 h-7 text-green-500" />;
-                        border = "2px solid rgba(16, 185, 129, 0.6)";
-                        iconBg = isDarkMode ? "rgba(16, 185, 129, 0.24)" : "rgba(34, 197, 94, 0.1)";
-                        cardBorderColor = isDarkMode ? "rgba(16, 185, 129, 0.6)" : "rgba(34, 197, 94, 0.65)";
-                        // bar = "linear-gradient(90deg, #22c55e 0%, #16a34a 100%)";
-                        bar = "#00c950";
-                    } else if (toast.message.includes("มีการไม่อนุมัติ") || toast.message.includes("รายการเปรียบเทียบราคาของท่านไม่ได้รับการอนุมัติ")) {
-                        icon = <PiXCircleBold className="w-7 h-7 text-red-500" />;
-                        border = "2px solid rgba(239, 68, 68, 0.6)";
-                        iconBg = isDarkMode ? "rgba(239, 68, 68, 0.24)" : "rgba(248, 113, 113, 0.12)";
-                        cardBorderColor = isDarkMode ? "rgba(248, 113, 113, 0.7)" : "rgba(248, 113, 113, 0.7)";
-                        bar = "#fb2c36";
-                    } else if (toast.message.includes("มีรายการเปรียบเทียบราคาใหม่") || toast.message.includes("มีการขออนุมัติ") || toast.message.includes("มีการขอแก้ไข")) {
-                        icon = <PiWarningBold className="w-7 h-7 text-amber-500" />;
-                        border = "2px solid rgba(234, 179, 8, 0.6)";
-                        iconBg = isDarkMode ? "rgba(234, 179, 8, 0.2)" : "rgba(234, 179, 8, 0.1)";
-                        cardBorderColor = isDarkMode ? "rgba(234, 179, 8, 0.7)" : "rgba(234, 179, 8, 0.7)";
-                        bar = "#fe9a00";
+                    if (toast.loading) {
+                        icon = <IoReloadOutline className="w-7 h-7 text-blue-500 toast-loading-spin" />;
+                        bar = "#00a6f4";
+                    } else {
+                        // success style
+                        icon = <PiCheckCircleBold className="w-7 h-7 text-sky-500" />;
+                        bar = "#00a6f4";
                     }
                     return (
                         <div
@@ -294,7 +195,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div
                                         style={{
-                                            fontSize: "1rem",
+                                            fontSize: "0.95rem",
                                             fontWeight: "550",
                                             color: isDarkMode ? "#fafafa" : "#020618",
                                             letterSpacing: "0.01em",
@@ -393,45 +294,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                 }}
                             >
                                 <div>{toast.message}</div>
-                                {toast.type === "notify" && toast.related_type && (
-                                <button
-                                    onClick={() => {
-	                                    handleRelatedToPage(toast.related_type!);
-                                        handleReadNotification(toast.id);
-                                        dismissToast(toast.id);
-                                    }}
-                                    className="details-btn"
-                                    style={{
-                                        marginTop: 8,
-                                        padding: "7px 18px",
-                                        borderRadius: 8,
-                                        border: isDarkMode ? "1px solid rgba(148, 163, 184, 0.9)" : "1px solid rgba(209, 213, 219, 1)",
-                                        backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.8)" : "#ffffff",
-                                        color: isDarkMode ? "#E5E7EB" : "#111827",
-                                        fontWeight: 500,
-                                        cursor: "pointer",
-                                        boxShadow: isDarkMode
-                                            ? "0 1px 2px rgba(15, 23, 42, 0.9)"
-                                            : "0 1px 2px rgba(148, 163, 184, 0.6)",
-                                        transition: "background-color 0.15s ease, transform 0.1s ease",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = isDarkMode
-                                                ? "#101828"
-                                                : "#f5f5f5";
-                                        // e.currentTarget.style.transform = "translateY(-1px)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = isDarkMode
-                                                ? "rgba(15, 23, 42, 0.8)"
-                                                : "#ffffff";
-                                        // e.currentTarget.style.transform = "translateY(0)";
-                                    }}
-                                >
-                                    Details
-                                    <GoArrowRight className="inline-block w-4 h-4 ml-2 details-arrow" />
-                                </button>
-                                )}
                             </div>
                             {/* Timer row with smooth hide/show and pausable bar */}
                             <div
@@ -453,9 +315,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                     transition:
                                         "padding 0.25s ease, max-height 0.25s ease, opacity 0.2s ease, transform 0.25s ease",
                                     overflow: "hidden",
-                                    zIndex: 2,
-                            }}
-                            >
+                                        zIndex: 2,
+                                    }}
+                                    >
                                 This message will close in <span style={{ fontWeight: "600", color: isDarkMode ? "#fafafa" : "#314158" }}>{toast.remainingTime}</span> seconds.
                                 <span
                                     onClick={() => togglePaused(toast.id)}
@@ -481,8 +343,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                         width: "100%",
                                         background: isDarkMode ? background : "#f5f5f5",
                                         zIndex: 1,
-                                }}
-                                >
+                                    }}
+                                    >
                                     <div
                                         style={{
                                             position: "absolute",
@@ -502,19 +364,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         </div>
                     );
                 })}
-            </div>);
-            {/* Animation keyframes */}
+            </div>
             <style>{`
-				@keyframes slideIn {
-					from {
-						transform: translateX(400px);
-						opacity: 0;
-					}
-					to {
-						transform: translateX(0);
-						opacity: 1;
-					}
-				}
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
                 @keyframes slideOutRight {
                     from {
                         transform: translateX(0);
@@ -533,40 +394,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         transform: scaleX(1);
                     }
                 }
-                @keyframes closeSpinBounce {
-                    0% {
-                        transform: rotate(0deg);
-                    }
-                    70% {
-                        transform: rotate(105deg);
-                    }
-                    90% {
-                        transform: rotate(88deg);
-                    }
-                    100% {
-                        transform: rotate(90deg);
-                    }
-                }
-                .toast-close-icon {
-                    transform-origin: center;
-                }
-                .toast-close-btn:hover .toast-close-icon {
-                    animation: closeSpinBounce 0.65s cubic-bezier(0.6, 0, 0.2, 1) forwards;
-                }
-                .details-arrow {
-                    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                .details-btn:hover .details-arrow {
-                    transform: translateX(6px);
-                }
-
-                .toast-loading-spin {
-                    animation: toastLoadingSpin 1s linear infinite;
-                }
                 @keyframes toastLoadingSpin {
                     100% { transform: rotate(360deg); }
                 }
-			`}</style>
+                .toast-loading-spin {
+                    animation: toastLoadingSpin 1s linear infinite;
+                }
+            `}</style>
         </ToastContext.Provider>
     );
 }

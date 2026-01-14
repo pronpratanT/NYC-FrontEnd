@@ -9,32 +9,25 @@ import { useToken } from "../../context/TokenContext";
 
 // icons
 import { GoArrowRight } from "react-icons/go";
-import { IoClose, IoChevronDown, IoReloadOutline } from "react-icons/io5";
+import { IoClose } from "react-icons/io5";
+import { IoChevronDown } from "react-icons/io5";
 import { PiCheckCircleBold } from "react-icons/pi";
 import { PiXCircleBold } from "react-icons/pi";
 import { PiWarningBold } from "react-icons/pi";
-
-type ToastType = "notify" | "pdf";
 
 type Toast = {
     id: number;
     title: string;
     message: string;
-    related_type?: string;
+    related_type: string;
     expanded: boolean;
     paused: boolean;
     remainingTime: number;
     exiting?: boolean;
-    type: ToastType;
-    loading?: boolean; // สำหรับ PDF toast ระหว่างประมวลผล
 };
 
 type ToastContextType = {
-    // Toast ปกติจากระบบแจ้งเตือน
     showToast: (title: string, message: string, related_type: string) => void;
-    // Toast สำหรับงาน PDF (แสดง spinner แล้วเปลี่ยนเป็น success)
-    showPDFToast: (title: string, message: string, loading?: boolean) => number;
-    setPDFToastSuccess: (id: number, message?: string) => void;
 };
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -66,47 +59,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             paused: false,
             remainingTime: TOAST_DURATION,
             exiting: false,
-            type: "notify",
-            loading: false,
         };
         setToasts(prev => [...prev, toast]);
-    }, []);
-
-    // Toast สำหรับ PDF: ใช้ array เดียวกัน แต่มีสถานะ loading
-    const showPDFToast = useCallback((title: string, message: string, loading?: boolean) => {
-        counterRef.current += 1;
-        const id = counterRef.current;
-        const toast: Toast = {
-            id,
-            title,
-            message,
-            related_type: undefined,
-            expanded: false,
-            paused: false,
-            remainingTime: TOAST_DURATION,
-            exiting: false,
-            type: "pdf",
-            loading: !!loading,
-        };
-        setToasts(prev => [...prev, toast]);
-        return id;
-    }, []);
-
-    const setPDFToastSuccess = useCallback((id: number, message?: string) => {
-        setToasts(prev =>
-            prev.map(t =>
-                t.id === id
-                    ? {
-                        ...t,
-                        type: "pdf",
-                        loading: false,
-                        message: message ?? t.message,
-                        // เริ่มนับถอยหลังใหม่หลังจากสำเร็จ
-                        remainingTime: TOAST_DURATION,
-                    }
-                    : t
-            )
-        );
     }, []);
 
     // Timer effect for countdown and auto-dismiss
@@ -124,8 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     });
                 }
                 return prev.map(t => {
-                    // ข้ามนับเวลาให้ toast ที่ pause หรือ PDF ที่กำลังโหลดอยู่
-                    if (t.paused || (t.type === "pdf" && t.loading)) return t;
+                    if (t.paused) return t;
                     if (t.remainingTime === 1 && !t.exiting) {
                         // mark exiting
                         return { ...t, exiting: true };
@@ -192,7 +145,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <ToastContext.Provider value={{ showToast, showPDFToast, setPDFToastSuccess }}>
+        <ToastContext.Provider value={{ showToast }}>
             {children}
             {/* Toast container bottom-right */}
             <div
@@ -207,31 +160,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 }}
             >
                 {toasts.map(toast => {
-                    // Logic for style/icon by message / PDF
-                    let icon: React.ReactNode = <PiCheckCircleBold className="w-7 h-7 text-emerald-500" />;
+                    // Logic for style/icon by message
+                    let icon = <PiCheckCircleBold className="w-7 h-7 text-emerald-500" />;
                     let border = "2px solid rgba(34, 197, 94, 0.4)"; // icon border
                     let iconBg = isDarkMode ? "rgba(34, 197, 94, 0.16)" : "rgba(34, 197, 94, 0.08)";
                     // พื้นหลังการ์ดและสีขอบแบบเรียบง่าย ใกล้เคียงดีไซน์ตัวอย่าง
                     let background = isDarkMode ? "#0d1320" : "#FFFFFF";
                     let cardBorderColor = isDarkMode ? "rgba(55, 65, 81, 1)" : "rgba(209, 213, 219, 1)";
                     let bar = "linear-gradient(90deg, #22c55e 0%, #22c55e 100%)";
-
-                    // PDF toast: ใช้สี/ไอคอนเฉพาะ (spinner -> success)
-                    if (toast.type === "pdf") {
-                        if (toast.loading) {
-                            icon = <IoReloadOutline className="w-7 h-7 text-sky-500 toast-loading-spin" />;
-                            border = "2px solid rgba(56, 189, 248, 0.6)";
-                            iconBg = isDarkMode ? "rgba(56, 189, 248, 0.24)" : "rgba(56, 189, 248, 0.12)";
-                            cardBorderColor = isDarkMode ? "rgba(56, 189, 248, 0.7)" : "rgba(56, 189, 248, 0.7)";
-                            bar = "#0ea5e9";
-                        } else {
-                            icon = <PiCheckCircleBold className="w-7 h-7 text-sky-500" />;
-                            border = "2px solid rgba(56, 189, 248, 0.6)";
-                            iconBg = isDarkMode ? "rgba(56, 189, 248, 0.24)" : "rgba(56, 189, 248, 0.12)";
-                            cardBorderColor = isDarkMode ? "rgba(56, 189, 248, 0.7)" : "rgba(56, 189, 248, 0.7)";
-                            bar = "#0ea5e9";
-                        }
-                    } else if (toast.message.includes("มีการอนุมัติ") || toast.message.includes("รายการเปรียบเทียบราคาของท่านได้รับการอนุมัติ") || toast.message.includes("มีการอนุมัติคำขอแก้ไข")) {
+                    if (toast.message.includes("มีการอนุมัติ") || toast.message.includes("รายการเปรียบเทียบราคาของท่านได้รับการอนุมัติ") || toast.message.includes("มีการอนุมัติคำขอแก้ไข")) {
                         icon = <PiCheckCircleBold className="w-7 h-7 text-green-500" />;
                         border = "2px solid rgba(16, 185, 129, 0.6)";
                         iconBg = isDarkMode ? "rgba(16, 185, 129, 0.24)" : "rgba(34, 197, 94, 0.1)";
@@ -393,10 +330,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                 }}
                             >
                                 <div>{toast.message}</div>
-                                {toast.type === "notify" && toast.related_type && (
                                 <button
                                     onClick={() => {
-	                                    handleRelatedToPage(toast.related_type!);
+                                        handleRelatedToPage(toast.related_type);
                                         handleReadNotification(toast.id);
                                         dismissToast(toast.id);
                                     }}
@@ -431,7 +367,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                     Details
                                     <GoArrowRight className="inline-block w-4 h-4 ml-2 details-arrow" />
                                 </button>
-                                )}
                             </div>
                             {/* Timer row with smooth hide/show and pausable bar */}
                             <div
@@ -505,16 +440,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </div>);
             {/* Animation keyframes */}
             <style>{`
-				@keyframes slideIn {
-					from {
-						transform: translateX(400px);
-						opacity: 0;
-					}
-					to {
-						transform: translateX(0);
-						opacity: 1;
-					}
-				}
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
                 @keyframes slideOutRight {
                     from {
                         transform: translateX(0);
@@ -559,14 +494,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 .details-btn:hover .details-arrow {
                     transform: translateX(6px);
                 }
-
-                .toast-loading-spin {
-                    animation: toastLoadingSpin 1s linear infinite;
-                }
-                @keyframes toastLoadingSpin {
-                    100% { transform: rotate(360deg); }
-                }
-			`}</style>
+            `}</style>
         </ToastContext.Provider>
     );
 }

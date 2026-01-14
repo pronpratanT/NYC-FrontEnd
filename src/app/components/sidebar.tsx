@@ -34,9 +34,9 @@ const system = [
 ];
 
 const programs = [
-  { label: 'FeetCard', icon: FaCreditCard },
-  { label: 'N.Y.C. Server IS', icon: FaServer },
-  { label: 'Packing Check', icon: FaBoxOpen },
+  // { label: 'FeetCard', icon: FaCreditCard },
+  // { label: 'N.Y.C. Server IS', icon: FaServer },
+  // { label: 'Packing Check', icon: FaBoxOpen },
   {
     label: 'ระบบจัดซื้อ',
     icon: FaShoppingCart,
@@ -45,12 +45,12 @@ const programs = [
       { label: 'Purchase Order (PO)', icon: FaFileInvoice, href: process.env.NEXT_PUBLIC_PURCHASE_PO_REDIRECT || '/services/purchase/PO' },
     ]
   },
-  { label: 'เชื่อมโยงแอปฯ', icon: FaLink },
-  { label: 'Emerald Website', icon: FaLeaf },
-  { label: 'Download YT', icon: FaDownload },
-  { label: 'IT Service API', icon: FaCode },
-  { label: 'คู่มือ OT', icon: FaClock },
-  { label: 'คู่มือแผนการผลิต', icon: FaChartLine },
+  // { label: 'เชื่อมโยงแอปฯ', icon: FaLink },
+  // { label: 'Emerald Website', icon: FaLeaf },
+  // { label: 'Download YT', icon: FaDownload },
+  // { label: 'IT Service API', icon: FaCode },
+  // { label: 'คู่มือ OT', icon: FaClock },
+  // { label: 'คู่มือแผนการผลิต', icon: FaChartLine },
 ];
 
 const admin = [
@@ -383,12 +383,12 @@ export default function Sidebar() {
           </div>
         </section>
 
-        <section>
+        {/* <section>
           {renderSectionTitle('System')}
           <div className="space-y-0.5">
             {system.map((s, i) => renderItem(s, `sys-${i}`))}
           </div>
-        </section>
+        </section> */}
 
         <section>
           {renderSectionTitle('Programs')}
