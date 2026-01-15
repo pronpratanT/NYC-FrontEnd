@@ -144,144 +144,195 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
   if (!open) return null;
 
   return (
-    <div
-      className={`fixed inset-0 z-[10000] backdrop-blur-sm transition-all duration-300 ${isDarkMode ? 'bg-black/70' : 'bg-black/40'}`}
-      onClick={onClose}
-    >
-      <div className="flex items-center justify-center min-h-full p-4">
-        <div
-          ref={modalRef}
-          className={`relative w-full max-w-lg mx-4 transform transition-all duration-300 scale-100 ${isDarkMode
-            ? 'bg-gradient-to-br from-slate-800 via-slate-800 to-slate-900'
-            : 'bg-gradient-to-br from-white via-white to-gray-50'
-            } rounded-2xl shadow-2xl overflow-hidden border ${isDarkMode ? 'border-slate-700/50' : 'border-gray-200/50'
-            }`}
-          onClick={e => e.stopPropagation()}
-        >
-          {/* Header Section with Gradient */}
-          <div className={`relative px-6 pt-6 pb-4 ${isDarkMode
-            ? 'bg-gradient-to-r from-amber-900/20 via-orange-900/20 to-red-900/20'
-            : 'bg-gradient-to-r from-amber-50 via-orange-50 to-red-50'
-            }`}>
-            {/* Close Button */}
-            <button
-              className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 ${isDarkMode
-                ? 'text-slate-400 hover:text-rose-400 hover:bg-slate-700/50'
-                : 'text-gray-400 hover:text-red-500 hover:bg-white/80'
-                } focus:outline-none focus:ring-2 focus:ring-rose-400/60`}
-              onClick={onClose}
-              aria-label="ปิด"
-            >
-              <HiXMark className="h-5 w-5" />
-            </button>
+    <>
+      <style jsx>{`
+              .smooth-scroll {
+                scroll-behavior: smooth !important;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                will-change: scroll-position;
+              }
+                        
+              .smooth-scroll > * {
+                transition: transform 0.1s ease-out;
+              }
+                        
+              .custom-scrollbar-dark::-webkit-scrollbar {
+                width: 10px;
+                height: 12px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-track {
+                background: #1e293b;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+                background: #475569;
+                border-radius: 10px;
+                border: 2px solid #1e293b;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+                background: #64748b;
+                border: 2px solid #334155;
+              }
+                        
+              .custom-scrollbar-light::-webkit-scrollbar {
+                width: 12px;
+                height: 12px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+                border: 2px solid #f1f5f9;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+                border: 2px solid #e2e8f0;
+              }
+            `}</style>
+      <div
+        className={`fixed inset-0 z-[10000] backdrop-blur-sm transition-all duration-300 ${isDarkMode ? 'bg-black/70' : 'bg-black/40'}`}
+        onClick={onClose}
+      >
+        <div className="flex items-center justify-center min-h-full p-4">
+          <div
+            ref={modalRef}
+            className={`relative w-full max-w-lg mx-4 transform transition-all duration-300 scale-100 ${isDarkMode
+              ? 'bg-gradient-to-br from-slate-800 via-slate-800 to-slate-900'
+              : 'bg-gradient-to-br from-white via-white to-gray-50'
+              } rounded-2xl shadow-2xl overflow-hidden border ${isDarkMode ? 'border-slate-700/50' : 'border-gray-200/50'
+              }`}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header Section with Gradient */}
+            <div className={`relative px-6 pt-6 pb-4 ${isDarkMode
+              ? 'bg-gradient-to-r from-amber-900/20 via-orange-900/20 to-red-900/20'
+              : 'bg-gradient-to-r from-amber-50 via-orange-50 to-red-50'
+              }`}>
+              {/* Close Button */}
+              <button
+                className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 ${isDarkMode
+                  ? 'text-slate-400 hover:text-rose-400 hover:bg-slate-700/50'
+                  : 'text-gray-400 hover:text-red-500 hover:bg-white/80'
+                  } focus:outline-none focus:ring-2 focus:ring-rose-400/60`}
+                onClick={onClose}
+                aria-label="ปิด"
+              >
+                <HiXMark className="h-5 w-5" />
+              </button>
 
-            {/* Header Content */}
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isDarkMode
-                ? 'bg-gradient-to-br from-amber-600 to-orange-600'
-                : 'bg-gradient-to-br from-amber-500 to-orange-500'
-                } shadow-lg`}>
-                <HiOutlinePencilSquare className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className={`text-xl font-bold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'
-                  }`}>
-                  ร้องขอการแก้ไข
-                </h2>
-                <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'
-                  }`}>
-                  รายการสินค้าใน PO
-                </p>
+              {/* Header Content */}
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isDarkMode
+                  ? 'bg-gradient-to-br from-amber-600 to-orange-600'
+                  : 'bg-gradient-to-br from-amber-500 to-orange-500'
+                  } shadow-lg`}>
+                  <HiOutlinePencilSquare className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className={`text-xl font-bold ${isDarkMode ? 'text-slate-100' : 'text-gray-800'
+                    }`}>
+                    ร้องขอการแก้ไข
+                  </h2>
+                  <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'
+                    }`}>
+                    รายการสินค้าใน PO
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          {/* Form Section */}
-          <div className="px-6 py-6">
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                {poData && poData.po_lists && poData.po_lists.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                      <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                        เลือกรายการที่ต้องการขอแก้ไข
-                      </label>
-                    </div>
+            {/* Form Section */}
+            <div className="px-6 py-6">
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-4">
+                  {poData && poData.po_lists && poData.po_lists.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                          เลือกรายการที่ต้องการขอแก้ไข
+                        </label>
+                      </div>
 
-                    <div className="relative">
-                      <div className={`w-full rounded-xl border-2 ${isDarkMode
-                        ? 'border-slate-600 bg-slate-900/50'
-                        : 'border-gray-200 bg-gray-50/50'
-                        } backdrop-blur-sm max-h-48 overflow-y-auto`}>
+                      <div className="relative">
+                        <div className={`w-full rounded-tl-xl rounded-bl-xl rounded-tr-md rounded-br-md border-2 smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} ${isDarkMode
+                          ? 'border-slate-600 bg-slate-900/50'
+                          : 'border-gray-200 bg-gray-50/50'
+                          } backdrop-blur-sm max-h-48 overflow-y-auto`}>
 
-                        <div className={`sticky top-0 p-3 border-b ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-gray-200 bg-gray-100'}`}>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="form-checkbox h-4 w-4 text-amber-600 rounded focus:ring-amber-500"
-                              checked={selectedItems.length === poData.po_lists.filter(item => typeof item.po_list_id === 'number').length}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  // Select all
-                                  const allPoListIds = poData.po_lists
-                                    .filter(item => typeof item.po_list_id === 'number')
-                                    .map(item => item.po_list_id!);
-                                  setSelectedItems(allPoListIds);
-                                } else {
-                                  // Deselect all
-                                  setSelectedItems([]);
-                                }
-                              }}
-                            />
-                            <span className={`text-sm font-semibold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-                              เลือกทั้งหมด ({poData.po_lists.filter(item => typeof item.pcl_id === 'number').length} รายการ)
-                            </span>
-                          </label>
-                        </div>
+                          <div className={`sticky top-0 p-3 border-b ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-gray-200 bg-gray-100'}`}>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="form-checkbox h-4 w-4 text-amber-600 rounded focus:ring-amber-500"
+                                checked={selectedItems.length === poData.po_lists.filter(item => typeof item.po_list_id === 'number').length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    // Select all
+                                    const allPoListIds = poData.po_lists
+                                      .filter(item => typeof item.po_list_id === 'number')
+                                      .map(item => item.po_list_id!);
+                                    setSelectedItems(allPoListIds);
+                                  } else {
+                                    // Deselect all
+                                    setSelectedItems([]);
+                                  }
+                                }}
+                              />
+                              <span className={`text-sm font-semibold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                                เลือกทั้งหมด ({poData.po_lists.filter(item => typeof item.pcl_id === 'number').length} รายการ)
+                              </span>
+                            </label>
+                          </div>
 
-                        <div className="p-2">
-                          {poData.po_lists
-                            .filter(item => typeof item.pcl_id === 'number')
-                            .map((item, index) => (
-                              <label
-                                key={item.pcl_id}
-                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${isDarkMode
-                                  ? 'hover:bg-slate-700/50'
-                                  : 'hover:bg-gray-100'
-                                  }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="form-checkbox h-4 w-4 text-emerald-600 rounded focus:ring-emerald-500"
-                                  checked={selectedItems.includes(item.po_list_id!)}
-                                  onChange={() => handleSelect(item.po_list_id!)}
-                                />
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode
-                                    ? 'bg-amber-600 text-white'
-                                    : 'bg-amber-500 text-white'
-                                    }`}>
-                                    {index + 1}
-                                  </div>
+                          <div className="p-2">
+                            {poData.po_lists
+                              .filter(item => typeof item.pcl_id === 'number')
+                              .map((item, index) => (
+                                <label
+                                  key={item.pcl_id}
+                                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${isDarkMode
+                                    ? 'hover:bg-slate-700/50'
+                                    : 'hover:bg-gray-100'
+                                    }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="form-checkbox h-4 w-4 text-emerald-600 rounded focus:ring-emerald-500"
+                                    checked={selectedItems.includes(item.po_list_id!)}
+                                    onChange={() => handleSelect(item.po_list_id!)}
+                                  />
                                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <span className={`font-semibold text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                      {item.part_no}
-                                    </span>
-                                    <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                      |
-                                    </span>
-                                    <span className={`text-xs truncate ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                                      {item.part_name}
-                                    </span>
+                                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode
+                                      ? 'bg-amber-600 text-white'
+                                      : 'bg-amber-500 text-white'
+                                      }`}>
+                                      {index + 1}
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <span className={`font-semibold text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                        {item.part_no}
+                                      </span>
+                                      <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                        |
+                                      </span>
+                                      <span className={`text-xs truncate ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                                        {item.part_name}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              </label>
-                            ))}
+                                </label>
+                              ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* {selectedItems.length > 0 && (
+                      {/* {selectedItems.length > 0 && (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 mb-3">
                           <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
@@ -301,67 +352,68 @@ const RequestEditPOModal: React.FC<RequestEditPOModalProps> = ({ open, onClose, 
                         />
                       </div>
                     )} */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 mb-3">
-                        <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
-                          เหตุผลในการขอแก้ไข
-                          {/* เหตุผลในการขอแก้ไข (สำหรับทั้งหมด {selectedItems.length} รายการ) */}
-                        </label>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-3">
+                          <BiMessageEdit className={`h-5 w-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+                          <label className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-gray-700'}`}>
+                            เหตุผลในการขอแก้ไข
+                            {/* เหตุผลในการขอแก้ไข (สำหรับทั้งหมด {selectedItems.length} รายการ) */}
+                          </label>
+                        </div>
+                        <textarea
+                          className={`w-full rounded-xl border-2 px-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:outline-none resize-none ${isDarkMode
+                            ? 'border-slate-600 bg-slate-900/50 text-slate-100 focus:ring-amber-500/50 focus:border-amber-500/50 placeholder-slate-400'
+                            : 'border-gray-200 bg-white text-gray-800 focus:ring-amber-400/50 focus:border-amber-400/50 placeholder-gray-500'
+                            }`}
+                          rows={4}
+                          placeholder="ระบุเหตุผลในการขอแก้ไขรายการที่เลือก..."
+                          value={reason}
+                          onChange={e => setReason(e.target.value)}
+                        />
                       </div>
-                      <textarea
-                        className={`w-full rounded-xl border-2 px-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:outline-none resize-none ${isDarkMode
-                          ? 'border-slate-600 bg-slate-900/50 text-slate-100 focus:ring-amber-500/50 focus:border-amber-500/50 placeholder-slate-400'
-                          : 'border-gray-200 bg-white text-gray-800 focus:ring-amber-400/50 focus:border-amber-400/50 placeholder-gray-500'
-                          }`}
-                        rows={4}
-                        placeholder="ระบุเหตุผลในการขอแก้ไขรายการที่เลือก..."
-                        value={reason}
-                        onChange={e => setReason(e.target.value)}
-                      />
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-gray-500 dark:text-gray-400">ไม่พบรายการสินค้าใน PO</div>
-                )}
+                  ) : (
+                    <div className="text-gray-500 dark:text-gray-400">ไม่พบรายการสินค้าใน PO</div>
+                  )}
 
-                {error && (
-                  <div className={`flex items-center gap-2 p-3 rounded-lg ${isDarkMode
-                    ? 'bg-red-900/20 border border-red-800/30 text-rose-300'
-                    : 'bg-red-50 border border-red-200 text-red-600'
-                    }`}>
-                    <HiOutlineExclamationTriangle className="h-5 w-5 flex-shrink-0" />
-                    <span className="text-sm font-medium">{error}</span>
-                  </div>
-                )}
-              </div>
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3 mt-2 pt-4">
-                <button
-                  type="button"
-                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 ${isDarkMode
-                    ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-600 focus:ring-slate-500/40 border border-slate-600/50'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-400/60 border border-gray-200'
-                    } hover:scale-105`}
-                  onClick={onClose}
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className={`px-6 py-3 rounded-xl font-semibold text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400/60 transition-all duration-200 hover:scale-105 ${isDarkMode
-                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-900/30'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
-                    }`}
-                >
-                  ส่งคำร้องขอ
-                </button>
-              </div>
-            </form>
+                  {error && (
+                    <div className={`flex items-center gap-2 p-3 rounded-lg ${isDarkMode
+                      ? 'bg-red-900/20 border border-red-800/30 text-rose-300'
+                      : 'bg-red-50 border border-red-200 text-red-600'
+                      }`}>
+                      <HiOutlineExclamationTriangle className="h-5 w-5 flex-shrink-0" />
+                      <span className="text-sm font-medium">{error}</span>
+                    </div>
+                  )}
+                </div>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 mt-2 pt-4">
+                  <button
+                    type="button"
+                    className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 ${isDarkMode
+                      ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-600 focus:ring-slate-500/40 border border-slate-600/50'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-400/60 border border-gray-200'
+                      } hover:scale-105`}
+                    onClick={onClose}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-6 py-3 rounded-xl font-semibold text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400/60 transition-all duration-200 hover:scale-105 ${isDarkMode
+                      ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-900/30'
+                      : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                      }`}
+                  >
+                    ส่งคำร้องขอ
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

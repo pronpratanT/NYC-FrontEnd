@@ -404,4 +404,3 @@ export function PdfGen({ children }: { children: ReactNode }) {
         </ToastContext.Provider>
     );
 }
-

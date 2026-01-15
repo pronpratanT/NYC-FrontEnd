@@ -263,7 +263,7 @@ export default function NotificationPage() {
                                                         </h2>
                                                     </div>
                                                     <div
-                                                        className={`max-h-[600px] overflow-y-auto custom-scrollbar ${isDarkMode ? 'scrollbar-dark' : 'scrollbar-light'}`}
+                                                        className={`max-h-[600px] overflow-y-auto ${isDarkMode ? 'scrollbar-dark' : 'scrollbar-light'}`}
                                                         style={{
                                                             scrollbarWidth: 'thin',
                                                             scrollbarColor: isDarkMode ? '#4b5563 #1f2937' : '#cbd5e1 #f1f5f9'

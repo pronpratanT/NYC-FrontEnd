@@ -22,6 +22,9 @@ import { useToken } from '../../../context/TokenContext';
 import { TiPlus } from "react-icons/ti";
 import CreatPartNo from '@/app/components/Modal/CreatPartNo';
 
+// hero ui
+import { Select, SelectSection, SelectItem } from "@heroui/select";
+
 type partData = {
   part_no: string | null;
   part_name: string | null;
@@ -433,40 +436,40 @@ export default function TestPage() {
         };
       })
     }
-    // console.log("Payload to submit:", payload);
+    console.log("Payload to submit:", payload);
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/create-pr`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
-        throw new Error(errorMsg);
-      }
-      await res.json();
-      alert('บันทึกข้อมูลสำเร็จ!');
-      // Reset form
-      setSelectedParts([]);
-      setQtyData([]);
-      setObjectiveData([]);
-      setRowDueDates([]);
-      setDestinationData([]);
-      setStockData([]);
-      setPriceData([]);
-      setUnitData([]);
-      setIsSaving(false);
-      // Redirect to /services/purchase only after success
-      router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-      console.error(err);
-      setIsSaving(false);
-    }
+    // try {
+    //   const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/create-pr`, {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       Authorization: `Bearer ${token}`
+    //     },
+    //     body: JSON.stringify(payload)
+    //   });
+    //   if (!res.ok) {
+    //     const errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
+    //     throw new Error(errorMsg);
+    //   }
+    //   await res.json();
+    //   alert('บันทึกข้อมูลสำเร็จ!');
+    //   // Reset form
+    //   setSelectedParts([]);
+    //   setQtyData([]);
+    //   setObjectiveData([]);
+    //   setRowDueDates([]);
+    //   setDestinationData([]);
+    //   setStockData([]);
+    //   setPriceData([]);
+    //   setUnitData([]);
+    //   setIsSaving(false);
+    //   // Redirect to /services/purchase only after success
+    //   router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase');
+    // } catch (err) {
+    //   alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    //   console.error(err);
+    //   setIsSaving(false);
+    // }
   };
 
   const handleSyncInventory = async () => {
@@ -487,64 +490,131 @@ export default function TestPage() {
     }
   }
 
+  const plantOptions = [
+    {key: 'Plant 1', label: 'Plant 1'},
+    {key: 'Plant 2', label: 'Plant 2'},
+  ];
+
   return (
-    <div className="min-h-screen relative">
-      <Sidebar />
-      <Header />
-      {/* Main Content */}
-      <main
-        className="mt-[7.5rem] mr-6 transition-all duration-300"
-        style={{
-          minHeight: 'calc(100vh - 3rem)',
-          position: 'relative',
-          marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
-        }}
-      >
-        <div className="max-w-none w-full space-y-8 mb-6 relative z-10">
-          {/* Header Section */}
-          {/* <div className="text-center">
+    <>
+      <style jsx global>{`
+        .smooth-scroll {
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+          will-change: scroll-position;
+        }
+                  
+        .smooth-scroll > * {
+          transition: transform 0.1s ease-out;
+        }
+                  
+        .custom-scrollbar-dark::-webkit-scrollbar {
+          width: 10px;
+          height: 12px;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-track {
+          background: #1e293b;
+          border-radius: 10px;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+          background: #475569;
+          border-radius: 10px;
+          border: 2px solid #1e293b;
+          transition: background 0.15s ease;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+          background: #64748b;
+          border: 2px solid #334155;
+        }
+                  
+        .custom-scrollbar-light::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+        .custom-scrollbar-light::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        .custom-scrollbar-light::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+          border: 2px solid #f1f5f9;
+          transition: background 0.15s ease;
+        }
+        .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+          border: 2px solid #e2e8f0;
+        }
+
+        /* Firefox scrollbar support */
+        .custom-scrollbar-dark {
+          scrollbar-width: thin;
+          scrollbar-color: #475569 #1e293b;
+        }
+        
+        .custom-scrollbar-light {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+      `}</style>
+      <div className="min-h-screen relative">
+        <Sidebar />
+        <Header />
+        {/* Main Content */}
+        <main
+          className="mt-[7.5rem] mr-6 transition-all duration-300"
+          style={{
+            minHeight: 'calc(100vh - 3rem)',
+            position: 'relative',
+            marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+          }}
+        >
+          <div className="max-w-none w-full space-y-8 mb-6 relative z-10">
+            {/* Header Section */}
+            {/* <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">ระบบจัดซื้อ</h1>
             <p className="text-gray-600">Purchase Requisition System</p>
           </div> */}
-          {/* Modern PR Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                  <IoDocumentTextOutline className={`h-6 w-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+            {/* Modern PR Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+                    <IoDocumentTextOutline className={`h-6 w-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                  </div>
+                  <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>หมายเลข PR</span>
                 </div>
-                <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>หมายเลข PR</span>
+                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{getMockPRNo()}</div>
+                <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>สถานะ: รอดำเนินการ</div>
               </div>
-              <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{getMockPRNo()}</div>
-              <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>สถานะ: รอดำเนินการ</div>
-            </div>
-            <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/30' : 'bg-green-100'}`}>
-                  <MdOutlineGroups3 className={`h-6 w-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-500'}`} />
+              <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-900/30' : 'bg-green-100'}`}>
+                    <MdOutlineGroups3 className={`h-6 w-6 ${isDarkMode ? 'text-emerald-400' : 'text-green-500'}`} />
+                  </div>
+                  <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>แผนก/หน่วยงาน</span>
                 </div>
-                <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>แผนก/หน่วยงาน</span>
+                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{user?.Department?.name}</div>
+                <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>รหัสแผนก: {user?.Department?.short_name}</div>
               </div>
-              <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{user?.Department?.name}</div>
-              <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>รหัสแผนก: {user?.Department?.short_name}</div>
-            </div>
-            <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
-                  <BsCalendar2Event className={`h-6 w-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+              <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
+                    <BsCalendar2Event className={`h-6 w-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                  </div>
+                  <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>วันที่ทำ PR</span>
                 </div>
-                <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>วันที่ทำ PR</span>
+                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{new Date().toLocaleDateString('th-TH')}</div>
+                <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>เวลา: {new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
-              <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{new Date().toLocaleDateString('th-TH')}</div>
-              <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>เวลา: {new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</div>
             </div>
-          </div>
 
-          {/* Part No Input and Table */}
-          <div className={`rounded-3xl shadow border overflow-visible ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
-            <div className={`px-8 pt-8 pb-4 flex items-center justify-between rounded-t-3xl overflow-visible relative ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
-              {/* Back Button */}
-              {/* <button
+            {/* Part No Input and Table */}
+            <div className={`rounded-3xl shadow border overflow-visible ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-green-100'}`}>
+              <div className={`px-8 pt-8 pb-4 flex items-center justify-between rounded-t-3xl overflow-visible relative ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
+                {/* Back Button */}
+                {/* <button
                 onClick={() => router.push('/services/purchase')}
                 className="absolute -top-1 left-1 flex items-center gap-2 px-3 py-2 bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 rounded-lg text-gray-600 hover:text-green-600 transition-all duration-200 shadow-sm hover:shadow-md group"
               >
@@ -552,358 +622,543 @@ export default function TestPage() {
                 <span className="text-xs font-medium">กลับไปยัง PR</span>
               </button> */}
 
-              <div className="flex items-center gap-3">
-                <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
-                <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800/50' : 'text-green-700 bg-green-50 border-green-200'}`}>{selectedParts.length} รายการ</span>
-                {/* Sync button */}
-                <button
-                  type="button"
-                  className={`px-4 py-2 font-medium border rounded-md cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300 hover:bg-amber-600/50 hover:text-white' : 'text-amber-700 hover:bg-amber-100 hover:text-amber-600'}`}
-                  onClick={() => {
-                    handleSyncInventory()
-                  }}
-                >
-                  <IoReloadOutline className="inline-block text-lg align-middle mr-2" />
-                  <span>Sync Inventory</span>
-                </button>
-              </div>
-              <div className="w-full md:w-96 relative">
-                <div className="relative w-full">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    placeholder="ค้นหา/เพิ่ม Part No..."
-                    className={`px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 text-sm w-full shadow-sm transition-all duration-200 pr-10 ${isDarkMode ? 'border-slate-600 focus:ring-emerald-500/30 bg-slate-800/50 text-slate-200 placeholder-slate-500' : 'border-green-300 focus:ring-green-200 bg-white'}`}
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    onFocus={() => search && partNos.length > 0 ? setShowDropdown(true) : undefined}
-                  />
+                <div className="flex items-center gap-3">
+                  <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>Purchase Requisition</span>
+                  <span className={`text-sm px-3 py-1 rounded-full shadow-sm border ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800/50' : 'text-green-700 bg-green-50 border-green-200'}`}>{selectedParts.length} รายการ</span>
+                  {/* Sync button */}
                   <button
                     type="button"
-                    className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-white font-bold shadow transition-all duration-150 cursor-pointer ${isDarkMode ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-emerald-500 hover:bg-green-500'}`}
-                    style={{ zIndex: 2 }}
-                    onClick={() => setShowCreatPartNo(true)}
+                    className={`px-4 py-2 font-medium border rounded-md cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300 hover:bg-amber-600/50 hover:text-white' : 'text-amber-700 hover:bg-amber-100 hover:text-amber-600'}`}
+                    onClick={() => {
+                      handleSyncInventory()
+                    }}
                   >
-                    <TiPlus size={16} />
-                    <span className="sr-only">เพิ่ม Part No.</span>
+                    <IoReloadOutline className="inline-block text-lg align-middle mr-2" />
+                    <span>Sync Inventory</span>
                   </button>
                 </div>
-                {loading && (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                    <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${isDarkMode ? 'border-emerald-400' : 'border-green-400'}`}></div>
+                <div className="w-full md:w-96 relative">
+                  <div className="relative w-full">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="ค้นหา/เพิ่ม Part No..."
+                      className={`px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 text-sm w-full shadow-sm transition-all duration-200 pr-10 ${isDarkMode ? 'border-slate-600 focus:ring-emerald-500/30 bg-slate-800/50 text-slate-200 placeholder-slate-500' : 'border-green-300 focus:ring-green-200 bg-white'}`}
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      onFocus={() => search && partNos.length > 0 ? setShowDropdown(true) : undefined}
+                    />
+                    <button
+                      type="button"
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-white font-bold shadow transition-all duration-150 cursor-pointer ${isDarkMode ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-emerald-500 hover:bg-green-500'}`}
+                      style={{ zIndex: 2 }}
+                      onClick={() => setShowCreatPartNo(true)}
+                    >
+                      <TiPlus size={16} />
+                      <span className="sr-only">เพิ่ม Part No.</span>
+                    </button>
                   </div>
-                )}
-                {showDropdown && search && partNos.length > 0 && (
-                  <div ref={dropdownRef} className={`absolute z-[9999] w-full border rounded-xl shadow-lg mt-2 max-h-56 overflow-y-auto ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-green-200'}`} style={{ zIndex: 9999 }}>
-                    <div className="p-2">
-                      <div className={`text-xs px-4 py-3 border-b rounded-t-lg ${isDarkMode ? 'text-slate-400 bg-slate-800/50 border-slate-700/50' : 'text-green-700 border-green-100 bg-green-50'}`}>
-                        พบ {partNos.length} รายการ
-                      </div>
-                      {partNos.map((part, idx) => (
-                        <div
-                          key={part.concat + '-' + idx}
-                          className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-800/50 text-slate-300' : 'hover:bg-green-50'}`}
-                          onClick={() => {
-                            setSelectedParts(prev => [...prev, part.concat]);
-                            setRempoData(prev => [...prev, part.rempo ?? '']);
-                          }}
-                        >
-                          {selectedParts.includes(part.concat) && (
-                            <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-emerald-500' : 'bg-green-500'}`} title="เลือกแล้ว"></span>
-                          )}
-                          <span className={`${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{part.concat}</span>
-                        </div>
-                      ))}
+                  {loading && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${isDarkMode ? 'border-emerald-400' : 'border-green-400'}`}></div>
                     </div>
-                  </div>
-                )}
+                  )}
+                  {showDropdown && search && partNos.length > 0 && (
+                    <div ref={dropdownRef} className={`absolute z-[9999] w-full border rounded-xl shadow-lg mt-2 max-h-56 overflow-y-auto smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-green-200'}`} style={{ zIndex: 9999 }}>
+                      <div className="p-2">
+                        <div className={`text-xs px-4 py-3 border-b rounded-t-lg ${isDarkMode ? 'text-slate-400 bg-slate-800/50 border-slate-700/50' : 'text-green-700 border-green-100 bg-green-50'}`}>
+                          พบ {partNos.length} รายการ
+                        </div>
+                        {partNos.map((part, idx) => (
+                          <div
+                            key={part.concat + '-' + idx}
+                            className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-800/50 text-slate-300' : 'hover:bg-green-50'}`}
+                            onClick={() => {
+                              setSelectedParts(prev => [...prev, part.concat]);
+                              setRempoData(prev => [...prev, part.rempo ?? '']);
+                            }}
+                          >
+                            {selectedParts.includes(part.concat) && (
+                              <span className={`inline-block w-3 h-3 rounded-full mr-3 ${isDarkMode ? 'bg-emerald-500' : 'bg-green-500'}`} title="เลือกแล้ว"></span>
+                            )}
+                            <span className={`${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{part.concat}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="overflow-visible">
-              <table className="min-w-full text-sm overflow-visible">
-                <thead className={`${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
-                  <tr>
-                    <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>ลบ</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
-                    <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
-                    <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
-                    <th className={`px-2 py-3 text-left font-semibold w-36 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-24 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
-                    <th className={`px-2 py-3 text-center font-semibold w-22 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y transition-colors ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-white divide-green-100 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
-                  {selectedParts.length > 0 ? (
-                    pagedParts.map((part, idx) => {
-                      const partInfo = partsInfo.find(p => p.part_no === part);
-                      const hasRealData = partInfo && (partInfo.vendor !== null || partInfo.unit !== null || partInfo.stock !== null || partInfo.price_per_unit !== null);
-                      if (hasRealData) {
-                        const globalIdx = (page - 1) * rowsPerPage + idx;
-                        return (
-                          <tr key={part + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-green-50'}`}>
-                            <td className="px-2 py-3 text-center w-12">
-                              <button
-                                type="button"
-                                className={`flex items-center justify-center mx-auto p-2 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
-                                title="ลบแถวนี้"
-                                onClick={() => handleDeleteRow((page - 1) * rowsPerPage + idx)}
-                              >
-                                <RiDeleteBin6Line className="w-5 h-5" />
-                              </button>
-                            </td>
-                            <td className={`px-2 py-3 font-bold text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
-                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                              {partInfo.part_no && partInfo.part_no.indexOf(' |') !== -1 ? partInfo.part_no.slice(0, partInfo.part_no.indexOf(' |')) : partInfo.part_no}
-                            </td>
-                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                              {partInfo.prod_code && partInfo.prod_code.indexOf(' |') !== -1 ? partInfo.prod_code.slice(0, partInfo.prod_code.indexOf(' |')) : partInfo.prod_code}
-                            </td>
-                            <td className={`px-2 py-3 font-medium w-36 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                              {partInfo.part_name && partInfo.part_name.indexOf(' |') !== -1 ? partInfo.part_name.slice(0, partInfo.part_name.indexOf(' |')) : partInfo.part_name}
-                            </td>
-                            <td className="px-2 py-3 w-24">
-                              <input
-                                type="number"
-                                min="0" step="1"
-                                className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
-                                value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : (partInfo.qty !== null && partInfo.qty !== undefined ? partInfo.qty : '')}
-                                onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                onBlur={e => {
-                                  const val = e.target.value;
-                                  if (val !== '' && !isNaN(Number(val))) {
-                                    handleQtyChange((page - 1) * rowsPerPage + idx, Number(val).toFixed(2));
-                                  }
-                                }}
-                                placeholder="0"
-                              />
-                            </td>
-                            <td className="px-2 py-3 w-20">
-                              <input type="text" className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.unit ?? ''} readOnly />
-                            </td>
-                            <td className={`px-2 py-5 whitespace-nowrap text-sm w-32 ${isDarkMode ? 'text-slate-300 border-r border-slate-700' : 'text-gray-700 border-r border-green-100'}`}>
-                              <div className="relative w-full">
-                                <DatePicker
-                                  selected={pagedDueDates[idx]}
-                                  onChange={date => handleRowDueDateChange((page - 1) * rowsPerPage + idx, date)}
-                                  dateFormat="dd/MM/yyyy"
-                                  placeholderText="เลือกวันที่"
-                                  className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
-                                  calendarClassName={isDarkMode ? 'react-datepicker-dark' : 'react-datepicker-light'}
-                                  popperClassName="z-[9999]"
-                                  popperPlacement="bottom-start"
+              <div className="overflow-visible">
+                <table className="min-w-full text-sm overflow-visible">
+                  <thead className={`${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
+                    <tr>
+                      <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>ลบ</th>
+                      <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Item</th>
+                      <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part No.</th>
+                      <th className={`px-2 py-3 text-left font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Prod Code</th>
+                      <th className={`px-2 py-3 text-left font-semibold w-36 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Part Name</th>
+                      <th className={`px-2 py-3 text-center font-semibold w-24 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>QTY</th>
+                      <th className={`px-2 py-3 text-center font-semibold w-20 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>UNIT</th>
+                      <th className={`px-2 py-3 text-center font-semibold w-32 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
+                      <th className={`px-2 py-3 text-center font-semibold w-64 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Objective</th>
+                      <th className={`px-2 py-3 text-center font-semibold w-16 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Stock</th>
+                      <th className={`px-2 py-3 text-center font-semibold w-22 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Plant</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y transition-colors ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-white divide-green-100 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
+                    {selectedParts.length > 0 ? (
+                      pagedParts.map((part, idx) => {
+                        const partInfo = partsInfo.find(p => p.part_no === part);
+                        const hasRealData = partInfo && (partInfo.vendor !== null || partInfo.unit !== null || partInfo.stock !== null || partInfo.price_per_unit !== null);
+                        if (hasRealData) {
+                          const globalIdx = (page - 1) * rowsPerPage + idx;
+                          return (
+                            <tr key={part + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-green-50'}`}>
+                              <td className="px-2 py-3 text-center w-12">
+                                <button
+                                  type="button"
+                                  className={`flex items-center justify-center mx-auto p-2 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
+                                  title="ลบแถวนี้"
+                                  onClick={() => handleDeleteRow((page - 1) * rowsPerPage + idx)}
+                                >
+                                  <RiDeleteBin6Line className="w-5 h-5" />
+                                </button>
+                              </td>
+                              <td className={`px-2 py-3 font-bold text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
+                              <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                {partInfo.part_no && partInfo.part_no.indexOf(' |') !== -1 ? partInfo.part_no.slice(0, partInfo.part_no.indexOf(' |')) : partInfo.part_no}
+                              </td>
+                              <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                {partInfo.prod_code && partInfo.prod_code.indexOf(' |') !== -1 ? partInfo.prod_code.slice(0, partInfo.prod_code.indexOf(' |')) : partInfo.prod_code}
+                              </td>
+                              <td className={`px-2 py-3 font-medium w-36 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                {partInfo.part_name && partInfo.part_name.indexOf(' |') !== -1 ? partInfo.part_name.slice(0, partInfo.part_name.indexOf(' |')) : partInfo.part_name}
+                              </td>
+                              <td className="px-2 py-3 w-24">
+                                <input
+                                  type="number"
+                                  min="0" step="1"
+                                  className={`w-full h-10 px-2 py-2 border rounded text-right text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
+                                  value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : (partInfo.qty !== null && partInfo.qty !== undefined ? partInfo.qty : '')}
+                                  onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                  onBlur={e => {
+                                    const val = e.target.value;
+                                    if (val !== '' && !isNaN(Number(val))) {
+                                      handleQtyChange((page - 1) * rowsPerPage + idx, Number(val).toFixed(2));
+                                    }
+                                  }}
+                                  placeholder="0"
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                  <FaRegCalendarAlt className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-2 py-3 w-64">
-                              <textarea
-                                className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
-                                placeholder="วัตถุประสงค์"
-                                rows={1}
-                                value={
-                                  pagedObjective[idx] !== undefined && pagedObjective[idx] !== ''
-                                    ? pagedObjective[idx]
-                                    : (rempoData[globalIdx] || partInfo.rempo || '')
-                                }
-                                onChange={(e) => handleObjectiveChange(globalIdx, e.target.value)}
-                              />
-                            </td>
-                            {/* <td className="px-2 py-3 w-16">
+                              </td>
+                              <td className="px-2 py-3 w-20 align-middle">
+                                <input type="text" className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.unit ?? ''} readOnly />
+                              </td>
+                              <td className={`px-2 py-5 whitespace-nowrap text-sm w-32 ${isDarkMode ? 'text-slate-300 border-r border-slate-700' : 'text-gray-700 border-r border-green-100'}`}>
+                                <div className="relative w-full">
+                                  <DatePicker
+                                    selected={pagedDueDates[idx]}
+                                    onChange={date => handleRowDueDateChange((page - 1) * rowsPerPage + idx, date)}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="เลือกวันที่"
+                                    className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
+                                    calendarClassName={isDarkMode ? 'react-datepicker-dark' : 'react-datepicker-light'}
+                                    popperClassName="z-[9999]"
+                                    popperPlacement="bottom-start"
+                                  />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <FaRegCalendarAlt className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-2 py-3 w-64">
+                                <textarea
+                                  className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
+                                  placeholder="วัตถุประสงค์"
+                                  rows={1}
+                                  value={
+                                    pagedObjective[idx] !== undefined && pagedObjective[idx] !== ''
+                                      ? pagedObjective[idx]
+                                      : (rempoData[globalIdx] || partInfo.rempo || '')
+                                  }
+                                  onChange={(e) => handleObjectiveChange(globalIdx, e.target.value)}
+                                />
+                              </td>
+                              {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-center text-sm font-medium ${isDarkMode ? 'bg-slate-700/50 text-slate-200 border border-slate-600/50' : 'bg-gray-50 text-gray-700 border border-gray-200'}`}>
                                 {partInfo.vendor || '-'}
                               </div>
                             </td> */}
-                            <td className="px-2 py-3 w-16">
-                              <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-blue-900/20 text-blue-300 border border-blue-800/50' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-                                {Number(partInfo.stock ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                              </div>
-                            </td>
-                            {/* <td className="px-2 py-3 w-16">
+                              <td className="px-2 py-3 w-16">
+                                <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-blue-900/20 text-blue-300 border border-blue-800/50' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                                  {Number(partInfo.stock ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                                </div>
+                              </td>
+                              {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                 ฿{Number(partInfo.price_per_unit ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                               </div>
                             </td> */}
-                            <td className="px-2 py-3 w-22">
-                              <select
-                                value={destinationData[(page - 1) * rowsPerPage + idx] || 'Plant 1'}
-                                onChange={(e) => handleDestinationChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}>
-                                <option>Plant 1</option>
-                                <option>Plant 2</option>
-                              </select>
-                            </td>
-                          </tr>
-                        );
-                      } else {
-                        const globalIdx = (page - 1) * rowsPerPage + idx;
-                        return (
-                          <tr key={part + '-nodata-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>
-                            <td className="px-2 py-3 text-center w-12">
-                              <button type="button" className={`flex items-center justify-center mx-auto p-2 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`} title="ลบแถวนี้" onClick={() => handleDeleteRow((page - 1) * rowsPerPage + idx)}>
-                                <RiDeleteBin6Line className="w-5 h-5" />
-                              </button>
-                            </td>
-                            <td className={`px-2 py-3 font-bold text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
-                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{part && part.indexOf(' |') !== -1 ? part.slice(0, part.indexOf(' |')) : part}</td>
-                            {/* prod_code */}
-                            <td className={`px-2 py-3 font-medium w-26 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{(() => {
-                              // Try to parse prod_code from part string: "...|prod_code|..."
-                              const parts = part.split(' | ');
-                              return parts.length > 2 ? parts[2] : '';
-                            })()}</td>
-                            {/* part_name */}
-                            <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{(() => {
-                              // Try to parse part_name from part string: "...|prod_code|part_name"
-                              const parts = part.split(' | ');
-                              return parts.length > 1 ? parts[1] : '';
-                            })()}</td>
+                              <td className="px-2 py-3 w-22">
+                                {/* <select
+                                  value={destinationData[(page - 1) * rowsPerPage + idx] || 'Plant 1'}
+                                  onChange={(e) => handleDestinationChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                  className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}>
+                                  <option>Plant 1</option>
+                                  <option>Plant 2</option>
+                                </select> */}
 
-                            <td className="px-2 py-3 w-20">
-                              <input
-                                type="number"
-                                min="0" step="1"
-                                className={`w-full h-10 px-2 py-2 border rounded text-center text-sm text-right focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
-                                placeholder="0"
-                                value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : ''}
-                                onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                onBlur={e => {
-                                  const val = e.target.value;
-                                  if (val !== '' && !isNaN(Number(val))) {
-                                    handleQtyChange((page - 1) * rowsPerPage + idx, Number(val).toFixed(2));
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td className="px-2 py-3 w-20">
-                              <select
-                                value={unitData[(page - 1) * rowsPerPage + idx] || ''}
-                                onChange={(e) => handleUnitChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
-                              >
-                                <option value="">เลือก</option>
-                                {unitOptions.map((unit, unitIdx) => (
-                                  <option key={unitIdx} value={unit.measure_name}>
-                                    {unit.measure_name}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className={`px-2 py-5 whitespace-nowrap text-sm w-30`}>
-                              <div className="relative w-full">
-                                <DatePicker
-                                  selected={pagedDueDates[idx]}
-                                  onChange={date => handleRowDueDateChange((page - 1) * rowsPerPage + idx, date)}
-                                  dateFormat="dd/MM/yyyy"
-                                  placeholderText="เลือกวันที่"
-                                  className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
-                                  calendarClassName={isDarkMode ? 'react-datepicker-orange-dark' : 'react-datepicker-orange'}
-                                  popperClassName="z-[9999]"
-                                  popperPlacement="bottom-start"
+                                <Select
+                                  placeholder="กรุณาเลือก Plant"
+                                  className="w-28"
+                                  classNames={{
+                                    base: "w-full",
+                                    label: "font-semibold text-sm text-center",
+                                    trigger: [
+                                      "h-10",
+                                      "min-h-10",
+                                      "pl-2",
+                                      "pr-10",
+                                      "text-sm",
+                                      "rounded",
+                                      "border",
+                                      "transition-colors",
+                                      "focus:ring-2",
+                                      isDarkMode
+                                        ? "bg-slate-800/50 border-slate-600 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30 hover:border-emerald-500"
+                                        : "bg-emerald-50 border-emerald-300 text-gray-900 focus:border-emerald-300 focus:ring-emerald-500 hover:border-emerald-500",
+                                    ],
+                                    value: "text-sm font-medium",
+                                    mainWrapper: "w-full",
+                                    innerWrapper: "pr-0",
+                                    selectorIcon: [
+                                      "right-2",
+                                      "absolute",
+                                      "text-emerald-500"
+                                    ],
+                                    listboxWrapper: [
+                                      "max-h-[400px]",
+                                      isDarkMode ? "custom-scrollbar-dark" : "custom-scrollbar-light"
+                                    ],
+                                    popoverContent: [
+                                      "rounded-lg",
+                                      "shadow-xl",
+                                      isDarkMode
+                                        ? "bg-slate-800 border-slate-600"
+                                        : "bg-white border-emerald-200",
+                                    ],
+                                  }}
+                                  variant="bordered"
+                                  size="md"
+                                  radius="md"
+                                  scrollShadowProps={{
+                                    isEnabled: true
+                                  }}
+                                  selectedKeys={destinationData[globalIdx] ? [destinationData[globalIdx]] : []}
+                                  onSelectionChange={(keys) => {
+                                    const selected = Array.from(keys)[0] as string | undefined;
+                                    handleDestinationChange(globalIdx, selected ?? "");
+                                  }}
+                                >
+                                  {plantOptions.map((unit) => (
+                                    <SelectItem
+                                      key={unit.key}
+                                      className={`rounded-md my-1 text-center ${isDarkMode
+                                        ? "text-slate-200 hover:bg-slate-700/50 data-[selected=true]:bg-emerald-500/20 data-[selected=true]:text-emerald-300"
+                                        : "text-gray-900 hover:bg-emerald-50 data-[selected=true]:bg-emerald-100 data-[selected=true]:text-emerald-700"
+                                        }`}
+                                    >
+                                      {unit.label}
+                                    </SelectItem>
+                                  ))}
+                                </Select>
+                              </td>
+                            </tr>
+                          );
+                        } else {
+                          const globalIdx = (page - 1) * rowsPerPage + idx;
+                          return (
+                            <tr key={part + '-nodata-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>
+                              <td className="px-2 py-3 text-center w-12">
+                                <button type="button" className={`flex items-center justify-center mx-auto p-2 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`} title="ลบแถวนี้" onClick={() => handleDeleteRow((page - 1) * rowsPerPage + idx)}>
+                                  <RiDeleteBin6Line className="w-5 h-5" />
+                                </button>
+                              </td>
+                              <td className={`px-2 py-3 font-bold text-center w-12 ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>{(page - 1) * rowsPerPage + idx + 1}</td>
+                              <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{part && part.indexOf(' |') !== -1 ? part.slice(0, part.indexOf(' |')) : part}</td>
+                              {/* prod_code */}
+                              <td className={`px-2 py-3 font-medium w-26 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{(() => {
+                                // Try to parse prod_code from part string: "...|prod_code|..."
+                                const parts = part.split(' | ');
+                                return parts.length > 2 ? parts[2] : '';
+                              })()}</td>
+                              {/* part_name */}
+                              <td className={`px-2 py-3 font-medium w-32 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{(() => {
+                                // Try to parse part_name from part string: "...|prod_code|part_name"
+                                const parts = part.split(' | ');
+                                return parts.length > 1 ? parts[1] : '';
+                              })()}</td>
+
+                              <td className="px-2 py-3 w-20">
+                                <input
+                                  type="number"
+                                  min="0" step="1"
+                                  className={`w-full h-10 px-2 py-2 border rounded text-center text-sm text-right focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
+                                  placeholder="0"
+                                  value={pagedQty[idx] !== undefined && pagedQty[idx] !== null ? pagedQty[idx] : ''}
+                                  onChange={(e) => handleQtyChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                  onBlur={e => {
+                                    const val = e.target.value;
+                                    if (val !== '' && !isNaN(Number(val))) {
+                                      handleQtyChange((page - 1) * rowsPerPage + idx, Number(val).toFixed(2));
+                                    }
+                                  }}
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                  <FaRegCalendarAlt className="w-4 h-4 text-orange-400" />
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-2 py-3 w-64">
-                              <textarea
-                                className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
-                                placeholder="วัตถุประสงค์"
-                                rows={1}
-                                value={
-                                  pagedObjective[idx] !== undefined && pagedObjective[idx] !== ''
-                                    ? pagedObjective[idx]
-                                    : (rempoData[globalIdx] || '')
-                                }
-                                onChange={(e) => handleObjectiveChange(globalIdx, e.target.value)}
-                              />
-                            </td>
-                            {/* <td className="px-2 py-3 w-16">
+                              </td>
+                              <td className="px-2 py-3 w-20">
+                                <div className="flex justify-center items-center w-full">
+                                  <Select
+                                    placeholder="กรุณาเลือก"
+                                    className="w-full"
+                                    classNames={{
+                                      base: "w-full",
+                                      label: "font-semibold text-sm",
+                                      trigger: [
+                                        "h-10",
+                                        "min-h-10",
+                                        "pl-2",
+                                        "pr-10",
+                                        "text-sm",
+                                        "rounded",
+                                        "border",
+                                        "transition-colors",
+                                        "focus:ring-2",
+                                        isDarkMode
+                                          ? "bg-slate-800/50 border-slate-600 text-slate-200 focus:border-orange-500 focus:ring-orange-500/30 hover:border-orange-500"
+                                          : "bg-orange-50 border-orange-300 text-gray-900 focus:border-orange-300 focus:ring-orange-500 hover:border-orange-500",
+                                      ],
+                                      value: "text-sm font-medium",
+                                      mainWrapper: "w-full",
+                                      innerWrapper: "pr-0",
+                                      selectorIcon: [
+                                        "right-2",
+                                        "absolute",
+                                        "text-orange-500"
+                                      ],
+                                      listboxWrapper: [
+                                        "max-h-[400px]",
+                                        isDarkMode ? "custom-scrollbar-dark" : "custom-scrollbar-light"
+                                      ],
+                                      popoverContent: [
+                                        "rounded-lg",
+                                        "shadow-xl",
+                                        isDarkMode
+                                          ? "bg-slate-800 border-slate-600"
+                                          : "bg-white border-orange-200",
+                                      ],
+                                    }}
+                                    variant="bordered"
+                                    size="md"
+                                    radius="md"
+                                    scrollShadowProps={{
+                                      isEnabled: true
+                                    }}
+                                    selectedKeys={unitData[globalIdx] ? [unitData[globalIdx]] : []}
+                                    onSelectionChange={(keys) => {
+                                      const selected = Array.from(keys)[0] as string | undefined;
+                                      handleUnitChange(globalIdx, selected ?? "");
+                                    }}
+                                  >
+                                    {unitOptions.map((unit) => (
+                                      <SelectItem
+                                        key={unit.measure_name}
+                                        className={`rounded-md my-1 ${isDarkMode
+                                          ? "text-slate-200 hover:bg-slate-700/50 data-[selected=true]:bg-orange-500/20 data-[selected=true]:text-orange-300"
+                                          : "text-gray-900 hover:bg-orange-50 data-[selected=true]:bg-orange-100 data-[selected=true]:text-orange-700"
+                                          }`}
+                                      >
+                                        {unit.measure_name}
+                                      </SelectItem>
+                                    ))}
+                                  </Select>
+                                </div>
+                              </td>
+                              <td className={`px-2 py-5 whitespace-nowrap text-sm w-30`}>
+                                <div className="relative w-full">
+                                  <DatePicker
+                                    selected={pagedDueDates[idx]}
+                                    onChange={date => handleRowDueDateChange((page - 1) * rowsPerPage + idx, date)}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="เลือกวันที่"
+                                    className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
+                                    calendarClassName={isDarkMode ? 'react-datepicker-orange-dark' : 'react-datepicker-orange'}
+                                    popperClassName="z-[9999]"
+                                    popperPlacement="bottom-start"
+                                  />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <FaRegCalendarAlt className="w-4 h-4 text-orange-400" />
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-2 py-3 w-64">
+                                <textarea
+                                  className={`w-full min-h-[2.5rem] px-2 py-2 border rounded text-sm resize-none focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
+                                  placeholder="วัตถุประสงค์"
+                                  rows={1}
+                                  value={
+                                    pagedObjective[idx] !== undefined && pagedObjective[idx] !== ''
+                                      ? pagedObjective[idx]
+                                      : (rempoData[globalIdx] || '')
+                                  }
+                                  onChange={(e) => handleObjectiveChange(globalIdx, e.target.value)}
+                                />
+                              </td>
+                              {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 py-2 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
                                 <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
                                   ไม่มีข้อมูล
                                 </span>
                               </div>
                             </td> */}
-                            <td className="px-2 py-3 w-16">
-                              <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
-                                <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
-                                  0.00
-                                </span>
-                              </div>
-                            </td>
-                            {/* <td className="px-2 py-3 w-16">
+                              <td className="px-2 py-3 w-16">
+                                <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
+                                  <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
+                                    0.00
+                                  </span>
+                                </div>
+                              </td>
+                              {/* <td className="px-2 py-3 w-16">
                               <div className={`w-full h-10 px-3 py-2 rounded-lg flex items-center justify-end text-sm font-medium ${isDarkMode ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'}`}>
                                 <span className={`text-xs px-1 py-1 rounded-full whitespace-nowrap ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} title="ไม่เคยถูกซื้อ ไม่มีข้อมูลในฐานข้อมูล">
                                   ฿0.00
                                 </span>
                               </div>
                             </td> */}
-                            <td className="px-2 py-3 w-22">
-                              <select
-                                value={destinationData[(page - 1) * rowsPerPage + idx] || 'Plant 1'}
-                                onChange={(e) => handleDestinationChange((page - 1) * rowsPerPage + idx, e.target.value)}
-                                className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}>
-                                <option>Plant 1</option>
-                                <option>Plant 2</option>
-                              </select>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={14} className={`px-4 py-12 text-center italic ${isDarkMode ? 'text-slate-400 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'text-green-300 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>กรุณาเลือก Part No จากฟอร์มด้านบน</td>
-                    </tr>
-                  )}
-                  {/* Pagination row */}
-                  {selectedParts.length > 0 && totalPages > 1 && (
-                    <tr>
-                      <td colSpan={14} className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
-                        <div className="inline-flex items-center gap-2">
-                          <button
-                            type="button"
-                            className={`px-3 py-1 cursor-pointer rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={() => page > 1 && setPage(page - 1)}
-                            disabled={page === 1}
-                          >ย้อนกลับ</button>
-                          <span className={`mx-2 font-medium ${isDarkMode ? 'text-slate-200' : 'text-green-700'}`}>หน้า {page} / {totalPages}</span>
-                          <button
-                            type="button"
-                            className={`px-3 py-1 cursor-pointer rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={() => page < totalPages && setPage(page + 1)}
-                            disabled={page === totalPages}
-                          >ถัดไป</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div> {/* end table container */}
-            <div className={`w-full flex justify-center py-8 rounded-b-3xl ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
-              <button
-                type="button"
-                className={`px-8 py-3 rounded-xl cursor-pointer font-bold text-lg shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${isDarkMode ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white focus:ring-emerald-300/50' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-500 hover:to-green-700 text-white focus:ring-green-300'} ${(isSaving || selectedParts.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => { if (!isSaving && selectedParts.length > 0) handleCreatePR(); }}
-                disabled={isSaving || selectedParts.length === 0}
-              >
-                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-              </button>
+                              <td className="px-2 py-3 w-22">
+                                {/* <select
+                                  value={destinationData[(page - 1) * rowsPerPage + idx] || 'Plant 1'}
+                                  onChange={(e) => handleDestinationChange((page - 1) * rowsPerPage + idx, e.target.value)}
+                                  className={`w-full h-10 px-2 py-2 border rounded text-sm text-center focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}>
+                                  <option>Plant 1</option>
+                                  <option>Plant 2</option>
+                                </select> */}
+
+                                <Select
+                                  placeholder="กรุณาเลือก Plant"
+                                  className="w-28"
+                                  classNames={{
+                                    base: "w-full",
+                                    label: "font-semibold text-sm text-center",
+                                    trigger: [
+                                      "h-10",
+                                      "min-h-10",
+                                      "pl-2",
+                                      "pr-10",
+                                      "text-sm",
+                                      "rounded",
+                                      "border",
+                                      "transition-colors",
+                                      "focus:ring-2",
+                                      isDarkMode
+                                        ? "bg-slate-800/50 border-slate-600 text-slate-200 focus:border-orange-500 focus:ring-orange-500/30 hover:border-orange-500"
+                                        : "bg-orange-50 border-orange-300 text-gray-900 focus:border-orange-300 focus:ring-orange-500 hover:border-orange-500",
+                                    ],
+                                    value: "text-sm font-medium",
+                                    mainWrapper: "w-full",
+                                    innerWrapper: "pr-0",
+                                    selectorIcon: [
+                                      "right-2",
+                                      "absolute",
+                                      "text-orange-500"
+                                    ],
+                                    listboxWrapper: [
+                                      "max-h-[400px]",
+                                      isDarkMode ? "custom-scrollbar-dark" : "custom-scrollbar-light"
+                                    ],
+                                    popoverContent: [
+                                      "rounded-lg",
+                                      "shadow-xl",
+                                      isDarkMode
+                                        ? "bg-slate-800 border-slate-600"
+                                        : "bg-white border-orange-200",
+                                    ],
+                                  }}
+                                  variant="bordered"
+                                  size="md"
+                                  radius="md"
+                                  scrollShadowProps={{
+                                    isEnabled: true
+                                  }}
+                                  selectedKeys={destinationData[globalIdx] ? [destinationData[globalIdx]] : []}
+                                  onSelectionChange={(keys) => {
+                                    const selected = Array.from(keys)[0] as string | undefined;
+                                    handleDestinationChange(globalIdx, selected ?? "");
+                                  }}
+                                >
+                                  {plantOptions.map((unit) => (
+                                    <SelectItem
+                                      key={unit.key}
+                                      className={`rounded-md my-1 text-center ${isDarkMode
+                                        ? "text-slate-200 hover:bg-slate-700/50 data-[selected=true]:bg-orange-500/20 data-[selected=true]:text-orange-300"
+                                        : "text-gray-900 hover:bg-orange-50 data-[selected=true]:bg-orange-100 data-[selected=true]:text-orange-700"
+                                        }`}
+                                    >
+                                      {unit.label}
+                                    </SelectItem>
+                                  ))}
+                                </Select>
+                              </td>
+                            </tr>
+                          );
+                        }
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={14} className={`px-4 py-12 text-center italic ${isDarkMode ? 'text-slate-400 bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'text-green-300 bg-gradient-to-r from-green-50 via-white to-green-100'}`}>กรุณาเลือก Part No จากฟอร์มด้านบน</td>
+                      </tr>
+                    )}
+                    {/* Pagination row */}
+                    {selectedParts.length > 0 && totalPages > 1 && (
+                      <tr>
+                        <td colSpan={14} className={`px-4 py-4 text-center border-t ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-green-50 via-white to-green-100 border-green-100'}`}>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              className={`px-3 py-1 cursor-pointer rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              onClick={() => page > 1 && setPage(page - 1)}
+                              disabled={page === 1}
+                            >ย้อนกลับ</button>
+                            <span className={`mx-2 font-medium ${isDarkMode ? 'text-slate-200' : 'text-green-700'}`}>หน้า {page} / {totalPages}</span>
+                            <button
+                              type="button"
+                              className={`px-3 py-1 cursor-pointer rounded-lg border transition-all duration-150 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 hover:bg-slate-700/50' : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'} ${page === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              onClick={() => page < totalPages && setPage(page + 1)}
+                              disabled={page === totalPages}
+                            >ถัดไป</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div> {/* end table container */}
+              <div className={`w-full flex justify-center py-8 rounded-b-3xl ${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
+                <button
+                  type="button"
+                  className={`px-8 py-3 rounded-xl cursor-pointer font-bold text-lg shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${isDarkMode ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white focus:ring-emerald-300/50' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-500 hover:to-green-700 text-white focus:ring-green-300'} ${(isSaving || selectedParts.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => { if (!isSaving && selectedParts.length > 0) handleCreatePR(); }}
+                  disabled={isSaving || selectedParts.length === 0}
+                >
+                  {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
-      {showCreatPartNo && (
-        <CreatPartNo onCancel={() => setShowCreatPartNo(false)} />
-      )}
-    </div>
+        </main>
+        {showCreatPartNo && (
+          <CreatPartNo onCancel={() => setShowCreatPartNo(false)} />
+        )}
+      </div>
+    </>
   );
 }

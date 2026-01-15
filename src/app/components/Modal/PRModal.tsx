@@ -41,56 +41,6 @@ import { SlOptionsVertical } from "react-icons/sl";
 import { LuNotebookPen } from "react-icons/lu";
 import { GiCancel } from "react-icons/gi";
 
-// Custom scrollbar styles
-const scrollbarStyles = `
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #64748b #e2e8f0;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
-    border-radius: 8px;
-    border: 2px solid #f8fafc;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #64748b 0%, #475569 100%);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:active {
-    background: linear-gradient(180deg, #475569 0%, #334155 100%);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-corner {
-    background: #f8fafc;
-  }
-  
-  /* Hide scrollbar arrows/buttons */
-  .custom-scrollbar::-webkit-scrollbar-button {
-    display: none;
-  }
-  
-  /* Force scrollbar to always show */
-  .scrollbar-always {
-    overflow-y: scroll !important;
-    overflow-x: auto !important;
-  }
-`;
-
 export type PartNo = {
   length: number;
   pcl_id: number;
@@ -1782,14 +1732,64 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
   return (
     <>
-      <style>{scrollbarStyles}</style>
+      <style jsx>{`
+              .smooth-scroll {
+                scroll-behavior: smooth !important;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                will-change: scroll-position;
+              }
+                        
+              .smooth-scroll > * {
+                transition: transform 0.1s ease-out;
+              }
+                        
+              .custom-scrollbar-dark::-webkit-scrollbar {
+                width: 10px;
+                height: 12px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-track {
+                background: #1e293b;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+                background: #475569;
+                border-radius: 10px;
+                border: 2px solid #1e293b;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+                background: #64748b;
+                border: 2px solid #334155;
+              }
+                        
+              .custom-scrollbar-light::-webkit-scrollbar {
+                width: 12px;
+                height: 12px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+                border: 2px solid #f1f5f9;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+                border: 2px solid #e2e8f0;
+              }
+            `}</style>
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-slate-900/60 via-gray-900/40 to-slate-800/60 backdrop-blur-sm"
         onClick={onClose}
       >
         <div
-          className={`backdrop-blur-md rounded-3xl shadow-2xl border p-0 max-w-7xl w-full mx-4 overflow-hidden ${isDarkMode ? 'bg-slate-900/95 border-slate-700/60' : 'bg-white/95 border-white/20'}`}
-          style={{ maxHeight: '90vh', height: '90vh' }}
+          className={`backdrop-blur-md rounded-tl-3xl rounded-bl-3xl rounded-tr-md rounded-br-md shadow-2xl border p-0 max-w-7xl w-full mx-4 overflow-hidden smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} ${isDarkMode ? 'bg-slate-900/95 border-slate-700/60' : 'bg-white/95 border-white/20'}`}
+          // style={{ maxHeight: '90vh', height: '90vh' }}
+          style={{ maxHeight: '90vh', height: 'auto', overflowY: 'auto' }}
           onClick={e => e.stopPropagation()}
         >
           {/* Modal header */}
@@ -1849,9 +1849,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                 </button>
 
                                 {showSelectedToPODropdown && (
-                                  <div className={`absolute right-0 z-50 mt-2 w-[23rem] rounded-xl shadow-xl border backdrop-blur-sm max-h-[32rem] overflow-y-auto custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 ${isDarkMode
-                                    ? 'bg-slate-900/95 border-slate-700/60 text-slate-100'
-                                    : 'bg-white/95 border-slate-200/60 text-slate-800'
+                                  <div className={`absolute right-0 z-50 mt-2 w-[23rem] rounded-xl shadow-xl border backdrop-blur-sm max-h-[32rem] overflow-y-auto smooth-scroll ${isDarkMode
+                                    ? 'custom-scrollbar-dark bg-slate-900/95 border-slate-700/60 text-slate-100'
+                                    : 'custom-scrollbar-light bg-white/95 border-slate-200/60 text-slate-800'
                                     }`}>
                                     <div className="p-4">
                                       <div className="flex items-center space-x-2 mb-3">
@@ -1870,7 +1870,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         </div>
                                       </div>
 
-                                      <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800">
+                                      <div className={`space-y-3 max-h-72 overflow-y-auto smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`}>
                                         <button
                                           type="button"
                                           className={`w-full mb-2 py-2 rounded-lg font-semibold text-sm border transition-all duration-200 flex items-center justify-center space-x-2 ${isDarkMode
@@ -2220,7 +2220,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
           </div>
           {/* Modal body */}
           <div className={`flex-1 bg-gradient-to-br overflow-hidden ${isDarkMode ? 'from-slate-900/60 via-slate-800/40 to-slate-900/60' : 'from-white/60 via-slate-50/40 to-gray-50/60'}`}>
-            <div className="p-6 flex flex-col custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 overflow-y-auto" style={{ height: 'calc(90vh - 200px)', minHeight: '500px' }}>
+            <div className={`p-6 flex flex-col smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`} style={{ height: 'calc(90vh - 200px)', minHeight: '500px', overflowY: 'auto' }}>
               {loading && (
                 <div className="text-center py-12">
                   <div className="inline-flex flex-col items-center space-y-3">
@@ -2266,8 +2266,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800"
-                          style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth' }}>
+                        <div className={`flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`}
+                          style={{ willChange: 'scroll-position, transform' }}>
                           {/* Form Layout - 2 Column Grid */}
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ */}
@@ -2630,8 +2630,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800"
-                          style={{ willChange: 'scroll-position, transform', scrollBehavior: 'smooth', transform: 'translateZ(0)' }}>
+                        <div className={`flex-1 p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)] smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`}
+                          style={{ willChange: 'scroll-position, transform', transform: 'translateZ(0)' }}>
                           {/* Form Layout - 2 Column Grid */}
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* Column 1 (Left) - ข้อมูลการขอซื้อ + เหตุผลการขอซื้อ + ประเภทการซื้อ */}
@@ -3094,7 +3094,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   </div>
 
                   {/* Scrollable tbody area */}
-                  <div className="flex-1 custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 480px)' }}>
+                  <div className={`flex-1 smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`} style={{ maxHeight: 'calc(100vh - 480px)', overflowY: 'auto' }}>
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
                         <col style={{ width: '50px' }} />
@@ -3903,7 +3903,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     </table>
                   </div>
                   {/* Scrollable tbody area */}
-                  <div className="flex-1 min-h-0 custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-purple-400 scrollbar-track-slate-100 dark:scrollbar-thumb-purple-700 dark:scrollbar-track-slate-800 overflow-y-auto">
+                  <div className={`flex-1 min-h-0 smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} overflow-y-auto`}>
                     <table className="text-sm table-fixed" style={{ width: '100%' }}>
                       <colgroup>
                         <col style={{ width: '25px' }} />
@@ -4714,7 +4714,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                       <div className="relative w-full">
                         {/* Dropdown ด้านบน input */}
                         {showDropdown && search && vendors.length > 0 && (
-                          <div ref={dropdownRef} className={`absolute z-[9999] w-full border rounded-xl shadow-lg mb-2 max-h-56 overflow-y-auto bottom-full ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-purple-200'}`} style={{ zIndex: 9999 }}>
+                          <div ref={dropdownRef} className={`absolute z-[9999] w-full border rounded-tl-xl rounded-bl-xl rounded-tr-md rounded-br-md shadow-lg mb-2 max-h-56 overflow-y-auto bottom-full smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} ${isDarkMode ? 'bg-slate-900/95 border-slate-700/50 backdrop-blur-sm' : 'bg-white border-purple-200'}`} style={{ zIndex: 9999 }}>
                             <div className="p-2">
                               <div className={`text-xs px-4 py-3 border-b rounded-t-lg ${isDarkMode ? 'text-slate-400 bg-slate-800/50' : 'text-purple-700 border-purple-200 bg-purple-100'}`}>
                                 พบ {vendors.length} รายการ
@@ -4883,7 +4883,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   </div>
                   {selectedRowData ? (
                     <div className="flex flex-col h-full">
-                      <div className="custom-scrollbar scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-emerald-400 scrollbar-track-slate-100 dark:scrollbar-thumb-emerald-700 dark:scrollbar-track-slate-800 overflow-y-auto max-h-[calc(100vh-400px)] grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+                      <div className={`smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} overflow-y-auto max-h-[calc(100vh-400px)] grid grid-cols-1 lg:grid-cols-2 gap-4 p-4`}>
                         {/* Column 1 (Left) - ข้อมูลการขอซื้อ */}
                         <div className="space-y-4">
                           <div className={`bg-gradient-to-br p-4 rounded-xl border shadow-md ${isDarkMode ? 'from-slate-700/50 to-slate-800/50 border-slate-600/60' : 'from-slate-50 to-white border-slate-200/60'}`}>

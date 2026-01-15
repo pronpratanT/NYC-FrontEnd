@@ -6,56 +6,6 @@ import { useTheme } from "../ThemeProvider";
 import { IoInformationCircleOutline } from "react-icons/io5";
 import { TbMail } from "react-icons/tb";
 
-// Custom scrollbar styles
-const scrollbarStyles = `
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #64748b #e2e8f0;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
-    border-radius: 8px;
-    border: 2px solid #f8fafc;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #64748b 0%, #475569 100%);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:active {
-    background: linear-gradient(180deg, #475569 0%, #334155 100%);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-corner {
-    background: #f8fafc;
-  }
-  
-  /* Hide scrollbar arrows/buttons */
-  .custom-scrollbar::-webkit-scrollbar-button {
-    display: none;
-  }
-  
-  /* Force scrollbar to always show */
-  .scrollbar-always {
-    overflow-y: scroll !important;
-    overflow-x: auto !important;
-  }
-`;
-
 interface CreateVendorProps {
     pcl_id?: number;
     onConfirm?: (data: { vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; telNo: string; faxNo: string; city: string; country: string; currencyCode: string; zipCode: string; addr1: string; addr2: string; }) => void;
@@ -233,7 +183,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                     vendorName,
                     contactName,
                     taxId,
-                    creditTerm: selectedCredit,  
+                    creditTerm: selectedCredit,
                     city,
                     country,
                     currencyCode,
@@ -258,7 +208,56 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
 
     return (
         <>
-            <style>{scrollbarStyles}</style>
+            <style jsx>{`
+              .smooth-scroll {
+                scroll-behavior: smooth !important;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                will-change: scroll-position;
+              }
+                        
+              .smooth-scroll > * {
+                transition: transform 0.1s ease-out;
+              }
+                        
+              .custom-scrollbar-dark::-webkit-scrollbar {
+                width: 10px;
+                height: 12px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-track {
+                background: #1e293b;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+                background: #475569;
+                border-radius: 10px;
+                border: 2px solid #1e293b;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+                background: #64748b;
+                border: 2px solid #334155;
+              }
+                        
+              .custom-scrollbar-light::-webkit-scrollbar {
+                width: 12px;
+                height: 12px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+                border: 2px solid #f1f5f9;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+                border: 2px solid #e2e8f0;
+              }
+            `}</style>
             <div
                 className={`fixed inset-0 z-[99999] flex items-center justify-center backdrop-blur-md ${isDarkMode
                     ? 'bg-gradient-to-br from-gray-950/80 via-slate-900/70 to-gray-950/80'
@@ -311,7 +310,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                     </div>
 
                     {/* Content */}
-                    <div className={`p-6 max-h-[70vh] overflow-y-auto custom-scrollbar ${isDarkMode
+                    <div className={`p-6 max-h-[70vh] overflow-y-auto smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} ${isDarkMode
                         ? 'bg-gradient-to-br from-slate-800/50 to-slate-900/50'
                         : 'bg-gradient-to-br from-slate-50 to-gray-50'
                         }`}>
@@ -422,7 +421,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                     ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 shadow-slate-800/20 hover:shadow-slate-700/30'
                                                     : 'border-gray-300 bg-white text-gray-900'
                                                 }`
-                                            }`}
+                                                }`}
                                             style={{
                                                 backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
                                                 backgroundPosition: 'right 1rem center',

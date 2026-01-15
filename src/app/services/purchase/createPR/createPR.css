@@ -1,0 +1,42 @@
+/* Custom scrollbar for select dropdown */
+select option {
+  padding: 8px 12px;
+}
+
+/* Dark mode scrollbar */
+.custom-scrollbar-dark select {
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #1e293b;
+}
+
+.custom-scrollbar-dark select::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar-dark select::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.custom-scrollbar-dark select::-webkit-scrollbar-thumb {
+  background-color: #64748b;
+  border-radius: 4px;
+}
+
+/* Light mode scrollbar */
+.custom-scrollbar-light select {
+  scrollbar-width: thin;
+  scrollbar-color: #fb923c #fff7ed;
+}
+
+.custom-scrollbar-light select::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar-light select::-webkit-scrollbar-track {
+  background: #fff7ed;
+}
+
+.custom-scrollbar-light select::-webkit-scrollbar-thumb {
+  background-color: #fb923c;
+  border-radius: 4px;
+}
