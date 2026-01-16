@@ -142,7 +142,7 @@ export function PdfGen({ children }: { children: ReactNode }) {
                 {toasts.map(toast => {
                     // สำหรับ PDF: มีแค่ 2 สถานะหลัก loading (หมุน) และ success (check)
                     let icon = <PiCheckCircleBold className="w-7 h-7 text-sky-500" />;
-                    let background = isDarkMode ? "#0d1320" : "#FFFFFF";
+                    const background = isDarkMode ? "#0d1320" : "#FFFFFF";
                     let bar = "linear-gradient(90deg, #22c55e 0%, #22c55e 100%)";
                     if (toast.loading) {
                         icon = <IoReloadOutline className="w-7 h-7 text-blue-500 toast-loading-spin" />;

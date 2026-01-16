@@ -6,6 +6,9 @@ import { useTheme } from "../ThemeProvider";
 import { IoInformationCircleOutline } from "react-icons/io5";
 import { TbMail } from "react-icons/tb";
 
+// hero ui
+import { Select, SelectSection, SelectItem } from "@heroui/select";
+
 interface CreateVendorProps {
     pcl_id?: number;
     onConfirm?: (data: { vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; telNo: string; faxNo: string; city: string; country: string; currencyCode: string; zipCode: string; addr1: string; addr2: string; }) => void;
@@ -205,6 +208,33 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
             alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + message);
         }
     }
+
+    const creditOptions = [
+        { key: "10 วัน D/D", label: "1. 10 วัน D/D" },
+        { key: "15 วัน D/D POST", label: "2. 15 วัน D/D POST" },
+        { key: "2%Dis. WITH T/T", label: "3. 2%Dis. WITH T/T" },
+        { key: "30 D/M ตัด 25", label: "4. 30 D/M ตัด 25" },
+        { key: "30 วัน D/D", label: "5. 30 วัน D/D" },
+        { key: "30 วัน D/D POST", label: "6. 30 วัน D/D POST" },
+        { key: "30 วัน D/M", label: "7. 30 วัน D/M" },
+        { key: "30 วัน D/M POST", label: "8. 30 วัน D/M POST" },
+        { key: "45 D/M ตัด 25", label: "9. 45 D/M ตัด 25" },
+        { key: "60 D/M ตัด 1-15", label: "10. 60 D/M ตัด 1-15" },
+        { key: "60 D/M ตัด 25", label: "11. 60 D/M ตัด 25" },
+        { key: "60 D/M ตัด 16-30", label: "12. 60 D/M ตัด 16-30" },
+        { key: "60 วัน D/D", label: "13. 60 วัน D/D" },
+        { key: "60 วัน D/M", label: "14. 60 วัน D/M" },
+        { key: "60 วัน D/M POST", label: "15. 60 วัน D/M POST" },
+        { key: "7 วัน D/D", label: "16. 7 วัน D/D" },
+        { key: "90 D/M ตัด 25", label: "17. 90 D/M ตัด 25" },
+        { key: "90 วัน D/M", label: "18. 90 วัน D/M" },
+        { key: "EX-WORK", label: "19. EX-WORK" },
+        { key: "FOB", label: "20. FOB" },
+        { key: "L/C AT SIGHT", label: "21. L/C AT SIGHT" },
+        { key: "NET-10", label: "22. NET-10" },
+        { key: "เงินสด", label: "23. เงินสด" },
+        { key: "ตามเงื่อนไข", label: "24. ตามเงื่อนไข" }
+    ];
 
     return (
         <>
@@ -408,7 +438,7 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
                                             Credit Term
                                         </label>
-                                        <select
+                                        {/* <select
                                             value={selectedCredit}
                                             onChange={(e) => {
                                                 setSelectedCredit(e.target.value);
@@ -455,6 +485,78 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                             <option value="เงินสด">23. เงินสด</option>
                                             <option value="ตามเงื่อนไข">24. ตามเงื่อนไข</option>
                                         </select>
+                                        {fieldErrors.selectedCredit && (
+                                            <p className="text-xs text-red-500 mt-1">{fieldErrors.selectedCredit}</p>
+                                        )} */}
+                                        <Select
+                                            placeholder="-- กรุณาเลือกเครดิตเทอม --"
+                                            classNames={{
+                                                trigger: [
+                                                    "w-full",
+                                                    "px-4",
+                                                    "py-3.5",
+                                                    "!h-auto",
+                                                    "border",
+                                                    "rounded-lg",
+                                                    "transition-all",
+                                                    "shadow-sm",
+                                                    "hover:shadow-md",
+                                                    "text-sm",
+                                                    "font-medium",
+                                                    "cursor-pointer",
+                                                    fieldErrors.selectedCredit
+                                                        ? isDarkMode
+                                                            ? "border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100"
+                                                            : "border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900"
+                                                        : isDarkMode
+                                                            ? `border-slate-600/50 bg-slate-700/50 text-slate-100 shadow-slate-800/20 hover:shadow-slate-700/30 ${currentTheme.focus} ${currentTheme.focusBorder}`
+                                                            : `border-gray-300 bg-white text-gray-900 ${currentTheme.focus} ${currentTheme.focusBorder}`
+                                                ],
+                                                value: "text-sm font-medium",
+                                                selectorIcon: [
+                                                    "right-4",
+                                                    "text-indigo-500"
+                                                ],
+                                                listboxWrapper: [
+                                                    "max-h-[300px]",
+                                                    isDarkMode ? "custom-scrollbar-dark" : "custom-scrollbar-light"
+                                                ],
+                                                popoverContent: [
+                                                    "rounded-lg",
+                                                    "shadow-xl",
+                                                    "border",
+                                                    isDarkMode
+                                                        ? "bg-slate-800 border-slate-600"
+                                                        : "bg-white border-gray-300",
+                                                ],
+                                            }}
+                                            variant="bordered"
+                                            size="lg"
+                                            radius="lg"
+                                            scrollShadowProps={{
+                                                isEnabled: true
+                                            }}
+                                            selectedKeys={selectedCredit ? [selectedCredit] : []}
+                                            onSelectionChange={(keys) => {
+                                                const selected = Array.from(keys)[0] as string | undefined;
+                                                setSelectedCredit(selected ?? "");
+                                                if (selected) {
+                                                    setFieldErrors({ selectedCredit: "" });
+                                                }
+                                            }}
+                                        >
+                                            {creditOptions.map((option) => (
+                                                <SelectItem
+                                                    key={option.key}
+                                                    className={`rounded-md my-0.5 px-3 py-2 ${isDarkMode
+                                                        ? "text-slate-200 hover:bg-indigo-500/10 data-[selected=true]:bg-indigo-500/20 data-[selected=true]:text-indigo-300"
+                                                        : "text-gray-900 hover:bg-indigo-50 data-[selected=true]:bg-indigo-100 data-[selected=true]:text-indigo-700"
+                                                        }`}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </Select>
                                         {fieldErrors.selectedCredit && (
                                             <p className="text-xs text-red-500 mt-1">{fieldErrors.selectedCredit}</p>
                                         )}
@@ -586,7 +688,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                         <button
                                                             type="button"
                                                             onClick={addAddress}
-                                                            className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                            disabled={!addr || addr.trim() === ""}
+                                                            className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!addr || addr.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
                                                         >
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -661,7 +764,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                             <button
                                                                 type="button"
                                                                 onClick={addEmail}
-                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                                disabled={!email || email.trim() === ""}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!email || email.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -714,7 +818,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                             <button
                                                                 type="button"
                                                                 onClick={addTelNo}
-                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                                disabled={!telNo || telNo.trim() === ""}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!telNo || telNo.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -768,7 +873,8 @@ const CreateVendor: React.FC<CreateVendorProps> = ({ pcl_id, onConfirm, onCancel
                                                             <button
                                                                 type="button"
                                                                 onClick={addFaxNo}
-                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                                disabled={!faxNo || faxNo.trim() === ""}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!faxNo || faxNo.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

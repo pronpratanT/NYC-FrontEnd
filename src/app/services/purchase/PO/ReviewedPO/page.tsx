@@ -20,6 +20,7 @@ import SendMailModal from "@/app/components/Modal/SendMailModal";
 import RequestEditPOModal from "@/app/components/Modal/Request_Edit_PO";
 import ResponseEditPOModal from "@/app/components/Modal/Response_Edit_PO";
 import PuValidatedModal from '@/app/components/Modal/Pu_validated';
+import { useToast } from "@/app/components/toast/Notify";
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -119,6 +120,12 @@ type VendorSelected = {
     fax_no: string;
     contact_person: string;
     email: string;
+    city: string;
+    country: string;
+    currency_code: string;
+    zip_code: string;
+    address1: string;
+    address2: string;
 }
 
 // Type สำหรับ vendor ที่เลือก
@@ -131,7 +138,7 @@ export default function ReviewedPOPage() {
     // const { user } = useUser(); // Removed unused variable
     const token = useToken();
     const { isDarkMode } = useTheme();
-
+    const { showToast, showPDFToast, setPDFToastSuccess, setPDFToastError } = useToast();
     // Check Role from User Context
     const { user } = useUser();
     // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
@@ -395,6 +402,12 @@ export default function ReviewedPOPage() {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Preview PDF ${po_no}`,
+            `กำลังสร้างตัวอย่างไฟล์ PDF PO หมายเลข ${po_no} กรุณารอสักครู่...`,
+            true // loading = true
+        );
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_pdf/${po_no}`, {
                 method: 'GET',
@@ -405,10 +418,17 @@ export default function ReviewedPOPage() {
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank', 'noopener');
             setTimeout(() => URL.revokeObjectURL(url), 60000);
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ (PiCheckCircleBold)
+            setPDFToastSuccess(
+                toastId,
+                `เปิดตัวอย่างไฟล์ PDF PO หมายเลข ${po_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('previewPoPdf error:', err);
-            // Fallback
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}?token=${token}`, '_blank');
+            setPDFToastError(
+                toastId,
+                `ไม่สามารถเปิดตัวอย่างไฟล์ PDF PO หมายเลข ${po_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
@@ -418,6 +438,12 @@ export default function ReviewedPOPage() {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Download PDF PO ${po_no}`,
+            `กำลังดาวน์โหลดไฟล์ PDF PO หมายเลข ${po_no} กรุณารอสักครู่...`,
+            true
+        );
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf/${po_no}`, {
                 method: 'GET',
@@ -437,10 +463,17 @@ export default function ReviewedPOPage() {
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 60000);
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ
+            setPDFToastSuccess(
+                toastId,
+                `ดาวน์โหลดไฟล์ PO หมายเลข ${po_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('downloadPoPdf error:', err);
-            // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}/${token}`, '_blank', 'noopener');
+            setPDFToastError(
+                toastId,
+                `ไม่สามารถดาวน์โหลดไฟล์ PO หมายเลข ${po_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
@@ -788,6 +821,12 @@ export default function ReviewedPOPage() {
                                                             fax_no: poData.fax_no ?? '',
                                                             contact_person: poData.contact_name ?? '',
                                                             email: poData.email ?? '',
+                                                            city: poData.city ?? '',
+                                                            country: poData.country ?? '',
+                                                            currency_code: poData.cur_code ?? '',
+                                                            zip_code: poData.zip ?? '',
+                                                            address1: poData.addr1 ?? '',
+                                                            address2: poData.addr2 ?? '',
                                                         });
                                                         setShowEditVendor(true);
                                                     }}

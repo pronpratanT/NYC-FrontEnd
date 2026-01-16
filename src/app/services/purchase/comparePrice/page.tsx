@@ -16,6 +16,7 @@ import { useUser } from "@/app/context/UserContext";
 import { useSidebar } from "../../../context/SidebarContext";
 import Sidebar from "../../../components/sidebar";
 import Header from "../../../components/header";
+import { useToast } from "../../../components/toast/Notify";
 
 import PRModal from '../../../components/Modal/PRModal';
 import GroupPRModal from "@/app/components/Modal/Group_PR";
@@ -37,6 +38,7 @@ import { TbProgressCheck } from "react-icons/tb";
 import { LuNotebookPen } from "react-icons/lu";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { GoDownload } from "react-icons/go";
+import { RiFileEditLine } from "react-icons/ri";
 
 type Part = {
     pcl_id: number;
@@ -77,6 +79,7 @@ type Data = {
     id: number;
     group_name: string;
     pr_id: number;
+    status: string;
     note: Note[];
     list: List[];
 }
@@ -117,7 +120,7 @@ type FreeItems = {
 
 function ComparePriceContent({ token }: { token: string | null }) {
     const { isDarkMode } = useTheme();
-
+    const { showToast, showPDFToast, setPDFToastSuccess, setPDFToastError } = useToast();
     // Check Role from User Context
     const { user } = useUser();
     // ดึง permissions ของ service = 2 จากโครงสร้างใหม่ user.role
@@ -591,12 +594,20 @@ function ComparePriceContent({ token }: { token: string | null }) {
     // TODO: PDF
     // Preview PDF: ใช้ Authorization header (Bearer token) เพื่อไม่ให้ token อยู่ใน URL
     // หมายเหตุ: GET ไม่สามารถส่ง body ที่ browser ยอมรับได้ ดังนั้นใช้ header แทน
-    const previewPrPdf = async (pr_id: number) => {
+    const previewPrPdf = async (pr_id: number, pr_no: string) => {
         console.log('previewPrPdf called for PR:', pr_id);
         if (!token) {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Preview PDF ${pr_no}`,
+            `กำลังสร้างตัวอย่างไฟล์ PDF PR หมายเลข ${pr_no} กรุณารอสักครู่...`,
+            true // loading = true
+        );
+
         const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
         const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_pdf_pr/${pr_id}/${endpointType}`;
         try {
@@ -609,10 +620,18 @@ function ComparePriceContent({ token }: { token: string | null }) {
             const objectUrl = URL.createObjectURL(blob);
             window.open(objectUrl, '_blank', 'noopener');
             setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ (PiCheckCircleBold)
+            setPDFToastSuccess(
+                toastId,
+                `เปิดตัวอย่างไฟล์ PDF PR หมายเลข ${pr_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('previewPrPdf error:', err);
-            // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
+            setPDFToastError(
+                toastId,
+                `ไม่สามารถเปิดตัวอย่างไฟล์ PDF PR หมายเลข ${pr_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
@@ -622,6 +641,14 @@ function ComparePriceContent({ token }: { token: string | null }) {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Download PDF PR ${pr_no}`,
+            `กำลังดาวน์โหลดไฟล์ PDF PR หมายเลข ${pr_no} กรุณารอสักครู่...`,
+            true
+        );
+
         const endpointType = departmentId === 10086 ? 'indirect' : 'direct';
         const previewUrl = `${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf_pr/${pr_id}/${endpointType}`;
         try {
@@ -643,10 +670,18 @@ function ComparePriceContent({ token }: { token: string | null }) {
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ
+            setPDFToastSuccess(
+                toastId,
+                `ดาวน์โหลดไฟล์ PR หมายเลข ${pr_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('downloadPrPdf error:', err);
-            // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${pr_id}/${token}`, '_blank', 'noopener');
+            setPDFToastError(
+                toastId,
+                `ไม่สามารถดาวน์โหลดไฟล์ PR หมายเลข ${pr_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
@@ -687,7 +722,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                     {!(prData?.supervisor_reject_at || prData?.manager_reject_at || prData?.pu_operator_reject_at) && (
                                         <>
                                             {/* Supervisor (roleID = 2) - เห็นแค่ปุ่ม Sup Approve */}
-                                            {(roleID === 2 && !prData?.supervisor_approve) || (departmentId === 10086 && !prData?.supervisor_approve) && (
+                                            {(roleID === 2 && !prData?.supervisor_approve) || (departmentId === 10086 && !prData?.supervisor_approve) && prData?.pr_no !== "" && (
                                                 <div className="flex items-center gap-2 relative">
                                                     <div className="flex items-center">
                                                         <button
@@ -695,16 +730,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 {/* absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0 */}
@@ -719,16 +754,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 {/* absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200 group-hover:opacity-0 */}
@@ -751,16 +786,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <IoIosCheckmark size={40} />
@@ -774,16 +809,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <FaXmark size={20} />
@@ -805,16 +840,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <IoIosCheckmark size={40} />
@@ -828,16 +863,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <FaXmark size={20} />
@@ -859,16 +894,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-green-400 hover:bg-green-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden approve-btn"
                                                             onClick={() => handleApproveClick()}
                                                             style={{ width: '40px', height: '40px', zIndex: 2 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
-                                                            //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const rejectBtn = e.currentTarget.parentElement?.querySelector('.reject-btn');
+                                                        //     if (rejectBtn && rejectBtn instanceof HTMLElement) rejectBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <IoIosCheckmark size={40} />
@@ -882,16 +917,16 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                             className="bg-red-400 hover:bg-red-700 text-white font-semibold w-10 h-10 rounded-lg hover:rounded-full shadow transition-all duration-200 flex items-center justify-center cursor-pointer group relative overflow-hidden reject-btn"
                                                             onClick={handleReject}
                                                             style={{ width: '40px', height: '40px', marginLeft: '8px', zIndex: 1 }}
-                                                            // onMouseEnter={e => {
-                                                            //     e.currentTarget.style.width = '112px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
-                                                            // }}
-                                                            // onMouseLeave={e => {
-                                                            //     e.currentTarget.style.width = '40px';
-                                                            //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
-                                                            //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
-                                                            // }}
+                                                        // onMouseEnter={e => {
+                                                        //     e.currentTarget.style.width = '112px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '0';
+                                                        // }}
+                                                        // onMouseLeave={e => {
+                                                        //     e.currentTarget.style.width = '40px';
+                                                        //     const approveBtn = e.currentTarget.parentElement?.querySelector('.approve-btn');
+                                                        //     if (approveBtn && approveBtn instanceof HTMLElement) approveBtn.style.opacity = '1';
+                                                        // }}
                                                         >
                                                             <span className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center w-full h-full transition-opacity duration-200">
                                                                 <FaXmark size={20} />
@@ -906,10 +941,15 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                         </>
                                     )}
                                 </div>
-                                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no}</div>
+                                <div className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-slate-200' : 'text-gray-900'}`}>{prData.pr_no === "" ? "DRAFT - PR26X000" : prData.pr_no}</div>
                                 <div className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                                     สถานะ : {' '}
-                                    {prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at ? (
+                                    {prData.pr_no === "" ? (
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-zinc-900/30 border-zinc-500/50 text-zinc-300' : 'bg-zinc-50 border-zinc-400 text-zinc-800'}`}>
+                                            <RiFileEditLine className={`w-4 h-4 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-500'}`} />
+                                            ร่าง (Draft)
+                                        </span>
+                                    ) : prData.supervisor_reject_at || prData.manager_reject_at || prData.pu_operator_reject_at ? (
                                         // Red - ปฏิเสธ (Rejected)
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-xs border shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/50 text-red-300' : 'bg-red-50 border-red-300 text-red-800'}`}>
                                             <svg className={`w-3 h-3 ${isDarkMode ? 'text-red-300' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1037,7 +1077,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                                     className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        previewPrPdf(Number(prId));
+                                                        previewPrPdf(Number(prId), prData.pr_no);
                                                     }}
                                                 >
                                                     <MdOutlineRemoveRedEye className="w-7 h-7" />

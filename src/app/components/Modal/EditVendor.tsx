@@ -7,6 +7,9 @@ import { useTheme } from "../ThemeProvider";
 import { IoInformationCircleOutline } from "react-icons/io5";
 import { TbMail } from "react-icons/tb";
 
+// hero ui
+import { Select, SelectSection, SelectItem } from "@heroui/select";
+
 interface EditVendorProps {
     vendorData?: Partial<{
         ID: number;
@@ -18,9 +21,15 @@ interface EditVendorProps {
         email: string;
         tel: string;
         fax_no: string;
+        city: string;
+        country: string;
+        currency_code: string;
+        zip_code: string;
+        addr1: string;
+        addr2: string;
     }>;
     //onConfirm?: (data: { vendorId: number; vendorCode: string; vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; tel: string; faxNo: string; address1: string[]; address2: string[] }) => void;
-    onConfirm?: (data: { vendorId: number; vendorCode: string; vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; tel: string; faxNo: string }) => void;
+    onConfirm?: (data: { vendorId: number; vendorCode: string; vendorName: string; contactName: string; taxId: string; creditTerm: string; email: string; tel: string; faxNo: string; city: string; country: string; currencyCode: string; zipCode: string; addr1: string; addr2: string; }) => void;
     onCancel?: () => void;
     source?: 'ReviewedPO' | 'PRModal'; // เพิ่ม prop สำหรับระบุแหล่งที่มา
 }
@@ -33,10 +42,11 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
     const [contactName, setContactName] = useState(vendorData?.contact_name || "");
     const [taxId, setTaxId] = useState(vendorData?.tax_id || "");
     const [creditTerm, setCreditTerm] = useState(vendorData?.credit_term || "");
-    // const [city, setCity] = useState(vendorData?.city || "");
-    // const [country, setCountry] = useState(vendorData?.country || "");
-    // const [currencyCode, setCurrencyCode] = useState(vendorData?.currency_code || "");
-    // const [zipCode, setZipCode] = useState(vendorData?.zip_code || "");
+    const [city, setCity] = useState(vendorData?.city || "");
+    const [country, setCountry] = useState(vendorData?.country || "");
+    const [currencyCode, setCurrencyCode] = useState(vendorData?.currency_code || "");
+    const [zipCode, setZipCode] = useState(vendorData?.zip_code || "");
+    const [selectedCredit, setSelectedCredit] = useState("");
     // ฟังก์ชันแยกข้อมูลที่มี delimiter
     const parseMultipleValues = (value: string | undefined): string[] => {
         if (!value || value.trim() === "") return [""];
@@ -46,8 +56,9 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
     };
 
     // เปลี่ยนเป็น array สำหรับ multiple emails, tel numbers และ fax numbers
-    // const [address1, setAddress1] = useState<string>(vendorData?.address1 || "");
-    // const [address2, setAddress2] = useState<string>(vendorData?.address2 || "");
+    const [address1, setAddress1] = useState<string>(vendorData?.addr1 || "");
+    const [address2, setAddress2] = useState<string>(vendorData?.addr2 || "");
+    const [showAddress2, setShowAddress2] = useState<boolean>(!!(vendorData?.addr2 && vendorData?.addr2.trim() !== ""));
     const [emails, setEmails] = useState<string[]>(parseMultipleValues(vendorData?.email));
     const [emailErrors, setEmailErrors] = useState<string[]>(parseMultipleValues(vendorData?.email).map(() => ""));
     const [telNos, setTelNos] = useState<string[]>(parseMultipleValues(vendorData?.tel));
@@ -85,12 +96,16 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
 
     const currentTheme = themeColors[source];
 
-    // sync state with vendorData when modal opens or vendorData changes
+    // sync state with vendorData when modal opens or vendor ID changes
     React.useEffect(() => {
         setVendorName(vendorData?.vendor_name || "");
         setContactName(vendorData?.contact_name || "");
         setTaxId(vendorData?.tax_id || "");
         setCreditTerm(vendorData?.credit_term || "");
+
+        setAddress1(vendorData?.addr1 || "");
+        setAddress2(vendorData?.addr2 || "");
+        setShowAddress2(!!(vendorData?.addr2 && vendorData?.addr2.trim() !== ""));
 
         const parsedEmails = parseMultipleValues(vendorData?.email);
         const parsedTels = parseMultipleValues(vendorData?.tel);
@@ -100,7 +115,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
         setEmailErrors(parsedEmails.map(() => ""));
         setTelNos(parsedTels);
         setFaxNos(parsedFaxes);
-    }, [vendorData]);
+    }, [vendorData?.ID]);
 
     // ฟังก์ชันสำหรับจัดการ multiple emails
     const addEmail = () => {
@@ -174,11 +189,16 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
             contact_name: contactName,
             tax_id: taxId,
             credit_term: creditTerm,
+            city: city,
+            country: country,
+            cur_code: currencyCode,
+            zip: zipCode,
+            addr1: address1 ? address1.trim() : "",
+            addr2: showAddress2 && address2 ? address2.trim() : "",
             email: emails.filter(e => e.trim()).join(", "), // รวม emails ที่ไม่ว่างด้วย comma
             tel_no: telNos.filter(t => t.trim()).join(", "), // รวม tel nos ที่ไม่ว่างด้วย comma
             fax_no: faxNos.filter(f => f.trim()).join(", ") // รวม fax nos ที่ไม่ว่างด้วย comma
         };
-        // console.log("Token: ", token);
         // console.log("Submitting data:", body);
         try {
             const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/update-vendor`, {
@@ -207,7 +227,13 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                     creditTerm,
                     email: emails.filter(e => e.trim()).join(", "),
                     tel: telNos.filter(t => t.trim()).join(", "),
-                    faxNo: faxNos.filter(f => f.trim()).join(", ")
+                    faxNo: faxNos.filter(f => f.trim()).join(", "),
+                    city,
+                    country,
+                    currencyCode,
+                    zipCode,
+                    addr1: address1 ? address1.trim() : "",
+                    addr2: showAddress2 && address2 ? address2.trim() : "",
                 });
                 alert('แก้ไข Vendor สำเร็จ');
                 if (onCancel) onCancel();
@@ -221,9 +247,36 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
         }
     }
 
+    const creditOptions = [
+        { key: "10 วัน D/D", label: "1. 10 วัน D/D" },
+        { key: "15 วัน D/D POST", label: "2. 15 วัน D/D POST" },
+        { key: "2%Dis. WITH T/T", label: "3. 2%Dis. WITH T/T" },
+        { key: "30 D/M ตัด 25", label: "4. 30 D/M ตัด 25" },
+        { key: "30 วัน D/D", label: "5. 30 วัน D/D" },
+        { key: "30 วัน D/D POST", label: "6. 30 วัน D/D POST" },
+        { key: "30 วัน D/M", label: "7. 30 วัน D/M" },
+        { key: "30 วัน D/M POST", label: "8. 30 วัน D/M POST" },
+        { key: "45 D/M ตัด 25", label: "9. 45 D/M ตัด 25" },
+        { key: "60 D/M ตัด 1-15", label: "10. 60 D/M ตัด 1-15" },
+        { key: "60 D/M ตัด 25", label: "11. 60 D/M ตัด 25" },
+        { key: "60 D/M ตัด 16-30", label: "12. 60 D/M ตัด 16-30" },
+        { key: "60 วัน D/D", label: "13. 60 วัน D/D" },
+        { key: "60 วัน D/M", label: "14. 60 วัน D/M" },
+        { key: "60 วัน D/M POST", label: "15. 60 วัน D/M POST" },
+        { key: "7 วัน D/D", label: "16. 7 วัน D/D" },
+        { key: "90 D/M ตัด 25", label: "17. 90 D/M ตัด 25" },
+        { key: "90 วัน D/M", label: "18. 90 วัน D/M" },
+        { key: "EX-WORK", label: "19. EX-WORK" },
+        { key: "FOB", label: "20. FOB" },
+        { key: "L/C AT SIGHT", label: "21. L/C AT SIGHT" },
+        { key: "NET-10", label: "22. NET-10" },
+        { key: "เงินสด", label: "23. เงินสด" },
+        { key: "ตามเงื่อนไข", label: "24. ตามเงื่อนไข" }
+    ];
+
     return (
         <>
-            <style jsx>{`
+            <style jsx global>{`
               .smooth-scroll {
                 scroll-behavior: smooth !important;
                 -webkit-overflow-scrolling: touch;
@@ -236,41 +289,41 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
               }
                         
               .custom-scrollbar-dark::-webkit-scrollbar {
-                width: 10px;
-                height: 12px;
+                width: 10px !important;
+                height: 12px !important;
               }
               .custom-scrollbar-dark::-webkit-scrollbar-track {
-                background: #1e293b;
-                border-radius: 10px;
+                background: #1e293b !important;
+                border-radius: 10px !important;
               }
               .custom-scrollbar-dark::-webkit-scrollbar-thumb {
-                background: #475569;
-                border-radius: 10px;
-                border: 2px solid #1e293b;
-                transition: background 0.15s ease;
+                background: #475569 !important;
+                border-radius: 10px !important;
+                border: 2px solid #1e293b !important;
+                transition: background 0.15s ease !important;
               }
               .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
-                background: #64748b;
-                border: 2px solid #334155;
+                background: #64748b !important;
+                border: 2px solid #334155 !important;
               }
                         
               .custom-scrollbar-light::-webkit-scrollbar {
-                width: 12px;
-                height: 12px;
+                width: 12px !important;
+                height: 12px !important;
               }
               .custom-scrollbar-light::-webkit-scrollbar-track {
-                background: #f1f5f9;
-                border-radius: 10px;
+                background: #f1f5f9 !important;
+                border-radius: 10px !important;
               }
               .custom-scrollbar-light::-webkit-scrollbar-thumb {
-                background: #cbd5e1;
-                border-radius: 10px;
-                border: 2px solid #f1f5f9;
-                transition: background 0.15s ease;
+                background: #cbd5e1 !important;
+                border-radius: 10px !important;
+                border: 2px solid #f1f5f9 !important;
+                transition: background 0.15s ease !important;
               }
               .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
-                background: #94a3b8;
-                border: 2px solid #e2e8f0;
+                background: #94a3b8 !important;
+                border: 2px solid #e2e8f0 !important;
               }
             `}</style>
             <div
@@ -399,7 +452,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
                                             Credit Term
                                         </label>
-                                        <input
+                                        {/* <input
                                             type="text"
                                             className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
                                                 ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
@@ -408,9 +461,79 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                             value={creditTerm}
                                             onChange={e => setCreditTerm(e.target.value)}
                                             placeholder="เครดิตเทอม"
-                                        />
+                                        /> */}
+                                        <Select
+                                            placeholder="-- กรุณาเลือกเครดิตเทอม --"
+                                            classNames={{
+                                                trigger: [
+                                                    "w-full",
+                                                    "px-4",
+                                                    "py-3.5",
+                                                    "!h-auto",
+                                                    "border",
+                                                    "rounded-lg",
+                                                    "transition-all",
+                                                    "shadow-sm",
+                                                    "hover:shadow-md",
+                                                    "text-sm",
+                                                    "font-medium",
+                                                    "cursor-pointer",
+                                                    selectedCredit
+                                                        ? isDarkMode
+                                                            ? "border-red-500/70 focus:ring-red-500 focus:border-red-500 bg-slate-700/50 text-slate-100"
+                                                            : "border-red-400 focus:ring-red-500 focus:border-red-500 bg-white text-gray-900"
+                                                        : isDarkMode
+                                                            ? `border-slate-600/50 bg-slate-700/50 text-slate-100 shadow-slate-800/20 hover:shadow-slate-700/30 ${currentTheme.focus} ${currentTheme.focusBorder}`
+                                                            : `border-gray-300 bg-white text-gray-900 ${currentTheme.focus} ${currentTheme.focusBorder}`
+                                                ],
+                                                value: "text-sm font-medium",
+                                                selectorIcon: [
+                                                    "right-4",
+                                                    "text-indigo-500"
+                                                ],
+                                                listboxWrapper: [
+                                                    "max-h-[300px]",
+                                                    isDarkMode ? "custom-scrollbar-dark" : "custom-scrollbar-light"
+                                                ],
+                                                popoverContent: [
+                                                    "rounded-lg",
+                                                    "shadow-xl",
+                                                    "border",
+                                                    isDarkMode
+                                                        ? "bg-slate-800 border-slate-600 custom-scrollbar-dark"
+                                                        : "bg-white border-gray-300 custom-scrollbar-light",
+                                                ],
+                                                listbox: [
+                                                    isDarkMode ? "custom-scrollbar-dark" : "custom-scrollbar-light"
+                                                ],
+                                            }}
+                                            variant="bordered"
+                                            size="lg"
+                                            radius="lg"
+                                            scrollShadowProps={{
+                                                isEnabled: true
+                                            }}
+                                            selectedKeys={selectedCredit ? [selectedCredit] : creditTerm ? [creditTerm] : []}
+                                            onSelectionChange={(keys) => {
+                                                const selected = Array.from(keys)[0] as string | undefined;
+                                                setSelectedCredit(selected ?? "");
+                                                setCreditTerm(selected ?? "");
+                                            }}
+                                        >
+                                            {creditOptions.map((option) => (
+                                                <SelectItem
+                                                    key={option.key}
+                                                    className={`rounded-md my-0.5 px-3 py-2 ${isDarkMode
+                                                        ? "text-slate-200 hover:bg-indigo-500/10 data-[selected=true]:bg-indigo-500/20 data-[selected=true]:text-indigo-300"
+                                                        : "text-gray-900 hover:bg-indigo-50 data-[selected=true]:bg-indigo-100 data-[selected=true]:text-indigo-700"
+                                                        }`}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </Select>
                                     </div>
-                                    {/* <div className="space-y-2">
+                                    <div className="space-y-2">
                                         <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
                                             }`}>
                                             <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
@@ -477,7 +600,7 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                             onChange={e => setZipCode(e.target.value)}
                                             placeholder="รหัสไปรษณีย์"
                                         />
-                                    </div> */}
+                                    </div>
                                 </div>
                                 {/* <div className="space-y-2">
                                     <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
@@ -491,11 +614,86 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                             ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400 shadow-slate-800/20 hover:shadow-slate-700/30'
                                             : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
                                             }`}
-                                        value={address}
-                                        onChange={e => setAddress(e.target.value)}
+                                        value={address1}
+                                        onChange={e => setAddress1(e.target.value)}
                                         placeholder="ที่อยู่"
                                     />
                                 </div> */}
+                                <div className="space-y-3">
+                                    <label className={`block text-sm font-medium flex items-center gap-2 ${isDarkMode ? 'text-slate-200' : 'text-gray-700'
+                                        }`}>
+                                        <span className={`w-2 h-2 rounded-full ${currentTheme.accent}`}></span>
+                                        Address
+                                    </label>
+                                    <div className="space-y-2">
+                                        <div className="flex gap-2 items-center">
+                                            <div className="flex-1">
+                                                <input
+                                                    type="text"
+                                                    className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                        ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                        : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                        }`}
+                                                    value={address1}
+                                                    onChange={e => setAddress1(e.target.value)}
+                                                    placeholder="ที่อยู่ 1"
+                                                />
+                                            </div>
+                                            <div className="flex gap-1">
+                                                {!showAddress2 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setShowAddress2(true);
+                                                            if (!address2) {
+                                                                setAddress2("");
+                                                            }
+                                                        }}
+                                                        disabled={!address1 || address1.trim() === ""}
+                                                        className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!address1 || address1.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {showAddress2 && (
+                                            <div className="flex gap-2 items-center">
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="text"
+                                                        className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md text-sm ${currentTheme.focus} ${currentTheme.focusBorder} ${isDarkMode
+                                                            ? 'border-slate-600/50 bg-slate-700/50 text-slate-100 placeholder-slate-400'
+                                                            : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                                                            }`}
+                                                        value={address2}
+                                                        onChange={e => setAddress2(e.target.value)}
+                                                        placeholder="ที่อยู่ 2"
+                                                    />
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setShowAddress2(false);
+                                                            setAddress2("");
+                                                        }}
+                                                        className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${isDarkMode
+                                                            ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                                                            : 'bg-red-500 hover:bg-red-600 text-white'
+                                                            } shadow-sm hover:shadow-md text-xs`}
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Contact Information Section */}
@@ -545,7 +743,8 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                             <button
                                                                 type="button"
                                                                 onClick={addEmail}
-                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                                disabled={!email || email.trim() === ""}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!email || email.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -599,7 +798,8 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                             <button
                                                                 type="button"
                                                                 onClick={addTelNo}
-                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                                disabled={!telNo || telNo.trim() === ""}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!telNo || telNo.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -653,7 +853,8 @@ const EditVendor: React.FC<EditVendorProps> = ({ vendorData, onConfirm, onCancel
                                                             <button
                                                                 type="button"
                                                                 onClick={addFaxNo}
-                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs`}
+                                                                disabled={!faxNo || faxNo.trim() === ""}
+                                                                className={`w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-105 ${currentTheme.button} text-white shadow-sm hover:shadow-md text-xs ${(!faxNo || faxNo.trim() === "") ? "opacity-50 cursor-not-allowed" : ""}`}
                                                             >
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

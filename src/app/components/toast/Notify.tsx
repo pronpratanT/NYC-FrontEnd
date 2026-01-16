@@ -16,6 +16,8 @@ import { PiWarningBold } from "react-icons/pi";
 
 type ToastType = "notify" | "pdf";
 
+type PDFStatus = "success" | "error" | undefined;
+
 type Toast = {
     id: number;
     title: string;
@@ -27,14 +29,16 @@ type Toast = {
     exiting?: boolean;
     type: ToastType;
     loading?: boolean; // สำหรับ PDF toast ระหว่างประมวลผล
+    pdfStatus?: PDFStatus; // เพิ่มสถานะ error/success สำหรับ PDF toast
 };
 
 type ToastContextType = {
     // Toast ปกติจากระบบแจ้งเตือน
     showToast: (title: string, message: string, related_type: string) => void;
-    // Toast สำหรับงาน PDF (แสดง spinner แล้วเปลี่ยนเป็น success)
+    // Toast สำหรับงาน PDF (แสดง spinner แล้วเปลี่ยนเป็น success/error)
     showPDFToast: (title: string, message: string, loading?: boolean) => number;
     setPDFToastSuccess: (id: number, message?: string) => void;
+    setPDFToastError: (id: number, message?: string) => void;
 };
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -72,6 +76,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         setToasts(prev => [...prev, toast]);
     }, []);
 
+
     // Toast สำหรับ PDF: ใช้ array เดียวกัน แต่มีสถานะ loading
     const showPDFToast = useCallback((title: string, message: string, loading?: boolean) => {
         counterRef.current += 1;
@@ -87,10 +92,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             exiting: false,
             type: "pdf",
             loading: !!loading,
+            pdfStatus: undefined,
         };
         setToasts(prev => [...prev, toast]);
         return id;
     }, []);
+
 
     const setPDFToastSuccess = useCallback((id: number, message?: string) => {
         setToasts(prev =>
@@ -100,8 +107,27 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         ...t,
                         type: "pdf",
                         loading: false,
+                        pdfStatus: "success",
                         message: message ?? t.message,
                         // เริ่มนับถอยหลังใหม่หลังจากสำเร็จ
+                        remainingTime: TOAST_DURATION,
+                    }
+                    : t
+            )
+        );
+    }, []);
+
+    // เพิ่มฟังก์ชัน error สำหรับ PDF toast
+    const setPDFToastError = useCallback((id: number, message?: string) => {
+        setToasts(prev =>
+            prev.map(t =>
+                t.id === id
+                    ? {
+                        ...t,
+                        type: "pdf",
+                        loading: false,
+                        pdfStatus: "error",
+                        message: message ?? t.message,
                         remainingTime: TOAST_DURATION,
                     }
                     : t
@@ -192,7 +218,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <ToastContext.Provider value={{ showToast, showPDFToast, setPDFToastSuccess }}>
+        <ToastContext.Provider value={{ showToast, showPDFToast, setPDFToastSuccess, setPDFToastError }}>
             {children}
             {/* Toast container bottom-right */}
             <div
@@ -212,11 +238,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     let border = "2px solid rgba(34, 197, 94, 0.4)"; // icon border
                     let iconBg = isDarkMode ? "rgba(34, 197, 94, 0.16)" : "rgba(34, 197, 94, 0.08)";
                     // พื้นหลังการ์ดและสีขอบแบบเรียบง่าย ใกล้เคียงดีไซน์ตัวอย่าง
-                    let background = isDarkMode ? "#0d1320" : "#FFFFFF";
+                    const background = isDarkMode ? "#0d1320" : "#FFFFFF";
                     let cardBorderColor = isDarkMode ? "rgba(55, 65, 81, 1)" : "rgba(209, 213, 219, 1)";
                     let bar = "linear-gradient(90deg, #22c55e 0%, #22c55e 100%)";
 
-                    // PDF toast: ใช้สี/ไอคอนเฉพาะ (spinner -> success)
+                    // PDF toast: ใช้สี/ไอคอนเฉพาะ (spinner -> success/error)
                     if (toast.type === "pdf") {
                         if (toast.loading) {
                             icon = <IoReloadOutline className="w-7 h-7 text-sky-500 toast-loading-spin" />;
@@ -224,12 +250,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             iconBg = isDarkMode ? "rgba(56, 189, 248, 0.24)" : "rgba(56, 189, 248, 0.12)";
                             cardBorderColor = isDarkMode ? "rgba(56, 189, 248, 0.7)" : "rgba(56, 189, 248, 0.7)";
                             bar = "#0ea5e9";
+                        } else if (toast.pdfStatus === "error") {
+                            icon = <PiXCircleBold className="w-7 h-7 text-red-500" />;
+                            border = "2px solid rgba(239, 68, 68, 0.6)";
+                            iconBg = isDarkMode ? "rgba(239, 68, 68, 0.24)" : "rgba(248, 113, 113, 0.12)";
+                            cardBorderColor = isDarkMode ? "rgba(248, 113, 113, 0.7)" : "rgba(248, 113, 113, 0.7)";
+                            bar = "#fb2c36";
                         } else {
-                            icon = <PiCheckCircleBold className="w-7 h-7 text-sky-500" />;
-                            border = "2px solid rgba(56, 189, 248, 0.6)";
-                            iconBg = isDarkMode ? "rgba(56, 189, 248, 0.24)" : "rgba(56, 189, 248, 0.12)";
-                            cardBorderColor = isDarkMode ? "rgba(56, 189, 248, 0.7)" : "rgba(56, 189, 248, 0.7)";
-                            bar = "#0ea5e9";
+                            icon = <PiCheckCircleBold className="w-7 h-7 text-green-500" />;
+                            border = "2px solid rgba(56, 248, 98, 0.6)";
+                            iconBg = isDarkMode ? "rgba(56, 248, 98, 0.24)" : "rgba(56, 248, 98, 0.12)";
+                            cardBorderColor = isDarkMode ? "rgba(56, 248, 98, 0.7)" : "rgba(56, 248, 98, 0.7)";
+                            bar = "#00c950";
                         }
                     } else if (toast.message.includes("มีการอนุมัติ") || toast.message.includes("รายการเปรียบเทียบราคาของท่านได้รับการอนุมัติ") || toast.message.includes("มีการอนุมัติคำขอแก้ไข")) {
                         icon = <PiCheckCircleBold className="w-7 h-7 text-green-500" />;

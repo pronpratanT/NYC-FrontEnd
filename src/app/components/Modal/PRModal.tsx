@@ -12,9 +12,12 @@ import "@/app/styles/react-datepicker-orange.css";
 import { useToken } from "../../context/TokenContext";
 import { useUser } from '../../context/UserContext';
 import { useTheme } from "../ThemeProvider";
+import { useToast } from "../toast/Notify";
 
 // heroui
 import { Tooltip } from "@heroui/react";
+import { Select, SelectSection, SelectItem } from "@heroui/select";
+import { Input } from "@heroui/input";
 
 // calendar
 import '@/app/styles/react-datepicker-dark.css';
@@ -182,6 +185,7 @@ export interface PriceHistoryItem {
 }
 
 const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate, qty, unit, pr_list_id, pr_id, onClose, onSuccess }) => {
+  const { showToast, showPDFToast, setPDFToastSuccess, setPDFToastError } = useToast();
   // Move hoveredPoint and mouseX state to top-level
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const [mouseX, setMouseX] = useState<number | null>(null);
@@ -1681,6 +1685,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
       return;
     }
+    // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+    const toastId = showPDFToast(
+      `Preview PDF ${partNo}`,
+      `กำลังสร้างตัวอย่างไฟล์ PDF เปรียบเทียบ รายการ ${partNo} กรุณารอสักครู่...`,
+      true // loading = true
+    );
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_compare/${partNo}/${pr_list_id}`, {
         method: 'GET',
@@ -1691,10 +1701,17 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       const objectUrl = URL.createObjectURL(blob);
       window.open(objectUrl, '_blank', 'noopener');
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+      // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ (PiCheckCircleBold)
+      setPDFToastSuccess(
+        toastId,
+        `เปิดตัวอย่างไฟล์ PDF เปรียบเทียบ รายการ ${partNo} สำเร็จแล้ว`
+      );
     } catch (err) {
       console.error('previewComparePdf error:', err);
-      // Fallback (เปิดแบบมี token ใน URL หาก backend ยังไม่รองรับ Authorization)
-      // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview-pr/${pr_no}/${endpointType}?token=${token}`, '_blank');
+      setPDFToastError(
+        toastId,
+        `ไม่สามารถเปิดตัวอย่างไฟล์ PDF เปรียบเทียบ รายการ ${partNo} ได้ กรุณาลองใหม่อีกครั้ง`
+      );
     }
   }
 
@@ -1704,6 +1721,12 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
       return;
     }
+    // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+    const toastId = showPDFToast(
+      `Preview PDF ${partNo}`,
+      `กำลังสร้างตัวอย่างไฟล์ PDF เปรียบเทียบ รายการ ${partNo} กรุณารอสักครู่...`,
+      true // loading = true
+    );
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_compare/${partNo}/${pr_list_id}`, {
         method: 'GET',
@@ -1723,65 +1746,103 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 60000);
+      // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ (PiCheckCircleBold)
+      setPDFToastSuccess(
+        toastId,
+        `เปิดตัวอย่างไฟล์ PDF เปรียบเทียบ รายการ ${partNo} สำเร็จแล้ว`
+      );
     } catch (err) {
       console.error('downloadComparePdf error:', err);
-      // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
-      // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${pr_id}/${token}`, '_blank', 'noopener');
+      setPDFToastError(
+        toastId,
+        `ไม่สามารถเปิดตัวอย่างไฟล์ PDF เปรียบเทียบ รายการ ${partNo} ได้ กรุณาลองใหม่อีกครั้ง`
+      );
     }
   }
 
+  const reasonOptions = [
+    { key: "1", label: "1. ราคาถูก มีสินค้าส่งมอบได้เลย" },
+    { key: "2", label: "2. ราคาแพงกว่า แต่มีสินค้าส่งมอบและรอไม่ได้" },
+    { key: "3", label: "3. มีผู้ขาย / ผู้ผลิตรายเดียว" },
+    { key: "4", label: "4. ราคาแพงกว่า คุณภาพดีกว่า" },
+    { key: "5", label: "5. ราคาเท่ากัน มีเครดิตยาวกว่า" },
+    { key: "6", label: "6. ราคาแพงกว่า แต่ส่งให้ ไม่ต้องไปรับ" },
+    { key: "7", label: "7. ราคาเท่ากัน ส่งเร็วกว่า (ส่งถึงที่)" },
+    { key: "8", label: "8. ราคาแพงกว่า แต่เป็นชุดเดียวกัน แยกสั่งไม่ได้" },
+    { key: "9", label: "9. ราคาเท่ากัน แบ่งสั่ง" },
+    { key: "10", label: "10. ต้องการด่วน รอเทียบราคาไม่ได้" },
+    { key: "11", label: "11. อื่นๆ" }
+  ];
+
+  const rowsPerPageOptions = [
+    { key: "10", label: "10 per page" },
+    { key: "25", label: "25 per page" },
+    { key: "50", label: "50 per page" }
+  ];
+
   return (
     <>
-      <style jsx>{`
-              .smooth-scroll {
-                scroll-behavior: smooth !important;
-                -webkit-overflow-scrolling: touch;
-                overscroll-behavior: contain;
-                will-change: scroll-position;
-              }
-                        
-              .smooth-scroll > * {
-                transition: transform 0.1s ease-out;
-              }
-                        
-              .custom-scrollbar-dark::-webkit-scrollbar {
-                width: 10px;
-                height: 12px;
-              }
-              .custom-scrollbar-dark::-webkit-scrollbar-track {
-                background: #1e293b;
-                border-radius: 10px;
-              }
-              .custom-scrollbar-dark::-webkit-scrollbar-thumb {
-                background: #475569;
-                border-radius: 10px;
-                border: 2px solid #1e293b;
-                transition: background 0.15s ease;
-              }
-              .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
-                background: #64748b;
-                border: 2px solid #334155;
-              }
-                        
-              .custom-scrollbar-light::-webkit-scrollbar {
-                width: 12px;
-                height: 12px;
-              }
-              .custom-scrollbar-light::-webkit-scrollbar-track {
-                background: #f1f5f9;
-                border-radius: 10px;
-              }
-              .custom-scrollbar-light::-webkit-scrollbar-thumb {
-                background: #cbd5e1;
-                border-radius: 10px;
-                border: 2px solid #f1f5f9;
-                transition: background 0.15s ease;
-              }
-              .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
-                background: #94a3b8;
-                border: 2px solid #e2e8f0;
-              }
-            `}</style>
+      <style jsx global>{`
+        .smooth-scroll {
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+          will-change: scroll-position;
+        }
+                  
+        .smooth-scroll > * {
+          transition: transform 0.1s ease-out;
+        }
+                  
+        .custom-scrollbar-dark::-webkit-scrollbar {
+          width: 10px;
+          height: 12px;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-track {
+          background: #1e293b;
+          border-radius: 10px;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+          background: #475569;
+          border-radius: 10px;
+          border: 2px solid #1e293b;
+          transition: background 0.15s ease;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+          background: #64748b;
+          border: 2px solid #334155;
+        }
+                  
+        .custom-scrollbar-light::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+        .custom-scrollbar-light::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        .custom-scrollbar-light::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+          border: 2px solid #f1f5f9;
+          transition: background 0.15s ease;
+        }
+        .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+          border: 2px solid #e2e8f0;
+        }
+
+        /* Firefox scrollbar support */
+        .custom-scrollbar-dark {
+          scrollbar-width: thin;
+          scrollbar-color: #475569 #1e293b;
+        }
+        
+        .custom-scrollbar-light {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+      `}</style>
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-slate-900/60 via-gray-900/40 to-slate-800/60 backdrop-blur-sm"
         onClick={onClose}
@@ -3294,7 +3355,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                   <div className={`flex justify-end items-center py-3 px-4 border-t ${isDarkMode ? 'border-slate-700 bg-slate-800/90' : 'border-slate-200 bg-white'}`}>
                     {/* Left side - Rows per page dropdown */}
                     <div className="flex items-center space-x-2 text-sm text-slate-500 pr-2">
-                      <select
+                      {/* <select
                         value={rowsPerPage}
                         onChange={(e) => {
                           setRowsPerPage(Number(e.target.value));
@@ -3305,8 +3366,60 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                         <option value={10}>10 per page</option>
                         <option value={25}>25 per page</option>
                         <option value={50}>50 per page</option>
-                        {/* <option value={100}>100 per page</option> */}
-                      </select>
+                      </select> */}
+                      <Select
+                        classNames={{
+                          base: "w-35",
+                          trigger: [
+                            "px-3",
+                            "py-1.5",
+                            "min-h-[2.2rem]",
+                            "text-sm",
+                            "rounded",
+                            "border",
+                            "shadow-sm",
+                            "transition-colors",
+                            isDarkMode
+                              ? "bg-slate-800 border-slate-600 text-slate-200 focus:border-slate-500 hover:border-slate-500"
+                              : "bg-white border-slate-300 text-slate-700 focus:border-slate-400 hover:border-slate-400",
+                          ],
+                          value: "text-sm",
+                          selectorIcon: [
+                            "right-2",
+                            isDarkMode ? "text-slate-400" : "text-slate-500"
+                          ],
+                          popoverContent: [
+                            "rounded-lg",
+                            "shadow-lg",
+                            isDarkMode
+                              ? "bg-slate-900 border-slate-600"
+                              : "bg-white border-slate-300",
+                          ],
+                        }}
+                        variant="bordered"
+                        size="sm"
+                        radius="sm"
+                        selectedKeys={[String(rowsPerPage)]}
+                        onSelectionChange={(keys) => {
+                          const selected = Array.from(keys)[0] as string | undefined;
+                          if (selected) {
+                            setRowsPerPage(Number(selected));
+                            setPurchasePage(1);
+                          }
+                        }}
+                      >
+                        {rowsPerPageOptions.map((option) => (
+                          <SelectItem
+                            key={option.key}
+                            className={`rounded-md my-0.5 px-2 py-1.5 ${isDarkMode
+                              ? "text-slate-200 hover:bg-slate-700 data-[selected=true]:bg-slate-700 data-[selected=true]:text-slate-100"
+                              : "text-slate-700 hover:bg-slate-100 data-[selected=true]:bg-slate-100 data-[selected=true]:text-slate-900"
+                              }`}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </Select>
                     </div>
 
                     {/* Right side - Combined pagination info and navigation */}
@@ -4708,7 +4821,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     </table>
                   </div>
                   {/* Pagination controls - Outside scrollable area */}
-                  <div className={`flex items-center py-2 px-4 border-t shrink-0 ${isDarkMode ? 'border-slate-700 bg-slate-800/90' : 'border-slate-200 bg-white'}`}>
+                  <div className={`flex items-center py-3 px-4 border-t shrink-0 ${isDarkMode ? 'border-slate-700 bg-slate-800/90' : 'border-slate-200 bg-white'}`}>
                     {/* ปุ่มเพิ่ม Vendor ซ้ายสุด */}
                     <div className="w-full md:w-96 relative">
                       <div className="relative w-full">
@@ -4797,7 +4910,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                     <div className="flex items-center ml-auto">
                       {/* Dropdown เลือกจำนวนแถว */}
                       <div className="flex items-center space-x-2 text-sm text-slate-500 pr-2">
-                        <select
+                        {/* <select
                           value={rowsPerPage}
                           onChange={(e) => {
                             setRowsPerPage(Number(e.target.value));
@@ -4808,8 +4921,60 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                           <option value={10}>10 per page</option>
                           <option value={25}>25 per page</option>
                           <option value={50}>50 per page</option>
-                          {/* <option value={100}>100 per page</option> */}
-                        </select>
+                        </select> */}
+                        <Select
+                          classNames={{
+                            base: "w-35",
+                            trigger: [
+                              "px-3",
+                              "py-1.5",
+                              "min-h-[2.2rem]",
+                              "text-sm",
+                              "rounded",
+                              "border",
+                              "shadow-sm",
+                              "transition-colors",
+                              isDarkMode
+                                ? "bg-slate-800 border-slate-600 text-slate-200 focus:border-slate-500 hover:border-slate-500"
+                                : "bg-white border-slate-300 text-slate-700 focus:border-slate-400 hover:border-slate-400",
+                            ],
+                            value: "text-sm",
+                            selectorIcon: [
+                              "right-2",
+                              isDarkMode ? "text-slate-400" : "text-slate-500"
+                            ],
+                            popoverContent: [
+                              "rounded-lg",
+                              "shadow-lg",
+                              isDarkMode
+                                ? "bg-slate-900 border-slate-600"
+                                : "bg-white border-slate-300",
+                            ],
+                          }}
+                          variant="bordered"
+                          size="sm"
+                          radius="sm"
+                          selectedKeys={[String(rowsPerPage)]}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string | undefined;
+                            if (selected) {
+                              setRowsPerPage(Number(selected));
+                              setPurchasePage(1);
+                            }
+                          }}
+                        >
+                          {rowsPerPageOptions.map((option) => (
+                            <SelectItem
+                              key={option.key}
+                              className={`rounded-md my-0.5 px-2 py-1.5 ${isDarkMode
+                                ? "text-slate-200 hover:bg-slate-700 data-[selected=true]:bg-slate-700 data-[selected=true]:text-slate-100"
+                                : "text-slate-700 hover:bg-slate-100 data-[selected=true]:bg-slate-100 data-[selected=true]:text-slate-900"
+                                }`}
+                            >
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </Select>
                       </div>
                       {/* Pagination info และปุ่มเลื่อนหน้า */}
                       <div className={`flex items-center border rounded shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
@@ -4917,6 +5082,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           : qtyValue || '-'}
                                         {(roleID === 4 || roleID === 5) && (
                                           <button
+                                            aria-label="แก้ไขจำนวน"
                                             type="button"
                                             className={`ml-2 px-2 py-1 rounded text-xs font-normal border ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
                                             onClick={() => setEditingQty(true)}
@@ -4937,6 +5103,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           style={{ marginRight: 8 }}
                                         />
                                         <button
+                                          aria-label="บันทึกจำนวน"
                                           type="button"
                                           className={`px-1.5 py-1 cursor-pointer rounded text-xs font-normal border ${isDarkMode ? 'border-green-600 text-green-300 hover:bg-green-900/30' : 'border-green-300 text-green-700 hover:bg-green-50'}`}
                                           onClick={() => {
@@ -4948,6 +5115,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           <FaSave className="inline-block text-lg align-middle" />
                                         </button>
                                         <button
+                                          aria-label="ยกเลิกแก้ไขจำนวน"
                                           type="button"
                                           className={`px-1.5 py-1 cursor-pointer rounded text-xs font-normal border ${isDarkMode ? 'border-red-600 text-red-300 hover:bg-red-900/30' : 'border-red-300 text-red-700 hover:bg-red-50'}`}
                                           onClick={() => {
@@ -4998,7 +5166,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                               <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>
                                 เลือกเหตุผลหลัก
                               </label>
-                              <select
+                              {/* <select
                                 value={selectedReason}
                                 onChange={(e) => {
                                   setSelectedReason(e.target.value);
@@ -5038,12 +5206,125 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                     placeholder="กรุณาระบุเหตุผลของคุณ"
                                   />
                                 </div>
+                              )} */}
+                              <Select
+                                placeholder="-- กรุณาเลือกเหตุผลในการเลือกผู้ขาย --"
+                                classNames={{
+                                  base: "w-full",
+                                  label: "font-semibold text-sm",
+                                  trigger: [
+                                    "p-4",
+                                    "min-h-[3.5rem]",
+                                    "text-sm",
+                                    "font-medium",
+                                    "rounded-xl",
+                                    "border-2",
+                                    "transition-all",
+                                    "duration-200",
+                                    isDarkMode
+                                      ? "bg-slate-800 border-indigo-600 text-slate-200 focus:border-indigo-400 hover:border-indigo-500"
+                                      : "bg-white border-indigo-200 text-slate-700 focus:border-indigo-500 hover:border-indigo-300",
+                                  ],
+                                  value: "text-sm font-medium",
+                                  mainWrapper: "w-full",
+                                  innerWrapper: "pr-0",
+                                  selectorIcon: [
+                                    "right-4",
+                                    "text-indigo-500"
+                                  ],
+                                  listboxWrapper: [
+                                    "max-h-[400px]",
+                                    isDarkMode ? "custom-scrollbar-dark" : "custom-scrollbar-light"
+                                  ],
+                                  popoverContent: [
+                                    "rounded-xl",
+                                    "shadow-xl",
+                                    "border-2",
+                                    isDarkMode
+                                      ? "bg-slate-800 border-indigo-600"
+                                      : "bg-white border-indigo-200",
+                                  ],
+                                }}
+                                variant="bordered"
+                                size="lg"
+                                radius="lg"
+                                scrollShadowProps={{
+                                  isEnabled: true
+                                }}
+                                selectedKeys={selectedReason ? [selectedReason] : []}
+                                onSelectionChange={(keys) => {
+                                  const selected = Array.from(keys)[0] as string | undefined;
+                                  setSelectedReason(selected ?? "");
+                                  if (selected !== "11") setCustomReason("");
+                                }}
+                              >
+                                {reasonOptions.map((reason) => (
+                                  <SelectItem
+                                    key={reason.key}
+                                    className={`rounded-lg my-1 px-3 py-2 ${isDarkMode
+                                      ? "text-slate-200 hover:bg-slate-700/50 data-[selected=true]:bg-indigo-500/20 data-[selected=true]:text-indigo-300"
+                                      : "text-slate-700 hover:bg-indigo-50 data-[selected=true]:bg-indigo-100 data-[selected=true]:text-indigo-700"
+                                      }`}
+                                  >
+                                    {reason.label}
+                                  </SelectItem>
+                                ))}
+                              </Select>
+
+                              {selectedReason === "11" && (
+                                <div className="mt-4">
+                                  <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>
+                                    โปรดระบุเหตุผลเพิ่มเติม
+                                  </label>
+                                  <Input
+                                    type="text"
+                                    value={customReason}
+                                    onChange={(e) => setCustomReason(e.target.value)}
+                                    placeholder="กรุณาระบุเหตุผลของคุณ"
+                                    classNames={{
+                                      base: "w-full",
+                                      inputWrapper: [
+                                        "p-3",
+                                        "border-2",
+                                        "rounded-xl",
+                                        "transition-all",
+                                        "duration-200",
+                                        isDarkMode
+                                          ? "bg-slate-800 border-indigo-600 focus-within:border-indigo-400 hover:border-indigo-500"
+                                          : "bg-white border-indigo-200 focus-within:border-indigo-500 hover:border-indigo-300",
+                                      ],
+                                      input: [
+                                        "text-sm",
+                                        "font-medium",
+                                        isDarkMode ? "text-slate-200" : "text-slate-700"
+                                      ]
+                                    }}
+                                    variant="bordered"
+                                    size="md"
+                                    radius="lg"
+                                  />
+                                </div>
+                              )}
+
+                              {selectedReason && (
+                                <div className={`p-4 rounded-xl border-2 mt-3 ${isDarkMode
+                                  ? 'bg-slate-800/50 border-indigo-600/50 text-slate-300'
+                                  : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                                  }`}>
+                                  <p className="text-sm font-semibold mb-1">เหตุผลที่เลือก:</p>
+                                  <p className="text-sm">
+                                    {selectedReason === "11"
+                                      ? customReason || "กรุณาระบุเหตุผล"
+                                      : reasonOptions.find(r => r.key === selectedReason)?.label}
+                                  </p>
+                                </div>
                               )}
                             </div>
                             {/* Action buttons */}
                             {(roleID === 4 || roleID === 5) && (
                               <div className={`flex justify-end space-x-3 mt-6 pt-4 border-t ${isDarkMode ? 'border-indigo-700/50' : 'border-indigo-200'}`}>
                                 <button
+                                  aria-label="ล้างการเลือกเหตุผล"
                                   type="button"
                                   className={`px-6 py-2.5 border-2 rounded-xl transition-all duration-200 text-sm font-semibold ${isDarkMode ? 'bg-slate-800 text-indigo-400 border-indigo-600 hover:bg-slate-700 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'}`}
                                   onClick={() => setSelectedReason("")}
@@ -5051,6 +5332,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   ล้างการเลือก
                                 </button>
                                 <button
+                                  aria-label="บันทึกเหตุผล"
                                   type="button"
                                   className={`px-6 py-2.5 bg-gradient-to-r text-white rounded-xl transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900' : 'from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'}`}
                                   disabled={!selectedReason}

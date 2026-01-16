@@ -21,6 +21,7 @@ import { useUser } from '../../../context/UserContext';
 import { useToken } from '../../../context/TokenContext';
 import { TiPlus } from "react-icons/ti";
 import CreatPartNo from '@/app/components/Modal/CreatPartNo';
+import CreatePRModal from '@/app/components/Modal/Create_PR';
 
 // hero ui
 import { Select, SelectSection, SelectItem } from "@heroui/select";
@@ -104,6 +105,9 @@ export default function TestPage() {
   const [unitData, setUnitData] = useState<string[]>([]);
   const [rempoData, setRempoData] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false)
+
+  // create PR modal
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // unit data from API
   const [unitOptions, setUnitOptions] = useState<Unit[]>([]);
@@ -411,7 +415,12 @@ export default function TestPage() {
     return true;
   }
 
-  const handleCreatePR = async () => {
+  const handleCreateClick = () => {
+    // setCreatePr(prData?.pr_no ?? null);
+    setCreateModalOpen(true);
+  };
+
+  const handleCreatePR = async (mode: "draft" | "submitted") => {
     if (!validatePRInputs()) {
       alert('กรุณากรอกข้อมูลให้ครบทุกช่องและเป็นตัวเลขที่ถูกต้อง');
       return;
@@ -419,7 +428,7 @@ export default function TestPage() {
     setIsSaving(true);
     const payload = {
       pr_date: new Date().toISOString().slice(0, 10),
-      status: 'submitted',
+      status: mode === 'draft' ? 'draft' : 'submitted',
       dept_id: user?.Department?.ID,
       pr_list: selectedParts.map((part, idx) => {
         const partInfo = partsInfo.find(p => p.part_no === part);
@@ -438,38 +447,38 @@ export default function TestPage() {
     }
     console.log("Payload to submit:", payload);
 
-    // try {
-    //   const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/create-pr`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       Authorization: `Bearer ${token}`
-    //     },
-    //     body: JSON.stringify(payload)
-    //   });
-    //   if (!res.ok) {
-    //     const errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
-    //     throw new Error(errorMsg);
-    //   }
-    //   await res.json();
-    //   alert('บันทึกข้อมูลสำเร็จ!');
-    //   // Reset form
-    //   setSelectedParts([]);
-    //   setQtyData([]);
-    //   setObjectiveData([]);
-    //   setRowDueDates([]);
-    //   setDestinationData([]);
-    //   setStockData([]);
-    //   setPriceData([]);
-    //   setUnitData([]);
-    //   setIsSaving(false);
-    //   // Redirect to /services/purchase only after success
-    //   router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase');
-    // } catch (err) {
-    //   alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-    //   console.error(err);
-    //   setIsSaving(false);
-    // }
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/create-pr`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
+        throw new Error(errorMsg);
+      }
+      await res.json();
+      alert('บันทึกข้อมูลสำเร็จ!');
+      // Reset form
+      setSelectedParts([]);
+      setQtyData([]);
+      setObjectiveData([]);
+      setRowDueDates([]);
+      setDestinationData([]);
+      setStockData([]);
+      setPriceData([]);
+      setUnitData([]);
+      setIsSaving(false);
+      // Redirect to /services/purchase only after success
+      router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      console.error(err);
+      setIsSaving(false);
+    }
   };
 
   const handleSyncInventory = async () => {
@@ -488,11 +497,11 @@ export default function TestPage() {
     } catch (error) {
       console.error("Error syncing inventory:", error);
     }
-  }
+  };
 
   const plantOptions = [
-    {key: 'Plant 1', label: 'Plant 1'},
-    {key: 'Plant 2', label: 'Plant 2'},
+    { key: 'Plant 1', label: 'Plant 1' },
+    { key: 'Plant 2', label: 'Plant 2' },
   ];
 
   return (
@@ -714,7 +723,7 @@ export default function TestPage() {
                         if (hasRealData) {
                           const globalIdx = (page - 1) * rowsPerPage + idx;
                           return (
-                            <tr key={part + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-green-50'}`}>
+                            <tr key={part + '-row-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 items-center ${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-green-50'}`}>
                               <td className="px-2 py-3 text-center w-12">
                                 <button
                                   type="button"
@@ -751,10 +760,10 @@ export default function TestPage() {
                                   placeholder="0"
                                 />
                               </td>
-                              <td className="px-2 py-3 w-20 align-middle">
+                              <td className="px-2 py-3 w-20">
                                 <input type="text" className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.unit ?? ''} readOnly />
                               </td>
-                              <td className={`px-2 py-5 whitespace-nowrap text-sm w-32 ${isDarkMode ? 'text-slate-300 border-r border-slate-700' : 'text-gray-700 border-r border-green-100'}`}>
+                              <td className={`px-2 py-5 whitespace-nowrap text-sm w-32  ${isDarkMode ? 'text-slate-300 border-r border-slate-700' : 'text-gray-700 border-r border-green-100'}`}>
                                 <div className="relative w-full">
                                   <DatePicker
                                     selected={pagedDueDates[idx]}
@@ -1146,7 +1155,8 @@ export default function TestPage() {
                 <button
                   type="button"
                   className={`px-8 py-3 rounded-xl cursor-pointer font-bold text-lg shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${isDarkMode ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white focus:ring-emerald-300/50' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-500 hover:to-green-700 text-white focus:ring-green-300'} ${(isSaving || selectedParts.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => { if (!isSaving && selectedParts.length > 0) handleCreatePR(); }}
+                  // onClick={() => { if (!isSaving && selectedParts.length > 0) handleCreatePR(); }}
+                  onClick={handleCreateClick}
                   disabled={isSaving || selectedParts.length === 0}
                 >
                   {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
@@ -1158,6 +1168,11 @@ export default function TestPage() {
         {showCreatPartNo && (
           <CreatPartNo onCancel={() => setShowCreatPartNo(false)} />
         )}
+        <CreatePRModal
+          open={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          onConfirm={(mode) => { if (!isSaving && selectedParts.length > 0) handleCreatePR(mode); }}
+        />
       </div>
     </>
   );

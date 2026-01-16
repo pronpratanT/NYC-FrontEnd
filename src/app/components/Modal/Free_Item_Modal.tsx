@@ -103,56 +103,6 @@ interface FreeItemsProps {
     onSuccess?: () => void;
 }
 
-// Custom scrollbar styles
-const scrollbarStyles = `
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #64748b #e2e8f0;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
-    border-radius: 8px;
-    border: 2px solid #f8fafc;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #64748b 0%, #475569 100%);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:active {
-    background: linear-gradient(180deg, #475569 0%, #334155 100%);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-corner {
-    background: #f8fafc;
-  }
-  
-  /* Hide scrollbar arrows/buttons */
-  .custom-scrollbar::-webkit-scrollbar-button {
-    display: none;
-  }
-  
-  /* Force scrollbar to always show */
-  .scrollbar-always {
-    overflow-y: scroll !important;
-    overflow-x: auto !important;
-  }
-`;
-
 const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess }) => {
     // ดึงรายการของแถมเดิมไว้ใช้เช็คซ้ำ (เฉพาะก่อนเครื่องหมาย |) จาก part.free_item
     const existingFreeItems = part?.free_item?.map(f => f.part_no.trim()) || [];
@@ -205,7 +155,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                 setLoading(true);
                 const keyword = search; // ใช้ search จาก input เท่านั้น
                 console.log("Searching Part No. with keyword:", keyword);
-                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(keyword)}`, { 
+                const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-part-no?keyword=${encodeURIComponent(keyword)}`, {
                     cache: "no-store",
                     headers: {
                         'Content-Type': 'application/json',
@@ -406,7 +356,56 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
 
     return (
         <>
-            <style>{scrollbarStyles}</style>
+            <style jsx>{`
+              .smooth-scroll {
+                scroll-behavior: smooth !important;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                will-change: scroll-position;
+              }
+                        
+              .smooth-scroll > * {
+                transition: transform 0.1s ease-out;
+              }
+                        
+              .custom-scrollbar-dark::-webkit-scrollbar {
+                width: 10px;
+                height: 12px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-track {
+                background: #1e293b;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+                background: #475569;
+                border-radius: 10px;
+                border: 2px solid #1e293b;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+                background: #64748b;
+                border: 2px solid #334155;
+              }
+                        
+              .custom-scrollbar-light::-webkit-scrollbar {
+                width: 12px;
+                height: 12px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 10px;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+                border: 2px solid #f1f5f9;
+                transition: background 0.15s ease;
+              }
+              .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+                border: 2px solid #e2e8f0;
+              }
+            `}</style>
             <div
                 className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-slate-900/60 via-gray-900/40 to-slate-800/60 backdrop-blur-sm modal-backdrop"
                 onClick={handleBackdropClick}
@@ -439,7 +438,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                         </div>
                     </div>
                     {/* Content with scrollbar, header is fixed above */}
-                    <div className="p-6 custom-scrollbar" style={{ maxHeight: 'calc(90vh - 80px)', overflowY: 'auto' }}>
+                    <div className={`p-6 smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`} style={{ maxHeight: 'calc(90vh - 80px)', overflowY: 'auto' }}>
                         {/* Product Information Table */}
                         <div className="mb-6">
                             <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>ข้อมูลสินค้า</h3>
@@ -548,7 +547,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                                         </div>
                                     )}
                                     {showDropdown && search && partNos.length > 0 && (
-                                        <div ref={dropdownRef} className={`absolute z-[9999] w-full border rounded-lg shadow-xl mt-2 max-h-56 overflow-y-auto ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} style={{ zIndex: 9999 }}>
+                                        <div ref={dropdownRef} className={`absolute z-[9999] w-full border rounded-lg shadow-xl mt-2 max-h-56 overflow-y-auto smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'} ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} style={{ zIndex: 9999 }}>
                                             <div className="p-2">
                                                 <div className={`text-xs px-4 py-3 border-b rounded-t-lg ${isDarkMode ? 'text-gray-300 bg-slate-700 border-slate-600' : 'text-gray-700 border-gray-200 bg-gray-50'}`}>
                                                     พบ {partNos.length} รายการ
@@ -592,7 +591,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                                             <div className={`px-4 py-3 border-b ${isDarkMode ? 'bg-slate-700 border-slate-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
                                                 <h4 className="text-sm font-medium">รายการของแถม ({part.free_item.length} รายการ)</h4>
                                             </div>
-                                            <div className="divide-y divide-slate-600 max-h-48 overflow-y-auto custom-scrollbar">
+                                            <div className={`divide-y divide-slate-600 max-h-48 overflow-y-auto smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`}>
                                                 {part.free_item.map((freeItem) => {
                                                     const partNo = freeItem.part_no.trim();
                                                     const isEditing = editingQty === freeItem.free_item_id;
@@ -704,7 +703,7 @@ const FreeItems: React.FC<FreeItemsProps> = ({ open, onClose, part, onSuccess })
                                             <div className={`px-4 py-3 border-b ${isDarkMode ? 'bg-slate-700 border-slate-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
                                                 <h4 className="text-sm font-medium">Part No. ที่เลือก (ยังไม่บันทึก) {selectedParts.length} รายการ</h4>
                                             </div>
-                                            <div className="divide-y divide-slate-600 max-h-48 overflow-y-auto custom-scrollbar">
+                                            <div className={`divide-y divide-slate-600 max-h-48 overflow-y-auto smooth-scroll ${isDarkMode ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'}`}>
                                                 {selectedParts.map((partNo, idx) => (
                                                     <div key={`selected-${partNo}-${idx}`} className={`p-4 ${isDarkMode ? 'divide-slate-600' : 'divide-gray-200'}`}>
                                                         <div className="flex items-center justify-between gap-4">

@@ -18,6 +18,9 @@ import { useToken } from "../../context/TokenContext";
 import { useUser } from "../../context/UserContext";
 import { useToast } from "../../components/toast/Notify";
 
+// hero ui
+import { Select, SelectSection, SelectItem } from "@heroui/select";
+
 // icons
 import { LuCalendarFold } from "react-icons/lu";
 import { MdOutlineSort, MdOutlineRemoveRedEye } from "react-icons/md";
@@ -27,6 +30,8 @@ import { FaRegClock } from "react-icons/fa6";
 import { HiDocumentText } from "react-icons/hi2";
 import { TbLayoutList, TbLayoutCards } from "react-icons/tb";
 import { TbProgressCheck } from "react-icons/tb";
+import { RiFileEditLine } from "react-icons/ri";
+import { HiClipboardDocument } from "react-icons/hi2";
 
 type PRCard = {
     id: number;
@@ -40,6 +45,7 @@ type PRCard = {
     pu_responsible_id: string;
     supervisor_name: string;
     manager_name: string;
+    status: string;
     pu_responsible: string;
     requester_name: string
     manager_approved: boolean;
@@ -85,7 +91,7 @@ const departmentColors: { [key: string]: string } = {
 function PurchasePageContent() {
     // Theme context
     const { isDarkMode } = useTheme();
-    const { showToast, showPDFToast, setPDFToastSuccess } = useToast();
+    const { showToast, showPDFToast, setPDFToastSuccess, setPDFToastError } = useToast();
     // อ่านค่าจาก localStorage ตอน mount
     const [isListView, setIsListView] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -204,18 +210,20 @@ function PurchasePageContent() {
     // Status filter Cards
     if (statusFilter) {
         displayedPrCards = displayedPrCards.filter(pr => {
-            if (statusFilter === 'rejected') {
-                return pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at;
+            if (statusFilter === 'draft') {
+                return pr.status === 'draft' && !pr.supervisor_approved && !pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+            } else if (statusFilter === 'rejected') {
+                return pr.status === 'submitted' && (pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at);
             } else if (statusFilter === 'supervisor') {
-                return !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+                return pr.status === 'submitted' && !pr.supervisor_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
             } else if (statusFilter === 'manager') {
-                return pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+                return pr.status === 'submitted' && (pr.supervisor_approved && !pr.manager_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at);
             } else if (statusFilter === 'pu') {
-                return pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+                return pr.status === 'submitted' && (pr.supervisor_approved && pr.manager_approved && !pr.pu_operator_approved && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at);
             } else if (statusFilter === 'processing') {
-                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== 0 && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+                return pr.status === 'submitted' && (pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting !== 0 && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at);
             } else if (statusFilter === 'complete') {
-                return pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === 0 && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at;
+                return pr.status === 'submitted' && (pr.supervisor_approved && pr.manager_approved && pr.pu_operator_approved && pr.waiting === 0 && !pr.supervisor_reject_at && !pr.manager_reject_at && !pr.pu_operator_reject_at);
             }
             return true;
         });
@@ -234,6 +242,7 @@ function PurchasePageContent() {
         // Sort by PR number, format: PR{YY}{Alpha}{NNN}
         // Example: PR25A001, PR25A999, PR25B001, ...
         const extract = (pr_no: string) => {
+            if (!pr_no || pr_no === "") return null; // ใช้ null สำหรับ PR ที่ไม่มีเลข
             const match = pr_no.match(/^PR(\d{2})([A-Z])(\d{3})$/i);
             if (match) {
                 const year = parseInt(match[1]);
@@ -248,6 +257,10 @@ function PurchasePageContent() {
         displayedPrCards = [...displayedPrCards].sort((a, b) => {
             const va = extract(a.pr_no);
             const vb = extract(b.pr_no);
+            // ถ้า pr_no ว่าง ให้ขึ้นก่อนเสมอ
+            if (va === null && vb === null) return 0;
+            if (va === null) return -1;
+            if (vb === null) return 1;
             return sortBy === 'newest' ? vb - va : va - vb;
         });
     }
@@ -773,8 +786,7 @@ function PurchasePageContent() {
             );
         } catch (err) {
             console.error('previewPrPdf error:', err);
-            // แจ้งเตือนว่าไม่สำเร็จ แต่ใช้ icon success ตาม requirement (เฉพาะ spinner→check)
-            setPDFToastSuccess(
+            setPDFToastError(
                 toastId,
                 `ไม่สามารถเปิดตัวอย่างไฟล์ PDF PR หมายเลข ${pr_no} ได้ กรุณาลองใหม่อีกครั้ง`
             );
@@ -824,7 +836,7 @@ function PurchasePageContent() {
             );
         } catch (err) {
             console.error('downloadPrPdf error:', err);
-            setPDFToastSuccess(
+            setPDFToastError(
                 toastId,
                 `ไม่สามารถดาวน์โหลดไฟล์ PR หมายเลข ${pr_no} ได้ กรุณาลองใหม่อีกครั้ง`
             );
@@ -832,6 +844,13 @@ function PurchasePageContent() {
     }
 
     const { isCollapsed } = useSidebar();
+
+    const rowsPerPageOptions = [
+        { key: "10", label: "10 per page" },
+        { key: "25", label: "25 per page" },
+        { key: "50", label: "50 per page" }
+    ];
+
 
     return (
         <div className="min-h-screen">
@@ -1144,6 +1163,13 @@ function PurchasePageContent() {
                                             ทุกสถานะ
                                         </li>
                                         <li
+                                            className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'draft' ? (isDarkMode ? 'bg-zinc-700/30 text-zinc-200' : 'bg-zinc-200 text-zinc-800') : (isDarkMode ? 'text-slate-300 hover:bg-zinc-700/20 hover:text-zinc-200' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-800')}`}
+                                            onClick={() => { setStatusFilter('draft'); }}
+                                        >
+                                            <span className="inline-flex items-center gap-2">
+                                                <RiFileEditLine className={`w-4.5 h-4.5 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`} />ร่าง (Draft)</span>
+                                        </li>
+                                        <li
                                             className={`px-5 py-2 cursor-pointer rounded-xl transition-all duration-100 mx-2 ${statusFilter === 'supervisor' ? (isDarkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800') : (isDarkMode ? 'text-slate-300 hover:bg-blue-900/20 hover:text-blue-200' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800')}`}
                                             onClick={() => { setStatusFilter('supervisor'); }}
                                         >
@@ -1203,7 +1229,7 @@ function PurchasePageContent() {
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                                 <button
                                     onClick={handleTestToast}
-                                    className="ml-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-xs hover:bg-emerald-700"
+                                    className="ml-2 px-3 py-2.5 rounded-md bg-emerald-600 text-white text-xs hover:bg-emerald-700"
                                 >
                                     ทดสอบ Toast
                                 </button>
@@ -1211,7 +1237,7 @@ function PurchasePageContent() {
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                     <div className="flex items-center space-x-2">
                                         {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>แสดง</span> */}
-                                        <select
+                                        {/* <select
                                             value={itemsPerPage}
                                             onChange={(e) => {
                                                 const newPerPage = Number(e.target.value);
@@ -1224,12 +1250,71 @@ function PurchasePageContent() {
                                             <option value={10}>10 per page</option>
                                             <option value={25}>25 per page</option>
                                             <option value={50}>50 per page</option>
-                                            {/* <option value={100}>100 per page</option> */}
-                                        </select>
+                                        </select> */}
                                         {/* <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>รายการ</span> */}
+                                        <Select
+                                            className="w-35"  // ← ย้ายมาที่นี่
+                                            classNames={{
+                                                trigger: [
+                                                    "px-3",
+                                                    "py-2",
+                                                    "!h-auto",
+                                                    "text-sm",
+                                                    "font-medium",
+                                                    "border-r",
+                                                    "shadow-sm",
+                                                    "transition-all",
+                                                    "duration-200",
+                                                    isDarkMode
+                                                        ? "bg-slate-800 border-slate-600 text-slate-200 focus:border-emerald-500 hover:border-emerald-500"
+                                                        : "bg-white border-slate-300 text-slate-700 focus:border-emerald-400 hover:border-emerald-400",
+                                                ],
+                                                value: "text-sm font-medium",
+                                                selectorIcon: [
+                                                    "right-2",
+                                                    isDarkMode ? "text-emerald-400" : "text-emerald-500"
+                                                ],
+                                                popoverContent: [
+                                                    "rounded-lg",
+                                                    "shadow-lg",
+                                                    "border",
+                                                    isDarkMode
+                                                        ? "bg-slate-800 border-slate-600"
+                                                        : "bg-white border-slate-300",
+                                                ],
+                                            }}
+                                            variant="bordered"
+                                            size="md"
+                                            radius="none"
+                                            selectedKeys={[String(itemsPerPage)]}
+                                            onSelectionChange={(keys) => {
+                                                const selected = Array.from(keys)[0] as string | undefined;
+                                                if (selected) {
+                                                    const newPerPage = Number(selected);
+                                                    setItemsPerPage(newPerPage);
+                                                    setCurrentPage(1);
+                                                    updateUrlParams(1, newPerPage);
+                                                }
+                                            }}
+                                        >
+                                            {rowsPerPageOptions.map((option) => (
+                                                <SelectItem
+                                                    key={option.key}
+                                                    className={`rounded-md my-0.5 px-2 py-1.5 ${isDarkMode
+                                                        ? "text-slate-200 hover:bg-emerald-500/10 data-[selected=true]:bg-emerald-500/20 data-[selected=true]:text-emerald-300"
+                                                        : "text-slate-700 hover:bg-emerald-50 data-[selected=true]:bg-emerald-100 data-[selected=true]:text-emerald-700"
+                                                        }`}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </Select>
+                                        {/* <span className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                            (Current page: {currentPage})
+                                        </span> */}
                                     </div>
 
-                                    <div className={`px-4 py-2 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
+                                    <div className={`px-4 py-2.5 text-sm border-r font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                         {(() => {
                                             let startItem, endItem;
                                             const totalItemsWithCreate = totalItems + 1; // Filtered PR + Create card
@@ -1264,7 +1349,7 @@ function PurchasePageContent() {
                                     <div className="flex items-center">
                                         <button
                                             type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
+                                            className={`p-2.5 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
                                             disabled={currentPage === 1}
                                             onClick={() => {
                                                 const newPage = Math.max(1, currentPage - 1);
@@ -1276,7 +1361,7 @@ function PurchasePageContent() {
                                         </button>
                                         <button
                                             type="button"
-                                            className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                            className={`p-2.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                                             disabled={currentPage >= totalPages}
                                             onClick={() => {
                                                 const newPage = Math.min(totalPages, currentPage + 1);
@@ -1331,11 +1416,19 @@ function PurchasePageContent() {
                                 >
                                     {/* Top: Department Icon */}
                                     <div className="w-full flex justify-center pt-6 pb-2 sm:pt-12">
-                                        <HiDocumentText className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                        {(pr.status === "draft") ? (
+                                            <HiClipboardDocument className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                        ) : (
+                                            <HiDocumentText className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                        )}
                                     </div>
                                     {/* Status badge top right */}
                                     <div className="absolute top-2 right-2 z-10">
-                                        {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                        {(pr.pr_no === "" || pr.status === 'draft') ? (
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-zinc-900/30 border-zinc-700/60 text-zinc-200' : 'bg-zinc-50 border-zinc-300 text-zinc-800'}`}>
+                                                <RiFileEditLine className={`w-4 h-4`} />ร่าง (Draft)
+                                            </span>
+                                        ) : pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
                                             // Red - ปฏิเสธ (Rejected)
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-red-900/30 border-red-700/60 text-red-200' : 'bg-red-50 border-red-300 text-red-800'}`}>
                                                 <svg className={`w-4 h-4 ${isDarkMode ? 'text-red-200' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1343,7 +1436,7 @@ function PurchasePageContent() {
                                                 </svg>
                                                 {pr.supervisor_reject_at ? 'หัวหน้าแผนกปฏิเสธ' : pr.manager_reject_at ? 'ผู้จัดการแผนกปฏิเสธ' : pr.pu_operator_reject_at ? 'แผนกจัดซื้อปฏิเสธ' : 'ปฏิเสธ'}
                                             </span>
-                                        ) : !pr.supervisor_approved ? (
+                                        ) : !pr.supervisor_approved && pr.status == "submitted" ? (
                                             // Blue - รอหัวหน้าแผนกอนุมัติ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-blue-900/30 border-blue-700/60 text-blue-200' : 'bg-blue-50 border-blue-300 text-blue-800'}`}>
                                                 {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-blue-200' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -1351,7 +1444,7 @@ function PurchasePageContent() {
                                                 </svg> */}
                                                 <TbProgressCheck className={`w-4 h-4`} />รอหัวหน้าแผนกอนุมัติ
                                             </span>
-                                        ) : !pr.manager_approved ? (
+                                        ) : !pr.manager_approved && pr.status == "submitted" ? (
                                             // Purple - รอผู้จัดการแผนกอนุมัติ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-purple-900/30 border-purple-700/60 text-purple-200' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
                                                 {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-purple-200' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -1359,7 +1452,7 @@ function PurchasePageContent() {
                                                 </svg> */}
                                                 <TbProgressCheck className={`w-4 h-4`} />รอผู้จัดการแผนกอนุมัติ
                                             </span>
-                                        ) : !pr.pu_operator_approved ? (
+                                        ) : !pr.pu_operator_approved && pr.status == "submitted" ? (
                                             // Orange - รอแผนกจัดซื้ออนุมัติ
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-orange-900/30 border-orange-700/60 text-orange-200' : 'bg-orange-50 border-orange-300 text-orange-800'}`}>
                                                 {/* <svg className={`w-4 h-4 ${isDarkMode ? 'text-orange-200' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -1389,7 +1482,12 @@ function PurchasePageContent() {
                                     <div className="w-full px-2 pt-2 sm:px-6">
                                         <table className="w-full text-xs sm:text-sm mb-2">
                                             <tbody>
-                                                <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td><td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>{pr.pr_no}</td></tr>
+                                                <tr>
+                                                    <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>หมายเลข PR</td>
+                                                    <td className={`text-right font-semibold py-1 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>
+                                                        {pr.pr_no === "" ? "DRAFT" : pr.pr_no}
+                                                    </td>
+                                                </tr>
                                                 <tr><td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>แผนก</td><td className={`text-right py-1 ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.dept_name}</td></tr>
                                                 <tr>
                                                     <td className={`py-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>ผู้ร้องขอ</td>
@@ -1519,7 +1617,7 @@ function PurchasePageContent() {
                                                     <div className="flex items-center">
                                                         <HiDocumentText className={`h-8 w-8 mr-3 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
                                                         <div className={`text-sm font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>
-                                                            {pr.pr_no}
+                                                            {pr.pr_no === "" ? "DRAFT" : pr.pr_no}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1544,7 +1642,12 @@ function PurchasePageContent() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
+                                                    {(pr.pr_no === "" || pr.status === 'draft') ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-zinc-700/30 text-zinc-200' : 'bg-zinc-200 text-zinc-800'}`}>
+                                                            <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#a1a1aa' : '#4b5563' }}></span>
+                                                            ร่าง (Draft)
+                                                        </span>
+                                                    ) : pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDarkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-100 text-red-800'}`}>
                                                             <span className="w-2 h-2 rounded-full mr-2 inline-block" style={{ background: isDarkMode ? '#f87171' : '#dc2626' }}></span>
                                                             ปฏิเสธ

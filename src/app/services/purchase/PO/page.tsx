@@ -16,6 +16,10 @@ import { useTheme } from "../../../components/ThemeProvider";
 import { useToken } from "../../../context/TokenContext";
 import { useUser } from "../../../context/UserContext";
 import { useSidebar } from "../../../context/SidebarContext";
+import { useToast } from "../../../components/toast/Notify";
+
+// hero ui
+import { Select, SelectSection, SelectItem } from "@heroui/select";
 
 // icons
 import { LuCalendarFold } from "react-icons/lu";
@@ -91,6 +95,7 @@ const departmentColors: { [key: string]: string } = {
 export default function PurchaseOrderPage() {
     // Theme context
     const { isDarkMode } = useTheme();
+    const { showToast, showPDFToast, setPDFToastSuccess, setPDFToastError } = useToast();
     // อ่านค่าจาก localStorage ตอน mount
     const [isListView, setIsListView] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -792,6 +797,12 @@ export default function PurchaseOrderPage() {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Preview PDF ${po_no}`,
+            `กำลังสร้างตัวอย่างไฟล์ PDF PO หมายเลข ${po_no} กรุณารอสักครู่...`,
+            true // loading = true
+        );
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview_pdf/${po_no}`, {
                 method: 'GET',
@@ -802,10 +813,17 @@ export default function PurchaseOrderPage() {
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank', 'noopener');
             setTimeout(() => URL.revokeObjectURL(url), 60000);
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ (PiCheckCircleBold)
+            setPDFToastSuccess(
+                toastId,
+                `เปิดตัวอย่างไฟล์ PDF PO หมายเลข ${po_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('previewPoPdf error:', err);
-            // Fallback
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/preview/${po_no}?token=${token}`, '_blank');
+            setPDFToastError(
+                toastId,
+                `ไม่สามารถเปิดตัวอย่างไฟล์ PDF PO หมายเลข ${po_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
@@ -815,6 +833,12 @@ export default function PurchaseOrderPage() {
             alert('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
             return;
         }
+        // แสดง toast โหลด PDF (ไอคอน IoReloadOutline หมุน)
+        const toastId = showPDFToast(
+            `Download PDF PO ${po_no}`,
+            `กำลังดาวน์โหลดไฟล์ PDF PO หมายเลข ${po_no} กรุณารอสักครู่...`,
+            true
+        );
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/generate_pdf/${po_no}`, {
                 method: 'GET',
@@ -834,14 +858,27 @@ export default function PurchaseOrderPage() {
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 60000);
+            // เปลี่ยน toast เดิมให้เป็นสถานะสำเร็จ
+            setPDFToastSuccess(
+                toastId,
+                `ดาวน์โหลดไฟล์ PO หมายเลข ${po_no} สำเร็จแล้ว`
+            );
         } catch (err) {
             console.error('downloadPoPdf error:', err);
-            // Fallback: ถ้า backend ยังไม่รองรับ header ใช้แบบเดิม (token ใน URL)
-            // window.open(`${process.env.NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE}/download/${po_no}/${token}`, '_blank', 'noopener');
+            setPDFToastError(
+                toastId,
+                `ไม่สามารถดาวน์โหลดไฟล์ PO หมายเลข ${po_no} ได้ กรุณาลองใหม่อีกครั้ง`
+            );
         }
     }
 
     const { isCollapsed } = useSidebar();
+
+    const rowsPerPageOptions = [
+        { key: "10", label: "10 per page" },
+        { key: "25", label: "25 per page" },
+        { key: "50", label: "50 per page" }
+    ];
 
     return (
         <div className="min-h-screen">
@@ -1189,7 +1226,7 @@ export default function PurchaseOrderPage() {
                                     return (
                                         <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                             <div className="flex items-center space-x-2">
-                                                <select
+                                                {/* <select
                                                     value={itemsPerPage}
                                                     onChange={(e) => {
                                                         const newPerPage = Number(e.target.value);
@@ -1202,12 +1239,69 @@ export default function PurchaseOrderPage() {
                                                     <option value={10}>10 per page</option>
                                                     <option value={25}>25 per page</option>
                                                     <option value={50}>50 per page</option>
-                                                </select>
+                                                </select> */}
+                                                <Select
+                                                    className="w-35"  // ← ย้ายมาที่นี่
+                                                    classNames={{
+                                                        trigger: [
+                                                            "px-3",
+                                                            "py-2",
+                                                            "!h-auto",
+                                                            "text-sm",
+                                                            "font-medium",
+                                                            "border-r",
+                                                            "shadow-sm",
+                                                            "transition-all",
+                                                            "duration-200",
+                                                            isDarkMode
+                                                                ? "bg-slate-800 border-slate-600 text-slate-200 focus:border-emerald-500 hover:border-emerald-500"
+                                                                : "bg-white border-slate-300 text-slate-700 focus:border-emerald-400 hover:border-emerald-400",
+                                                        ],
+                                                        value: "text-sm font-medium",
+                                                        selectorIcon: [
+                                                            "right-2",
+                                                            isDarkMode ? "text-emerald-400" : "text-emerald-500"
+                                                        ],
+                                                        popoverContent: [
+                                                            "rounded-lg",
+                                                            "shadow-lg",
+                                                            "border",
+                                                            isDarkMode
+                                                                ? "bg-slate-800 border-slate-600"
+                                                                : "bg-white border-slate-300",
+                                                        ],
+                                                    }}
+                                                    variant="bordered"
+                                                    size="md"
+                                                    radius="none"
+                                                    selectedKeys={[String(itemsPerPage)]}
+                                                    onSelectionChange={(keys) => {
+                                                        const selected = Array.from(keys)[0] as string | undefined;
+                                                        if (selected) {
+                                                            const newPerPage = Number(selected);
+                                                            setItemsPerPage(newPerPage);
+                                                            setCurrentPage(1);
+                                                            updateUrlParams(1, newPerPage);
+                                                        }
+                                                    }}
+                                                >
+                                                    {rowsPerPageOptions.map((option) => (
+                                                        <SelectItem
+                                                            key={option.key}
+                                                            className={`rounded-md my-0.5 px-2 py-1.5 ${isDarkMode
+                                                                ? "text-slate-200 hover:bg-emerald-500/10 data-[selected=true]:bg-emerald-500/20 data-[selected=true]:text-emerald-300"
+                                                                : "text-slate-700 hover:bg-emerald-50 data-[selected=true]:bg-emerald-100 data-[selected=true]:text-emerald-700"
+                                                                }`}
+                                                        >
+                                                            {option.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </Select>
                                             </div>
                                             {/* Clear PO Cache Button */}
                                             <button
                                                 type="button"
-                                                className={`px-4 py-2 font-medium cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300 hover:bg-amber-600/50 hover:text-white' : 'text-amber-700 hover:bg-amber-100 hover:text-amber-600'}`}
+                                                className={`px-4 py-2.5 font-medium cursor-pointer text-sm transition-colors shadow-sm ${isDarkMode ? 'text-amber-300 hover:bg-amber-600/50 hover:text-white' : 'text-amber-700 hover:bg-amber-100 hover:text-amber-600'}`}
                                                 onClick={() => {
                                                     localStorage.removeItem('poCache');
                                                     window.location.reload();
@@ -1216,7 +1310,7 @@ export default function PurchaseOrderPage() {
                                             >
                                                 <IoReloadOutline className="inline-block text-lg align-middle" />
                                             </button>
-                                            <div className={`px-4 py-2 text-sm border-r border-l font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
+                                            <div className={`px-4 py-2.5 text-sm border-r border-l font-medium ${isDarkMode ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-slate-600 bg-slate-50 border-slate-300'}`}>
                                                 <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{startItem}-{endItem}</span>
                                                 {' '}of{' '}
                                                 <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{displayTotal}</span>
@@ -1234,7 +1328,7 @@ export default function PurchaseOrderPage() {
                                             <div className="flex items-center">
                                                 <button
                                                     type="button"
-                                                    className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
+                                                    className={`p-2.5 disabled:opacity-30 disabled:cursor-not-allowed border-r cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-300'}`}
                                                     disabled={currentPage === 1}
                                                     onClick={() => {
                                                         const newPage = Math.max(1, currentPage - 1);
@@ -1246,7 +1340,7 @@ export default function PurchaseOrderPage() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className={`p-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                                    className={`p-2.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors ${isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                                                     disabled={currentPage >= totalPages}
                                                     onClick={() => {
                                                         const newPage = Math.min(totalPages, currentPage + 1);
