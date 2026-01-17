@@ -676,6 +676,17 @@ function PurchasePageContent() {
         `;
     }
 
+    // Handle PR Card Click (for both card and list view)
+    function handlePrCardClick(pr: PRCard) {
+        if (pr.pr_no && pr.status !== 'draft') {
+            const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
+            router.push(`${base}${pr.id ? `?id=${pr.id}` : ''}`);
+        } else if (pr.status === 'draft') {
+            const base = process.env.NEXT_PUBLIC_PURCHASE_PR_DRAFT_REDIRECT || '/services/purchase/prDraft';
+            router.push(`${base}${pr.id ? `?id=${pr.id}` : ''}`);
+        }
+    }
+
     useEffect(() => {
         if (calendarOpen) injectFlatpickrTheme();
         if (calendarOpen && dateRangeInputRef.current) {
@@ -1409,10 +1420,7 @@ function PurchasePageContent() {
                                 <div
                                     key={pr.pr_no}
                                     className={`relative rounded-2xl p-0 flex flex-col items-center shadow-md border w-full max-w-[270px] min-w-[140px] min-h-[220px] sm:min-w-[180px] sm:min-h-[320px] transition-all duration-200 hover:scale-[1.03] hover:shadow-lg cursor-pointer ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 hover:border-emerald-500/30' : 'bg-white border-green-200 hover:border-green-400'}`}
-                                    onClick={() => {
-                                        const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
-                                        router.push(`${base}${pr.id ? `?id=${pr.id}` : ''}`);
-                                    }}
+                                    onClick={() => handlePrCardClick(pr)}
                                 >
                                     {/* Top: Department Icon */}
                                     <div className="w-full flex justify-center pt-6 pb-2 sm:pt-12">
@@ -1522,7 +1530,7 @@ function PurchasePageContent() {
                                                 className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    previewPrPdf(Number(pr.id), pr.pr_no);
+                                                    handlePrCardClick(pr);
                                                 }}
                                             >
                                                 <MdOutlineRemoveRedEye className="w-7 h-7" />
@@ -1608,10 +1616,7 @@ function PurchasePageContent() {
                                                 key={pr.pr_no}
                                                 className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-emerald-900/20' : 'hover:bg-emerald-50'} focus-within:bg-emerald-100`}
                                                 style={{ transition: 'background 0.15s' }}
-                                                onClick={() => {
-                                                    const base = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
-                                                    router.push(`${base}${pr.id ? `?id=${pr.id}` : ''}`);
-                                                }}
+                                                onClick={() => handlePrCardClick(pr)}
                                             >
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
