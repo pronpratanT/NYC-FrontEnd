@@ -1238,12 +1238,12 @@ function PurchasePageContent() {
                         {/* Pagination Controls - Top */}
                         {(totalItems > 0 || currentPage === 1) && (
                             <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                <button
+                                {/* <button
                                     onClick={handleTestToast}
                                     className="ml-2 px-3 py-2.5 rounded-md bg-emerald-600 text-white text-xs hover:bg-emerald-700"
                                 >
                                     ทดสอบ Toast
-                                </button>
+                                </button> */}
                                 {/* Page info and navigation */}
                                 <div className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'}`}>
                                     <div className="flex items-center space-x-2">
@@ -1530,7 +1530,7 @@ function PurchasePageContent() {
                                                 className={`flex items-center justify-center rounded-l-lg px-4 py-2 text-lg font-medium transition ${isDarkMode ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-800/30' : 'text-green-600 bg-green-50 border border-green-100 hover:bg-green-100'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handlePrCardClick(pr);
+                                                    previewPrPdf(Number(pr.id), pr.pr_no);
                                                 }}
                                             >
                                                 <MdOutlineRemoveRedEye className="w-7 h-7" />
@@ -1620,7 +1620,11 @@ function PurchasePageContent() {
                                             >
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
-                                                        <HiDocumentText className={`h-8 w-8 mr-3 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                                        {pr.status === "draft" ? (
+                                                            <HiClipboardDocument className={`h-8 w-8 mr-3 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                                        ) : (
+                                                            <HiDocumentText className={`h-8 w-8 mr-3 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
+                                                        )}
                                                         <div className={`text-sm font-medium ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>
                                                             {pr.pr_no === "" ? "DRAFT" : pr.pr_no}
                                                         </div>

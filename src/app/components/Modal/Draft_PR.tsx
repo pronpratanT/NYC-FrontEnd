@@ -5,13 +5,13 @@ import { LuX, LuFileText, LuFilePlus2 } from 'react-icons/lu';
 import { HiCheckCircle } from 'react-icons/hi2';
 import { SiMinutemailer } from 'react-icons/si';
 
-export type CreatePRModalProps = {
+export type DraftPRModalProps = {
     open: boolean;
     onClose: () => void;
     onConfirm: (mode: "draft" | "submitted") => void | Promise<void>;
 };
 
-const CreatePRModal: React.FC<CreatePRModalProps> = ({ open, onClose, onConfirm }) => {
+const DraftPRModal: React.FC<DraftPRModalProps> = ({ open, onClose, onConfirm }) => {
     const { isDarkMode } = useTheme();
 
     const [selectedMode, setSelectedMode] = React.useState<"draft" | "submitted" | null>(null);
@@ -120,14 +120,14 @@ const CreatePRModal: React.FC<CreatePRModalProps> = ({ open, onClose, onConfirm 
                                                 : "text-gray-700 group-hover:text-yellow-600"
                                     }`}
                                 >
-                                    ร่างใบ PR
+                                    บันทึก DRAFT
                                 </span>
                                 <span className={`text-xs mt-1 block ${
                                     selectedMode === "draft"
                                         ? isDarkMode ? "text-yellow-400/70" : "text-yellow-600/70"
                                         : isDarkMode ? "text-slate-400" : "text-gray-500"
                                 }`}>
-                                    บันทึกฉบับร่าง
+                                    บันทึกการแก้ไข DRAFT
                                 </span>
                             </div>
                         </label>
@@ -235,4 +235,4 @@ const CreatePRModal: React.FC<CreatePRModalProps> = ({ open, onClose, onConfirm 
     );
 };
 
-export default CreatePRModal;
+export default DraftPRModal;

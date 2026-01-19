@@ -22,7 +22,7 @@ import { useUser } from '../../../context/UserContext';
 import { useToken } from '../../../context/TokenContext';
 import { TiPlus } from "react-icons/ti";
 import CreatPartNo from '@/app/components/Modal/CreatPartNo';
-import CreatePRModal from '@/app/components/Modal/Create_PR';
+import DraftPRModal from '@/app/components/Modal/Draft_PR';
 
 // hero ui
 import { Select, SelectSection, SelectItem } from "@heroui/select";
@@ -87,6 +87,7 @@ type List = {
     id: number;
     member_id: number;
     pcl_id: number;
+    pr_list_id: number; // id รายการ PR ในฐานข้อมูล (ใช้สำหรับลบ/อัปเดต)
     part_no: string;
     prod_code: string;
     part_name: string;
@@ -171,10 +172,11 @@ function PRDraftContent() {
     const [priceData, setPriceData] = useState<string[]>([]);
     const [unitData, setUnitData] = useState<string[]>([]);
     const [rempoData, setRempoData] = useState<string[]>([]);
+    const [prListIds, setPrListIds] = useState<number[]>([]);
     const [isSaving, setIsSaving] = useState(false)
 
     // create PR modal
-    const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [draftModalOpen, setDraftModalOpen] = useState(false);
 
     // unit data from API
     const [unitOptions, setUnitOptions] = useState<Unit[]>([]);
@@ -198,85 +200,87 @@ function PRDraftContent() {
     const searchParams = useSearchParams();
     const prId = searchParams.get("id");
 
+    const fetchData = async () => {
+        try {
+            setError("");
+            setLoading(true);
+            if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+
+            // Fetch PR data
+            const prRes = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!prRes.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
+            const prJson = await prRes.json();
+            if (prJson.data && Array.isArray(prJson.data.pr_lists)) {
+                const prLists = prJson.data.pr_lists;
+                const partNoFirstIndex = new Map();
+                prLists.forEach((item: List, idx: number) => {
+                    if (!partNoFirstIndex.has(item.part_no)) {
+                        partNoFirstIndex.set(item.part_no, idx);
+                    }
+                });
+                prLists.sort((a: List, b: List) => {
+                    const aIdx = partNoFirstIndex.get(a.part_no);
+                    const bIdx = partNoFirstIndex.get(b.part_no);
+                    if (a.part_no === b.part_no) return 0;
+                    return aIdx - bIdx;
+                });
+
+                // Prefill table state from PR draft data
+                // ใช้ part_no เป็น key หลักใน selectedParts
+                const lists = prLists as List[];
+                const selected = lists.map(item => item.part_no);
+                setSelectedParts(selected);
+                setPrListIds(lists.map(item => item.pr_list_id ?? 0));
+
+                // เติมข้อมูลรายละเอียด part ให้ partsInfo
+                setPartsInfo(lists.map(item => ({
+                    part_no: item.part_no,
+                    part_name: item.part_name ?? null,
+                    prod_code: item.prod_code ?? null,
+                    qty: item.qty ?? null,
+                    unit: item.unit ?? null,
+                    vendor: item.vendor ?? null,
+                    rempo: item.objective ?? null,
+                    stock: item.stock ?? null,
+                    price_per_unit: item.price_per_unit ?? null,
+                })));
+
+                // QTY, Objective, Plant, Stock, Price, Unit, Due Date
+                setQtyData(lists.map(item => item.qty ?? ""));
+                setObjectiveData(lists.map(item => item.objective ?? ""));
+                setDestinationData(lists.map(item => item.plant || "Plant 1"));
+                setStockData(lists.map(item =>
+                    item.stock !== undefined && item.stock !== null ? String(item.stock) : "0"
+                ));
+                setPriceData(lists.map(item =>
+                    item.price_per_unit !== undefined && item.price_per_unit !== null
+                        ? String(item.price_per_unit)
+                        : "0"
+                ));
+                setUnitData(lists.map(item => item.unit ?? ""));
+                setRempoData(lists.map(item => item.objective ?? ""));
+                setRowDueDates(lists.map(item => item.due_date ? new Date(item.due_date) : null));
+            }
+            setPrData(prJson.data);
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || "เกิดข้อผิดพลาด");
+            } else {
+                setError("เกิดข้อผิดพลาด");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (!prId) {
             setError("ไม่พบ PR ID");
             setLoading(false);
             return;
         }
-        const fetchData = async () => {
-            try {
-                setError("");
-                setLoading(true);
-                if (!token) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-
-                // Fetch PR data
-                const prRes = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/list?pr_id=${prId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (!prRes.ok) throw new Error("โหลดข้อมูล PR ไม่สำเร็จ");
-                const prJson = await prRes.json();
-                if (prJson.data && Array.isArray(prJson.data.pr_lists)) {
-                    const prLists = prJson.data.pr_lists;
-                    const partNoFirstIndex = new Map();
-                    prLists.forEach((item: List, idx: number) => {
-                        if (!partNoFirstIndex.has(item.part_no)) {
-                            partNoFirstIndex.set(item.part_no, idx);
-                        }
-                    });
-                    prLists.sort((a: List, b: List) => {
-                        const aIdx = partNoFirstIndex.get(a.part_no);
-                        const bIdx = partNoFirstIndex.get(b.part_no);
-                        if (a.part_no === b.part_no) return 0;
-                        return aIdx - bIdx;
-                    });
-
-                    // Prefill table state from PR draft data
-                    // ใช้ part_no เป็น key หลักใน selectedParts
-                    const lists = prLists as List[];
-                    const selected = lists.map(item => item.part_no);
-                    setSelectedParts(selected);
-
-                    // เติมข้อมูลรายละเอียด part ให้ partsInfo
-                    setPartsInfo(lists.map(item => ({
-                        part_no: item.part_no,
-                        part_name: item.part_name ?? null,
-                        prod_code: item.prod_code ?? null,
-                        qty: item.qty ?? null,
-                        unit: item.unit ?? null,
-                        vendor: item.vendor ?? null,
-                        rempo: item.objective ?? null,
-                        stock: item.stock ?? null,
-                        price_per_unit: item.price_per_unit ?? null,
-                    })));
-
-                    // QTY, Objective, Plant, Stock, Price, Unit, Due Date
-                    setQtyData(lists.map(item => item.qty ?? ""));
-                    setObjectiveData(lists.map(item => item.objective ?? ""));
-                    setDestinationData(lists.map(item => item.plant || "Plant 1"));
-                    setStockData(lists.map(item =>
-                        item.stock !== undefined && item.stock !== null ? String(item.stock) : "0"
-                    ));
-                    setPriceData(lists.map(item =>
-                        item.price_per_unit !== undefined && item.price_per_unit !== null
-                            ? String(item.price_per_unit)
-                            : "0"
-                    ));
-                    setUnitData(lists.map(item => item.unit ?? ""));
-                    setRempoData(lists.map(item => item.objective ?? ""));
-                    setRowDueDates(lists.map(item => item.due_date ? new Date(item.due_date) : null));
-                }
-                setPrData(prJson.data);
-            } catch (err: unknown) {
-                if (err instanceof Error) {
-                    setError(err.message || "เกิดข้อผิดพลาด");
-                } else {
-                    setError("เกิดข้อผิดพลาด");
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
     }, [prId, token]);
 
@@ -291,6 +295,7 @@ function PRDraftContent() {
         setPriceData([]); // reset price
         setUnitData([]); // reset unit
         setRempoData([]); // reset rempo
+        setPrListIds([]); // reset pr_list_id
     }, [isSelectedPartsEmpty]);
 
     useEffect(() => {
@@ -303,6 +308,7 @@ function PRDraftContent() {
         setPriceData(p => selectedParts.map((_, idx) => p[idx] || ''));
         setUnitData(u => selectedParts.map((_, idx) => u[idx] || ''));
         setRempoData(r => selectedParts.map((_, idx) => r[idx] || ''));
+        setPrListIds(ids => selectedParts.map((_, idx) => ids[idx] ?? 0));
 
         const fetchPartData = async () => {
             try {
@@ -511,6 +517,21 @@ function PRDraftContent() {
         setPriceData(prev => prev.filter((_, i) => i !== idx));
         setUnitData(prev => prev.filter((_, i) => i !== idx));
         setRempoData(prev => prev.filter((_, i) => i !== idx));
+        setPrListIds(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const handleDelete = (idx: number) => {
+        const confirmed = window.confirm('ต้องการลบรายการนี้หรือไม่?');
+        if (!confirmed) return;
+
+        const prlistid = prListIds[idx];
+        if (prlistid && prlistid > 0) {
+            // แถวที่มาจากฐานข้อมูล เดิมอยู่ใน PR draft
+            handleDeleteItem(prlistid, idx);
+        } else {
+            // แถวที่เพิ่งเพิ่มใหม่ ยังไม่มีใน DB ลบแค่ใน state
+            handleDeleteRow(idx);
+        }
     };
 
     const handleDestinationChange = (idx: number, value: string) => {
@@ -570,7 +591,12 @@ function PRDraftContent() {
         return true;
     }
 
-    const handleSaveDraft = async () => {
+    const handleCreateClick = () => {
+        // setCreatePr(prData?.pr_no ?? null);
+        setDraftModalOpen(true);
+    };
+
+    const handleCreatePR = async (mode: "draft" | "submitted") => {
         if (!validatePRInputs()) {
             alert('กรุณากรอกข้อมูลให้ครบทุกช่องและเป็นตัวเลขที่ถูกต้อง');
             return;
@@ -596,85 +622,123 @@ function PRDraftContent() {
                 qtyValue = qtyValue.trim() === '' ? 0 : parseFloat(qtyValue);
             }
             if (typeof qtyValue !== 'number' || isNaN(qtyValue)) qtyValue = 0;
+            // Objective: ถ้า objectiveData ว่าง ให้ใช้ rempoData หรือ rempo จาก partInfo แทน
+            const objectiveValue =
+                objectiveData[idx] !== undefined && objectiveData[idx].trim() !== ''
+                    ? objectiveData[idx]
+                    : (rempoData[idx] || partInfo?.rempo || '');
             return {
                 pr_list_id,
                 part_no,
                 qty: qtyValue,
                 unit: unitData[idx] !== undefined ? unitData[idx] : partInfo?.unit ?? '',
                 due_date: rowDueDates[idx] ? rowDueDates[idx]?.toLocaleDateString('en-CA') : null,
-                objective: objectiveData[idx] !== undefined ? objectiveData[idx] : rempoData[idx] || partInfo?.rempo || '',
+                objective: objectiveValue,
                 destination: destinationData[idx] !== undefined ? destinationData[idx] : '',
                 stock: 0,
             };
         });
         console.log("Payload to submit:", payload);
-    }
+        // UPDATE draft API
+        if (mode === "draft") {
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/update/draft-lists/${prId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const errorMsg = 'บันทึกฉบับร่างไม่สำเร็จ';
+                    throw new Error(errorMsg);
+                }
+                await res.json();
+                alert('บันทึกฉบับร่างสำเร็จ!');
+                // Reset form
+                setSelectedParts([]);
+                setQtyData([]);
+                setObjectiveData([]);
+                setRowDueDates([]);
+                setDestinationData([]);
+                setStockData([]);
+                setPriceData([]);
+                fetchData();
+            } catch (error) {
+                console.error('Error saving draft:', error);
+                alert('เกิดข้อผิดพลาดในการบันทึกฉบับร่าง');
+            } finally {
+                setIsSaving(false);
+            }
+        } else if (mode === "submitted") {
+            try {
+                // 1) บันทึกฉบับร่างก่อน ด้วย payload ปัจจุบัน
+                const draftRes = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/update/draft-lists/${prId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!draftRes.ok) {
+                    const errorMsg = 'บันทึกฉบับร่างไม่สำเร็จ';
+                    throw new Error(errorMsg);
+                }
+                await draftRes.json();
 
-    const handleCreateClick = () => {
-        // setCreatePr(prData?.pr_no ?? null);
-        setCreateModalOpen(true);
+                // 2) จากนั้นจึงบันทึกแบบ submitted
+                const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/update/pr/draft/${prId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                });
+                if (!res.ok) {
+                    const errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
+                    throw new Error(errorMsg);
+                }
+                await res.json();
+                alert('บันทึกข้อมูลสำเร็จ!');
+                // Reset form
+                setSelectedParts([]);
+                setQtyData([]);
+                setObjectiveData([]);
+                setRowDueDates([]);
+                setDestinationData([]);
+                setStockData([]);
+                setPriceData([]);
+                router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase');
+            } catch (error) {
+                console.error('Error saving draft:', error);
+                alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+            } finally {
+                setIsSaving(false);
+            }
+        }
     };
 
-    // const handleCreatePR = async (mode: "draft" | "submitted") => {
-    //     if (!validatePRInputs()) {
-    //         alert('กรุณากรอกข้อมูลให้ครบทุกช่องและเป็นตัวเลขที่ถูกต้อง');
-    //         return;
-    //     }
-    //     setIsSaving(true);
-    //     const payload = {
-    //         pr_date: new Date().toISOString().slice(0, 10),
-    //         status: mode === 'draft' ? 'draft' : 'submitted',
-    //         dept_id: user?.Department?.ID,
-    //         pr_list: selectedParts.map((part, idx) => {
-    //             const partInfo = partsInfo.find(p => p.part_no === part);
-    //             const objectiveValue = objectiveData[idx] || rempoData[idx] || partInfo?.rempo || '';
-    //             return {
-    //                 part_no: part.indexOf(' |') !== -1 ? part.slice(0, part.indexOf(' |')) : part,
-    //                 qty: parseFloat(String(qtyData[idx] !== '' ? qtyData[idx] : (partInfo?.qty ?? '0'))),
-    //                 unit: unitData[idx] !== '' ? unitData[idx] : (partInfo?.unit ?? ''),
-    //                 due_date: rowDueDates[idx] ? rowDueDates[idx]?.toLocaleDateString('en-CA') : null,
-    //                 objective: objectiveValue,
-    //                 destination: destinationData[idx],
-    //                 stock: parseFloat(String(stockData[idx] !== '' ? stockData[idx] : (partInfo?.stock ?? '0'))),
-    //                 price_per_unit: parseFloat(String(priceData[idx] !== '' ? priceData[idx] : (partInfo?.price_per_unit ?? '0'))),
-    //             };
-    //         })
-    //     }
-    //     console.log("Payload to submit:", payload);
-
-    //     try {
-    //         const res = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/create-pr`, {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //                 Authorization: `Bearer ${token}`
-    //             },
-    //             body: JSON.stringify(payload)
-    //         });
-    //         if (!res.ok) {
-    //             const errorMsg = 'บันทึกข้อมูลไม่สำเร็จ';
-    //             throw new Error(errorMsg);
-    //         }
-    //         await res.json();
-    //         alert('บันทึกข้อมูลสำเร็จ!');
-    //         // Reset form
-    //         setSelectedParts([]);
-    //         setQtyData([]);
-    //         setObjectiveData([]);
-    //         setRowDueDates([]);
-    //         setDestinationData([]);
-    //         setStockData([]);
-    //         setPriceData([]);
-    //         setUnitData([]);
-    //         setIsSaving(false);
-    //         // Redirect to /services/purchase only after success
-    //         router.push(process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase');
-    //     } catch (err) {
-    //         alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-    //         console.error(err);
-    //         setIsSaving(false);
-    //     }
-    // };
+    const handleDeleteItem = async (prlistid: number, idx: number) => {
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/list/item?pr_list_id=${prlistid}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Delete draft PR failed');
+            }
+            alert('Delete draft PR clicked!');
+            // ลบแถวออกจากตารางฝั่ง frontend ด้วย เพื่อไม่ต้อง fetchData ใหม่
+            handleDeleteRow(idx);
+        } catch (error) {
+            console.error("Error deleting draft PR:", error);
+        }
+    }
 
     const handleSyncInventory = async () => {
         try {
@@ -879,6 +943,7 @@ function PRDraftContent() {
                                                         className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-800/50 text-slate-300' : 'hover:bg-green-50'}`}
                                                         onClick={() => {
                                                             setSelectedParts(prev => [...prev, part.concat]);
+                                                            setPrListIds(prev => [...prev, 0]);
                                                             setRempoData(prev => [...prev, part.rempo ?? '']);
                                                         }}
                                                     >
@@ -924,7 +989,7 @@ function PRDraftContent() {
                                                                     type="button"
                                                                     className={`flex items-center justify-center mx-auto p-2 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
                                                                     title="ลบแถวนี้"
-                                                                    onClick={() => handleDeleteRow((page - 1) * rowsPerPage + idx)}
+                                                                    onClick={() => handleDelete((page - 1) * rowsPerPage + idx)}
                                                                 >
                                                                     <RiDeleteBin6Line className="w-5 h-5" />
                                                                 </button>
@@ -956,7 +1021,11 @@ function PRDraftContent() {
                                                                 />
                                                             </td>
                                                             <td className="px-2 py-3 w-20">
-                                                                <input type="text" className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`} value={partInfo.unit ?? ''} readOnly />
+                                                                <input type="text"
+                                                                    className={`w-full h-10 px-2 py-2 border rounded text-center text-sm focus:ring-2 transition-colors ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:border-emerald-500 focus:ring-emerald-500/30' : 'border-green-200 bg-green-50 focus:border-green-300 focus:ring-green-100'}`}
+                                                                    value={partInfo.unit ?? ''} 
+                                                                    readOnly
+                                                                    />
                                                             </td>
                                                             <td className={`px-2 py-5 whitespace-nowrap text-sm w-32  ${isDarkMode ? 'text-slate-300 border-r border-slate-700' : 'text-gray-700 border-r border-green-100'}`}>
                                                                 <div className="relative w-full">
@@ -1084,7 +1153,7 @@ function PRDraftContent() {
                                                     return (
                                                         <tr key={part + '-nodata-' + ((page - 1) * rowsPerPage + idx)} className={`transition-all duration-150 ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>
                                                             <td className="px-2 py-3 text-center w-12">
-                                                                <button type="button" className={`flex items-center justify-center mx-auto p-2 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`} title="ลบแถวนี้" onClick={() => handleDeleteRow((page - 1) * rowsPerPage + idx)}>
+                                                                <button type="button" className={`flex items-center justify-center mx-auto p-2 rounded-full transition-colors duration-150 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`} title="ลบแถวนี้" onClick={() => handleDelete((page - 1) * rowsPerPage + idx)}>
                                                                     <RiDeleteBin6Line className="w-5 h-5" />
                                                                 </button>
                                                             </td>
@@ -1350,11 +1419,10 @@ function PRDraftContent() {
                                 <button
                                     type="button"
                                     className={`px-8 py-3 rounded-xl cursor-pointer font-bold text-lg shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${isDarkMode ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white focus:ring-emerald-300/50' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-500 hover:to-green-700 text-white focus:ring-green-300'} ${(isSaving || selectedParts.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    // onClick={() => { if (!isSaving && selectedParts.length > 0) handleCreatePR(); }}
-                                    onClick={handleSaveDraft}
-                                    // disabled={isSaving || selectedParts.length === 0}
+                                    onClick={handleCreateClick}
+                                    disabled={isSaving || selectedParts.length === 0}
                                 >
-                                    {/* {isSaving ? 'กำลังบันทึก...' : 'บันทึก'} */}save
+                                    {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
                                 </button>
                             </div>
                         </div>
@@ -1363,11 +1431,11 @@ function PRDraftContent() {
                 {showCreatPartNo && (
                     <CreatPartNo onCancel={() => setShowCreatPartNo(false)} />
                 )}
-                {/* <CreatePRModal
-                    open={createModalOpen}
-                    onClose={() => setCreateModalOpen(false)}
+                <DraftPRModal
+                    open={draftModalOpen}
+                    onClose={() => setDraftModalOpen(false)}
                     onConfirm={(mode) => { if (!isSaving && selectedParts.length > 0) handleCreatePR(mode); }}
-                /> */}
+                />
             </div>
         </>
     );
