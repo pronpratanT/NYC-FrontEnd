@@ -1760,6 +1760,25 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     }
   }
 
+  // ตัดข้อความส่วนที่อยู่หลังตัวอักษรภาษาไทยตัวสุดท้าย
+  // แต่ถ้าข้อความนั้นไม่มีภาษาไทยเลย จะคืนค่าเดิม (เช่น เป็นอังกฤษล้วน)
+  function removeEnglishUnlessNoThai(text: string): string {
+    if (!text) return text;
+    const hasThai = /[\u0E00-\u0E7F]/.test(text);
+    if (!hasThai) return text;
+
+    let lastThaiIndex = -1;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (/[\u0E00-\u0E7F]/.test(ch)) {
+        lastThaiIndex = i;
+      }
+    }
+
+    if (lastThaiIndex === -1) return text;
+    return text.slice(0, lastThaiIndex + 1).trim();
+  }
+
   const reasonOptions = [
     { key: "1", label: "1. ราคาถูก มีสินค้าส่งมอบได้เลย" },
     { key: "2", label: "2. ราคาแพงกว่า แต่มีสินค้าส่งมอบและรอไม่ได้" },
@@ -3189,7 +3208,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   </td>
                                   <td className="px-4 py-4 text-center">
                                     <span className={`inline-flex px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r border shadow-sm ${isDarkMode ? 'from-blue-900/80 to-indigo-900/80 text-blue-300 border-blue-700/60' : 'from-blue-100/80 to-indigo-100/80 text-blue-800 border-blue-200/60'}`}>
-                                      {item.dept_request}
+                                      {removeEnglishUnlessNoThai(item.dept_request)}
                                     </span>
                                   </td>
                                   <td className={`px-4 py-4 font-bold text-sm text-center ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{item.pr_no}</td>
