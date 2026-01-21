@@ -1,0 +1,48 @@
+# ใช้ Next as proxy (server-side URL, ไม่เปิดเผยให้ client โดยตรง)
+GO_API_URL=http://localhost:8080
+
+# ถ้าต้องการเรียก Go จากฝั่ง client โดยตรง ให้ใช้ตัวแปรที่ขึ้นต้นด้วย NEXT_PUBLIC_
+# (ต้องตั้ง CORS ที่ฝั่ง Go)
+NEXT_PUBLIC_GO_API_URL=http://localhost:8080
+
+# ตัวอย่าง secret / api key (เก็บฝั่ง server เท่านั้น — อย่าใช้ NEXT_PUBLIC_ ถ้าลับ)
+GO_API_KEY=supersecretkey# ใช้ Next as proxy (server-side URL, ไม่เปิดเผยให้ client โดยตรง)
+
+REDIS_URL=redis://127.0.0.1:6379/1
+
+# Related Service URLs
+NEXT_PUBLIC_PATH=http://192.168.0.145:3000
+
+# ถ้าต้องการเรียก Go จากฝั่ง client โดยตรง ให้ใช้ตัวแปรที่ขึ้นต้นด้วย NEXT_PUBLIC_
+NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE=http://192.168.0.145:6100
+NEXT_PUBLIC_ROOT_PATH_USER_SERVICE=http://192.168.0.145:6001
+NEXT_PUBLIC_ROOT_PATH_ADMIN_SERVICE=http://192.168.0.145:6002
+
+# notification service
+NEXT_PUBLIC_ROOT_PATH_NOTIFICATION_SERVICE=http://192.168.0.145:6005
+
+NEXT_PUBLIC_ROOT_PATH_PDF_SERVICE=http://192.168.0.145:5000
+
+ROOT_PATH_PURCHASE_SERVICE=http://192.168.0.145:6100
+
+# redirect Page
+NEXT_PUBLIC_LEGACY_BASE_URL=http://192.168.0.145:3000
+# Login
+NEXT_PUBLIC_LOGOUT_REDIRECT=/login
+# Dashboard
+NEXT_PUBLIC_LOGIN_SUCCESS_REDIRECT=/
+NEXT_PUBLIC_DASHBOARD_ROOT_REDIRECT=/dashboard
+# Manual
+NEXT_PUBLIC_MANUAL_REDIRECT=/manual
+# PR
+NEXT_PUBLIC_PURCHASE_PR_REDIRECT=/services/purchase
+NEXT_PUBLIC_PURCHASE_PR_CREATE_REDIRECT=/services/purchase/createPR
+NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT=/services/purchase/comparePrice
+NEXT_PUBLIC_PURCHASE_PR_DRAFT_REDIRECT=/services/purchase/prDraft
+# PO
+NEXT_PUBLIC_PURCHASE_PO_REDIRECT=/services/purchase/PO
+NEXT_PUBLIC_PURCHASE_PO_REVIEWED_REDIRECT=/services/purchase/PO/ReviewedPO?poNo=:poNo
+# Header Bar
+NEXT_PUBLIC_PROFILE_REDIRECT=/profile
+NEXT_PUBLIC_SETTING_REDIRECT=/setting
+NEXT_PUBLIC_NOTIFICATION_REDIRECT=/notification

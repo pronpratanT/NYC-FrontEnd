@@ -46,6 +46,7 @@ type PRCard = {
     supervisor_name: string;
     manager_name: string;
     status: string;
+    amount_compare_status_on_pr: number;
     pu_responsible: string;
     requester_name: string
     manager_approved: boolean;
@@ -1448,7 +1449,28 @@ function PurchasePageContent() {
                                             <HiDocumentText className={`h-14 w-14 ${departmentColors[pr.pr_no] || 'text-blue-400'}`} />
                                         )}
                                     </div>
-                                    {/* Status badge top right */}
+                                    {/* Compare status badge (notification style) */}
+                                    {pr.amount_compare_status_on_pr > 0 && (
+                                        <div className="absolute top-2 left-0 flex items-center pl-2 z-20">
+                                            <span className="relative flex h-5 w-5">
+                                                <span
+                                                    className={`absolute inline-flex h-full w-full rounded-full opacity-70 animate-ping ${isDarkMode
+                                                        ? 'bg-rose-500'
+                                                        : 'bg-rose-400'
+                                                        }`}
+                                                />
+                                                <span
+                                                    className={`relative flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-md ring-2 ${isDarkMode
+                                                        ? 'bg-rose-500 text-white ring-slate-900'
+                                                        : 'bg-rose-500 text-white ring-white'
+                                                        }`}
+                                                    title={`มีรายการรออนุมัติ ${pr.amount_compare_status_on_pr.toLocaleString()} รายการ`}
+                                                >
+                                                    {pr.amount_compare_status_on_pr}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="absolute top-2 right-2 z-10">
                                         {(pr.pr_no === "" || pr.status === 'draft') ? (
                                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-semibold text-xs shadow-sm ${isDarkMode ? 'bg-zinc-900/30 border-zinc-700/60 text-zinc-200' : 'bg-zinc-50 border-zinc-300 text-zinc-800'}`}>
@@ -1706,12 +1728,25 @@ function PurchasePageContent() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                <td className="px-6 py-4 whitespace-nowrap flex items-center justify-between">
                                                     <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                         {pr.supervisor_reject_at || pr.manager_reject_at || pr.pu_operator_reject_at ? (
                                                             <>ปฏิเสธ <span className={`font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{pr.count_list}</span> รายการ</>
                                                         ) : (
                                                             <>ดำเนินการ <span className={`font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>{pr.count_list - pr.waiting}</span>/<span className={`font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-green-700'}`}>{pr.count_list}</span></>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        {pr.amount_compare_status_on_pr > 0 && (
+                                                            <span
+                                                                className={`ml-4 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-md ring-2 ${isDarkMode
+                                                                    ? 'bg-rose-500 text-white ring-slate-900'
+                                                                    : 'bg-rose-500 text-white ring-white'
+                                                                    }`}
+                                                                title={`มีรายการรออนุมัติ ${pr.amount_compare_status_on_pr.toLocaleString()} รายการ`}
+                                                            >
+                                                                {pr.amount_compare_status_on_pr}
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </td>
