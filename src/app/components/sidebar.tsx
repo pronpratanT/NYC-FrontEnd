@@ -65,7 +65,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const purchaseMenuPath = process.env.NEXT_PUBLIC_PURCHASE_PR_REDIRECT || '/services/purchase';
   const [showPurchaseMenu, setShowPurchaseMenu] = useState(pathname.startsWith(purchaseMenuPath));
-  const { isCollapsed, setIsCollapsed } = useSidebar();
+  const { isCollapsed, setIsCollapsed, isMobile } = useSidebar();
   // Tooltip state for collapsed menu
   const [showTooltip, setShowTooltip] = useState<{ [key: string]: boolean }>({});
 
@@ -331,11 +331,38 @@ export default function Sidebar() {
     );
   };
 
+  // Sidebar width for desktop
+  const expandedWidth = 288;
+  const collapsedWidth = 80;
+
+  const sidebarWidth = isCollapsed ? collapsedWidth : expandedWidth;
+
+  const baseClasses = `border rounded-2xl flex flex-col shadow-xl transition-all duration-300 ${
+    isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'
+  }`;
+
+  const positionClasses = isMobile
+    ? // Mobile: off-canvas drawer
+      `fixed inset-y-0 left-0 z-40 ${
+        isCollapsed ? '-translate-x-full' : 'translate-x-0'
+      } transform w-[260px] m-0`
+    : // Desktop: fixed card on the left
+      `fixed left-6 top-6 h-[calc(100vh-3rem)] z-40`;
+
   return (
-    <aside 
-      className={`fixed left-6 top-6 h-[calc(100vh-3rem)] border rounded-2xl flex flex-col z-40 shadow-xl transition-all duration-300 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}
-      style={{ width: isCollapsed ? '80px' : '288px' }}
-    >
+    <>
+      {/* Backdrop สำหรับมือถือเมื่อ Sidebar เปิดอยู่ */}
+      {isMobile && !isCollapsed && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+
+      <aside
+        className={`${baseClasses} ${positionClasses}`}
+        style={!isMobile ? { width: `${sidebarWidth}px` } : undefined}
+      >
       {/* Header */}
       <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'px-3 py-5 justify-center' : 'px-5 py-5 gap-4'}`} style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #d1d5db' }}>
         {!isCollapsed && (
@@ -362,14 +389,20 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className={`absolute -right-3 top-20 w-6 h-6 rounded-full shadow-lg flex items-center justify-center transition-colors duration-200 ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-green-400 border border-gray-600' : 'bg-white hover:bg-gray-50 text-green-600 border border-gray-300'}`}
-        title={isCollapsed ? 'ขยาย Sidebar' : 'ย่อ Sidebar'}
-      >
-        <FaBars className={`text-xs transition-transform duration-300 ${isCollapsed ? 'rotate-0' : 'rotate-180'}`} />
-      </button>
+      {/* Toggle Button (desktop only – mobile มีปุ่มที่ Header แทน) */}
+      {!isMobile && (
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={`absolute -right-3 top-20 w-6 h-6 rounded-full shadow-lg flex items-center justify-center transition-colors duration-200 ${
+            isDarkMode
+              ? 'bg-gray-800 hover:bg-gray-700 text-green-400 border border-gray-600'
+              : 'bg-white hover:bg-gray-50 text-green-600 border border-gray-300'
+          }`}
+          title={isCollapsed ? 'ขยาย Sidebar' : 'ย่อ Sidebar'}
+        >
+          <FaBars className={`text-xs transition-transform duration-300 ${isCollapsed ? 'rotate-0' : 'rotate-180'}`} />
+        </button>
+      )}
 
       {/* Navigation */}
       <nav className={`flex-1 overflow-y-auto py-6 space-y-8 ${isCollapsed ? 'px-2' : 'px-3'}`} style={{
@@ -468,5 +501,6 @@ export default function Sidebar() {
         }
       `}</style>
     </aside>
+    </>
   );
 }

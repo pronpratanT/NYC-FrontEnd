@@ -41,7 +41,7 @@ type Department = {
 export default function DashboardPage() {
     const token = useToken();
     const router = useRouter();
-    const { isCollapsed } = useSidebar();
+    const { isCollapsed, isMobile } = useSidebar();
     const { isDarkMode } = useTheme();
 
     const [prData, setPrData] = useState<PRData[]>([]);
@@ -164,9 +164,9 @@ export default function DashboardPage() {
         );
     }
 
-    // Sidebar width: 288px (expanded), 80px (collapsed), left-6 (24px)
-    const sidebarWidth = isCollapsed ? 80 : 288;
-    const marginLeft = sidebarWidth + 24; // px
+    // Desktop: main pushed by sidebar, Mobile: small padding only
+    const sidebarWidth = isMobile ? 0 : (isCollapsed ? 80 : 288);
+    const marginLeft = isMobile ? 24 : sidebarWidth + 24; // px
 
     // Calculate chart dimensions
     const maxCount = Math.max(...monthlyData.map(d => d.count), 1);
@@ -183,16 +183,16 @@ export default function DashboardPage() {
         : 30;
 
     return (
-        <div className={`flex min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+        <div className={`flex min-h-screen app-shell ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
             <Sidebar />
             <Header />
             <main
                 style={{ marginLeft, transition: 'margin-left 0.3s' }}
-                className="flex-1 p-6 min-h-screen pt-24"
+                className="flex-1 p-4 sm:p-6 min-h-screen app-main"
             >
                 <div className="max-w-7xl mx-auto">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
                         <div className={`rounded-2xl p-6 shadow-lg flex flex-col items-center ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
                             <span className="text-3xl mb-2">📄</span>
                             <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>PR ทั้งหมด</p>
@@ -248,14 +248,15 @@ export default function DashboardPage() {
                         </div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 mb-6">
                                 {/* Monthly Chart */}
                                 <div className={`flex flex-col justify-center items-center h-[420px] bg-opacity-100 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-2xl shadow-lg p-8 transition-all duration-300`}>
                                     <h2 className={`text-xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                         PR รายเดือน
                                     </h2>
                                     <div className="flex-1 flex items-center justify-center w-full">
-                                        <svg width={chartWidth} height={chartHeight} className="mx-auto">
+                                        <div className="w-full overflow-x-auto">
+                                            <svg width={chartWidth} height={chartHeight} className="mx-auto max-w-none">
                                         {[0, 1, 2, 3, 4].map(i => {
                                             const y = padding.top + (chartHeight - padding.top - padding.bottom) * i / 4;
                                             const value = Math.round(maxCount * (4 - i) / 4);
@@ -344,20 +345,21 @@ export default function DashboardPage() {
                                             stroke={isDarkMode ? '#475569' : '#9ca3af'}
                                             strokeWidth="2"
                                         />
-                                        </svg>
+                                            </svg>
+                                        </div>
                                     </div>
                                 </div>
                                 {/* Department Pie Chart */}
                                 <div className={`flex flex-col justify-center items-center h-[420px] bg-opacity-100 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-2xl shadow-lg p-8 transition-all duration-300`}>
                                     <h2 className={`text-xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>สัดส่วน PR ตามแผนก (Top 8)</h2>
                                     <div className="flex-1 flex items-center justify-center w-full">
-                                        <div className="w-full flex items-center justify-center">
+                                        <div className="w-full flex items-center justify-center overflow-x-auto">
                                             {departmentData.pie.length === 0 ? (
                                                 <div className="flex items-center justify-center h-64 w-full">
                                                     <p className={isDarkMode ? 'text-slate-400' : 'text-gray-500'}>ไม่มีข้อมูล</p>
                                                 </div>
                                             ) : (
-                                                <svg width={340} height={340} viewBox="0 0 340 340" className="mx-auto">
+                                                <svg width={340} height={340} viewBox="0 0 340 340" className="mx-auto max-w-none">
                                                     {(() => {
                                                     const total = departmentData.pie.reduce((sum, d) => sum + d.count, 0);
                                                     let startAngle = 0;
@@ -407,13 +409,13 @@ export default function DashboardPage() {
                                 <div className={`flex flex-col justify-center items-center h-[420px] bg-opacity-100 ${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-2xl shadow-lg p-8 transition-all duration-300`}>
                                     <h2 className={`text-xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>จำนวน PR ของแต่ละแผนก (Top 15)</h2>
                                     <div className="flex-1 flex items-center justify-center w-full">
-                                        <div className="w-full flex items-center justify-center">
+                                        <div className="w-full flex items-center justify-center overflow-x-auto">
                                             {departmentData.bar.length === 0 ? (
                                                 <div className="flex items-center justify-center h-64 w-full">
                                                     <p className={isDarkMode ? 'text-slate-400' : 'text-gray-500'}>ไม่มีข้อมูล</p>
                                                 </div>
                                             ) : (
-                                                <svg width={deptBarChartWidth} height={deptBarChartHeight} className="mx-auto">
+                                                <svg width={deptBarChartWidth} height={deptBarChartHeight} className="mx-auto max-w-none">
                                                     {/* Bars */}
                                                     {departmentData.bar.map((dept, index) => {
                                                     const barW = dept.count > 0

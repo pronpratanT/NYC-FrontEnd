@@ -477,7 +477,7 @@ export default function ReviewedPOPage() {
         }
     }
 
-    const { isCollapsed } = useSidebar();
+    const { isCollapsed, isMobile } = useSidebar();
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
     if (error) return <div className="flex items-center justify-center min-h-screen"><div className="text-lg text-red-500">{error}</div></div>;
     return (
@@ -485,11 +485,11 @@ export default function ReviewedPOPage() {
             <Sidebar />
             <Header />
             <main
-                className="mt-[7.5rem] mr-6 transition-all duration-300"
+                className="mt-[5.5rem] sm:mt-[7.5rem] mr-3 sm:mr-6 transition-all duration-300"
                 style={{
                     minHeight: 'calc(100vh - 3rem)',
                     position: 'relative',
-                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                    marginLeft: isMobile ? '1.25rem' : (isCollapsed ? '9rem' : 'calc(18rem + 55px)'),
                 }}
             >
                 {poData ? (

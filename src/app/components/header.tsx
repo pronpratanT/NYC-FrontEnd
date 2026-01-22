@@ -57,9 +57,11 @@ export default function Header() {
   const { isDarkMode, toggleTheme } = useTheme();
   const { user } = useUser();
   const router = useRouter();
-  const { isCollapsed } = useSidebar();
-  const sidebarWidth = isCollapsed ? 80 : 288;
-  const left = sidebarWidth + 55; // px (เพิ่มระยะห่างอีก 16px)
+  const { isCollapsed, setIsCollapsed, isMobile } = useSidebar();
+
+  // Desktop: header pushed right by sidebar, Mobile: full-width with small margin
+  const sidebarWidth = isMobile ? 0 : (isCollapsed ? 80 : 288);
+  const left = isMobile ? 16 : sidebarWidth + 55; // px
 
   //notification data
   const [notificationsData, setNotificationsData] = useState<NotificationResponse>()
@@ -152,11 +154,27 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-6 right-6 h-16 border rounded-2xl flex items-center justify-between z-30 shadow-xl px-6 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}
+      className={`fixed top-4 sm:top-6 right-4 sm:right-6 h-16 border rounded-2xl flex items-center justify-between z-30 shadow-xl px-4 sm:px-6 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#D4E6DA]'}`}
       style={{ left, transition: 'left 0.3s' }}
     >
-      {/* Search Bar */}
-      <div className="flex-1 max-w-md">
+      {/* Left section: mobile menu button + Search Bar */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-md">
+        {/* Mobile sidebar toggle */}
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={`flex lg:hidden items-center justify-center w-9 h-9 rounded-xl border shadow-sm transition-colors duration-200 ${
+            isDarkMode ? 'bg-gray-800 border-gray-700 text-slate-200 hover:bg-gray-700' : 'bg-white border-[#D4E6DA] text-gray-700 hover:bg-[#F0F8F2]'
+          }`}
+          aria-label="Toggle sidebar"
+        >
+          <span className="block w-4 h-[2px] rounded-full bg-current relative">
+            <span className="absolute -top-1.5 left-0 w-4 h-[2px] rounded-full bg-current" />
+            <span className="absolute top-1.5 left-0 w-3 h-[2px] rounded-full bg-current" />
+          </span>
+        </button>
+
+        {/* Search Bar */}
         <div className="relative group">
           <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-base z-10 group-focus-within:text-green-600 transition-colors ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
           <input

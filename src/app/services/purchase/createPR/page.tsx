@@ -79,7 +79,7 @@ export default function TestPage() {
   const departmentId = user?.Department?.ID;
   console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, isMobile } = useSidebar();
   const router = useRouter();
   // สร้างหมายเลข PR mock: PR-YY-X000
   function getMockPRNo() {
@@ -567,16 +567,16 @@ export default function TestPage() {
           scrollbar-color: #cbd5e1 #f1f5f9;
         }
       `}</style>
-      <div className="min-h-screen relative">
+      <div className="min-h-screen relative app-shell">
         <Sidebar />
         <Header />
         {/* Main Content */}
         <main
-          className="mt-[7.5rem] mr-6 transition-all duration-300"
+          className="mt-[5.5rem] sm:mt-[7.5rem] mr-3 sm:mr-6 transition-all duration-300"
           style={{
             minHeight: 'calc(100vh - 3rem)',
             position: 'relative',
-            marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+            marginLeft: isMobile ? '1.25rem' : (isCollapsed ? '9rem' : 'calc(18rem + 55px)'),
           }}
         >
           <div className="max-w-none w-full space-y-8 mb-6 relative z-10">
@@ -586,7 +586,7 @@ export default function TestPage() {
             <p className="text-gray-600">Purchase Requisition System</p>
           </div> */}
             {/* Modern PR Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
               <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
@@ -698,8 +698,8 @@ export default function TestPage() {
                   )}
                 </div>
               </div>
-              <div className="overflow-visible">
-                <table className="min-w-full text-sm overflow-visible">
+              <div className="overflow-x-auto overflow-y-visible">
+                <table className="min-w-[960px] w-full text-sm overflow-visible">
                   <thead className={`${isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}`}>
                     <tr>
                       <th className={`px-2 py-3 text-center font-semibold w-12 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>ลบ</th>
@@ -772,8 +772,9 @@ export default function TestPage() {
                                     placeholderText="เลือกวันที่"
                                     className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-emerald-500/30 focus:border-emerald-500' : 'border-green-300 focus:ring-green-500 focus:border-green-500'}`}
                                     calendarClassName={isDarkMode ? 'react-datepicker-dark' : 'react-datepicker-light'}
-                                    popperClassName="z-[9999]"
+                                    popperClassName="z-[9999] pointer-events-auto"
                                     popperPlacement="bottom-start"
+                                    portalId="react-datepicker-portal"
                                   />
                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                     <FaRegCalendarAlt className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
@@ -1001,8 +1002,9 @@ export default function TestPage() {
                                     placeholderText="เลือกวันที่"
                                     className={`w-full h-10 px-2 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode ? 'border-slate-600 bg-slate-800/50 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500' : 'border-orange-300 focus:ring-orange-500 focus:border-orange-500'}`}
                                     calendarClassName={isDarkMode ? 'react-datepicker-orange-dark' : 'react-datepicker-orange'}
-                                    popperClassName="z-[9999]"
+                                    popperClassName="z-[9999] pointer-events-auto"
                                     popperPlacement="bottom-start"
+                                    portalId="react-datepicker-portal"
                                   />
                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                     <FaRegCalendarAlt className="w-4 h-4 text-orange-400" />
@@ -1168,6 +1170,7 @@ export default function TestPage() {
         {showCreatPartNo && (
           <CreatPartNo onCancel={() => setShowCreatPartNo(false)} />
         )}
+        
         <CreatePRModal
           open={createModalOpen}
           onClose={() => setCreateModalOpen(false)}

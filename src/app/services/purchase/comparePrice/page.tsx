@@ -120,6 +120,7 @@ type FreeItems = {
 
 function ComparePriceContent({ token }: { token: string | null }) {
     const { isDarkMode } = useTheme();
+    const { isCollapsed, isMobile } = useSidebar();
     const { showToast, showPDFToast, setPDFToastSuccess, setPDFToastError } = useToast();
     // Check Role from User Context
     const { user } = useUser();
@@ -155,7 +156,6 @@ function ComparePriceContent({ token }: { token: string | null }) {
     const searchParams = useSearchParams();
     const prId = searchParams.get("id");
     const router = useRouter();
-    const { isCollapsed } = useSidebar();
 
     // const selectedPR = prList.find(pr => pr.code === prCode);
     // const selectedParts = selectedPR?.parts || [];
@@ -694,18 +694,18 @@ function ComparePriceContent({ token }: { token: string | null }) {
             <Sidebar />
             <Header />
             <main
-                className="mt-[7.5rem] mr-6 transition-all duration-300"
+                className="mt-[5.5rem] sm:mt-[7.5rem] mr-3 sm:mr-6 transition-all duration-300"
                 style={{
                     minHeight: 'calc(100vh - 3rem)',
                     position: 'relative',
-                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                    marginLeft: isMobile ? '1.25rem' : (isCollapsed ? '9rem' : 'calc(18rem + 55px)'),
                 }}
             >
                 {/* Content: Show PR info and table only if prData exists */}
                 {prData ? (
                     <div className="max-w-none w-full space-y-8 mb-2">
                         {/* Modern PR Info Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                             {/* PR CARD */}
                             <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-100'}`}>
                                 <div className="flex items-center gap-3 mb-2 justify-between">
@@ -1112,7 +1112,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
                                 </div>
                             </div>
                             <div className="overflow-x-auto shadow-lg backdrop-blur-sm">
-                                <table className="w-full text-sm table-auto">
+                                <table className="w-full min-w-[960px] text-sm table-auto">
                                     <thead className={isDarkMode ? 'bg-gradient-to-r from-slate-800/50 via-slate-900/50 to-slate-800/50' : 'bg-gradient-to-r from-green-50 via-white to-green-100'}>
                                         <tr>
                                             {/* Show action column only if there are actionable items (Compared, pending, Rejected) */}

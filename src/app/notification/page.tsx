@@ -46,7 +46,7 @@ type NotificationResponse = {
 type NotificationItem = Notification['notify_list'][number];
 
 export default function NotificationPage() {
-    const { isCollapsed } = useSidebar();
+    const { isCollapsed, isMobile } = useSidebar();
     const { isDarkMode } = useTheme();
     const token = useToken();
     const router = useRouter();
@@ -196,11 +196,11 @@ export default function NotificationPage() {
             <Header />
             {/* Main Content */}
             <main
-                className="mt-[7.5rem] mr-6 transition-all duration-300"
+                className="mt-[5.5rem] sm:mt-[7.5rem] mr-3 sm:mr-6 transition-all duration-300"
                 style={{
                     minHeight: 'calc(100vh - 3rem)',
                     position: 'relative',
-                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                    marginLeft: isMobile ? '1.25rem' : (isCollapsed ? '9rem' : 'calc(18rem + 55px)'),
                 }}
             >
                 <div className="max-w-none w-full space-y-3 relative z-10">

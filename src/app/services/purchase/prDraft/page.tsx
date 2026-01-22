@@ -147,7 +147,7 @@ function PRDraftContent() {
     const departmentId = user?.Department?.ID;
     console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
-    const { isCollapsed } = useSidebar();
+    const { isCollapsed, isMobile } = useSidebar();
     const router = useRouter();
     // สร้างหมายเลข PR mock: PR-YY-X000
     function getMockPRNo() {
@@ -831,11 +831,11 @@ function PRDraftContent() {
                 <Header />
                 {/* Main Content */}
                 <main
-                    className="mt-[7.5rem] mr-6 transition-all duration-300"
+                    className="mt-[5.5rem] sm:mt-[7.5rem] mr-3 sm:mr-6 transition-all duration-300"
                     style={{
                         minHeight: 'calc(100vh - 3rem)',
                         position: 'relative',
-                        marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                        marginLeft: isMobile ? '1.25rem' : (isCollapsed ? '9rem' : 'calc(18rem + 55px)'),
                     }}
                 >
                     <div className="max-w-none w-full space-y-8 mb-6 relative z-10">

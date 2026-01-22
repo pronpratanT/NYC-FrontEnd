@@ -872,7 +872,7 @@ export default function PurchaseOrderPage() {
         }
     }
 
-    const { isCollapsed } = useSidebar();
+    const { isCollapsed, isMobile } = useSidebar();
 
     const rowsPerPageOptions = [
         { key: "10", label: "10 per page" },
@@ -885,11 +885,11 @@ export default function PurchaseOrderPage() {
             <Sidebar />
             <Header />
             <main
-                className="mt-[7.5rem] mr-6 transition-all duration-300"
+                className="mt-[5.5rem] sm:mt-[7.5rem] mr-3 sm:mr-6 transition-all duration-300"
                 style={{
                     minHeight: 'calc(100vh - 3rem)',
                     position: 'relative',
-                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                    marginLeft: isMobile ? '1.25rem' : (isCollapsed ? '9rem' : 'calc(18rem + 55px)'),
                 }}
             >
                 <div className="pb-5 pr-5 relative z-10">
@@ -1355,8 +1355,8 @@ export default function PurchaseOrderPage() {
                                     );
                                 })()}
 
-                                {/* Page numbers */}
-                                <div className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                {/* Page numbers - hide on small screens */}
+                                <div className={`hidden sm:block text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                                     {(() => {
                                         const isSearching = !!search;
                                         const isFiltered = !!statusFilter;

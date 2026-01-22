@@ -44,6 +44,7 @@ export default function RootLayout({
                 <ToastProvider>
                   <NotificationListener />
                   {children}
+                  <div id="react-datepicker-portal" className="fixed inset-0 z-[9999] pointer-events-none" />
                 </ToastProvider>
               </SidebarProvider>
             </ThemeProvider>

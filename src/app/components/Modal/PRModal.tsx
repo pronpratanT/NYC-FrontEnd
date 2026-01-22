@@ -2634,14 +2634,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
 
                     // หา vendor_id จาก recent_purchase เหมือนกับใน left column
                     let purchaseVendorId: number | undefined = undefined;
-                    const rp = prWithPO.recent_purchase;
+                    const rp = prWithPO.choose_vendor;
                     if (Array.isArray(rp) && rp.length > 0 && typeof rp[0]?.vendor_id === 'number') {
                       purchaseVendorId = rp[0].vendor_id;
                     } else if (rp && typeof rp === 'object' && 'vendor_id' in rp && typeof (rp as { vendor_id?: number }).vendor_id === 'number') {
                       purchaseVendorId = (rp as { vendor_id: number }).vendor_id;
                     }
 
-                    const vendorDetail = compareData?.compare_vendors?.find(v => v.vendor_id === purchaseVendorId);
+                    const vendorDetail = compareData?.compare_vendors?.find(v => v.vendor_id === rp);
 
                     return (
                       <div className="flex flex-col h-full">
@@ -2980,13 +2980,14 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                                         <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>ราคา</label>
                                         <div className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                                          {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
+                                          {/* {Array.isArray(prWithPO.recent_purchase) && prWithPO.recent_purchase.length > 0
                                             ? ((prWithPO.recent_purchase[0] as { price?: number })?.price !== undefined
                                               ? `฿ ${(prWithPO.recent_purchase[0] as { price: number }).price.toLocaleString()}`
                                               : '-')
                                             : (!Array.isArray(prWithPO.recent_purchase) && (prWithPO.recent_purchase as { price?: number })?.price !== undefined)
                                               ? `฿ ${(prWithPO.recent_purchase as { price: number }).price.toLocaleString()}`
-                                              : '-'}
+                                              : '-'} */}
+                                          {vendorDetail.price}
                                         </div>
                                       </div>
                                       <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>

@@ -148,7 +148,27 @@ function PurchasePageContent() {
     const permission = permissions.find(
         (p: import("@/app/context/UserContext").Permission) => p && Number(p.service) === 2
     );
-    // ดึง department ทั้งหมดใน service=2 พร้อม roleID ของแต่ละ department
+    // ดึงสิทธิ์เฉพาะ department ตาม Department.ID ของ user
+    const department = permission?.departments?.find?.(
+        (d: import("@/app/context/UserContext").Departments) => d && d.department === user?.Department?.ID
+    );
+    const roles: string[] = department?.roles ?? [];
+    const roleNames: string[] = department?.roles_name ?? [];
+    // roleID = ค่า role ที่เป็นตัวเลขมากที่สุดใน roles (เช่น ["2","4"] -> 4)
+    const numericRoles = roles
+        .map(r => parseInt(r, 10))
+        .filter(n => !Number.isNaN(n));
+    const roleID = numericRoles.length > 0
+        ? Math.max(...numericRoles)
+        : undefined;
+    // serviceID แปลงเป็น number เช่นกัน
+    const serviceID = permission
+        ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
+        : undefined;
+    const departmentId = user?.Department?.ID;
+    console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
+
+    // ดึง department ทั้งหมดใน service=2 พร้อม roleID ของแต่ละ department (ใช้สำหรับ filter ด้านบน)
     const allDepartments = (permission?.departments ?? []).map(dep => {
         const roleIDs = (dep.roles ?? []).map(r => parseInt(r, 10)).filter(n => !Number.isNaN(n));
         return {
@@ -158,11 +178,6 @@ function PurchasePageContent() {
         };
     });
     const hasMultiDepartments = allDepartments.length > 1;
-    // serviceID แปลงเป็น number เช่นกัน
-    const serviceID = permission
-        ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
-        : undefined;
-    const departmentId = user?.Department?.ID;
     const [departments, setDepartments] = useState<Department[]>([]);
     // console.log("Departments & Roles:", allDepartments, "Service ID:", serviceID, "Department ID:", departmentId);
 
@@ -864,7 +879,7 @@ function PurchasePageContent() {
         }
     }
 
-    const { isCollapsed } = useSidebar();
+    const { isCollapsed, isMobile } = useSidebar();
 
     const rowsPerPageOptions = [
         { key: "10", label: "10 per page" },
@@ -878,11 +893,11 @@ function PurchasePageContent() {
             <Sidebar />
             <Header />
             <main
-                className="mt-[7.5rem] mr-6 transition-all duration-300"
+                className="mt-[5.5rem] sm:mt-[7.5rem] mr-3 sm:mr-6 transition-all duration-300"
                 style={{
                     minHeight: 'calc(100vh - 3rem)',
                     position: 'relative',
-                    marginLeft: isCollapsed ? '9rem' : 'calc(18rem + 55px)',
+                    marginLeft: isMobile ? '1.25rem' : (isCollapsed ? '9rem' : 'calc(18rem + 55px)'),
                 }}
             >
                 <div className="pb-5 pr-5 relative z-10">
@@ -1404,8 +1419,8 @@ function PurchasePageContent() {
                                     </div>
                                 </div>
 
-                                {/* Page numbers */}
-                                <div className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                {/* Page numbers - hide on small screens */}
+                                <div className={`hidden sm:block text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                                     หน้า <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentPage}</span> / <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>{totalPages}</span>
                                 </div>
                             </div>
@@ -1450,7 +1465,7 @@ function PurchasePageContent() {
                                         )}
                                     </div>
                                     {/* Compare status badge (notification style) */}
-                                    {pr.amount_compare_status_on_pr > 0 && (
+                                    {pr.amount_compare_status_on_pr > 0 && roleID === 5 && (
                                         <div className="absolute top-2 left-0 flex items-center pl-2 z-20">
                                             <span className="relative flex h-5 w-5">
                                                 <span
@@ -1737,7 +1752,7 @@ function PurchasePageContent() {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        {pr.amount_compare_status_on_pr > 0 && (
+                                                        {pr.amount_compare_status_on_pr > 0 && roleID === 5 && (
                                                             <span
                                                                 className={`ml-4 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-md ring-2 ${isDarkMode
                                                                     ? 'bg-rose-500 text-white ring-slate-900'
