@@ -17,7 +17,7 @@ const CreatPartNo: React.FC<CreatPartNoProps> = ({ onConfirm, onCancel }) => {
   const { isDarkMode } = useTheme();
 
   // validation: ทุกช่องต้องไม่ว่าง
-  const isValid = productCode.trim() && productDetail.trim() && partNo.trim() && partName.trim();
+  const isValid = partNo.trim() && partName.trim();
 
   const handlerConfirm = async () => {
     const body = {
@@ -26,7 +26,7 @@ const CreatPartNo: React.FC<CreatPartNoProps> = ({ onConfirm, onCancel }) => {
       part_no: partNo,
       part_name: partName
     };
-    console.log("Token: ", token);
+    // console.log("Token: ", token);
     console.log("Submitting data:", body);
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/inventory/add`, {
