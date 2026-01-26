@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  nyc-project-container:
+    build: .
+    container_name: nyc-front
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
