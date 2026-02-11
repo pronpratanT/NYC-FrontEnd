@@ -126,11 +126,12 @@ export default function Header() {
 
   const handleRelatedToPage = (relatedLink: string) => {
     if (!relatedLink) return;
+    const compareBase = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
     if (!/^D|^I/.test(relatedLink)) {
-      router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/comparePrice?id=${relatedLink}`);
+      router.push(`${compareBase}?id=${relatedLink}`);
     }
     else {
-      router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
+      router.push(`/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
     }
   }
 
@@ -175,14 +176,14 @@ export default function Header() {
         </button>
 
         {/* Search Bar */}
-        <div className="relative group">
+        {/* <div className="relative group">
           <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-base z-10 group-focus-within:text-green-600 transition-colors ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
           <input
             type="text"
             placeholder="Search anything..."
             className={`w-full pl-10 pr-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500/50 transition-all duration-200 shadow-sm hover:shadow-md ${isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500 focus:bg-gray-800' : 'bg-white border-[#D4E6DA] text-gray-700 placeholder-gray-400 focus:bg-white'}`}
           />
-        </div>
+        </div> */}
       </div>
 
       {/* Action Buttons & User Menu */}
@@ -319,7 +320,7 @@ export default function Header() {
                   className={`w-full flex items-center cursor-pointer gap-3 px-4 py-3 text-base transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-[#F0F8F2]'}`}
                   onClick={() => {
                     setShowUserMenu(false);
-                    router.push(process.env.NEXT_PUBLIC_SETTING_REDIRECT || "/setting");
+                    // router.push(process.env.NEXT_PUBLIC_SETTING_REDIRECT || "/setting");
                   }}
                 >
                   <FaCog className={`${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />

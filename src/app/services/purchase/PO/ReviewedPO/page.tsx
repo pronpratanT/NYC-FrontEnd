@@ -21,6 +21,10 @@ import RequestEditPOModal from "@/app/components/Modal/Request_Edit_PO";
 import ResponseEditPOModal from "@/app/components/Modal/Response_Edit_PO";
 import PuValidatedModal from '@/app/components/Modal/Pu_validated';
 import { useToast } from "@/app/components/toast/Notify";
+import "react-datepicker/dist/react-datepicker.css";
+import '@/app/styles/react-datepicker-dark.css';
+import "@/app/styles/react-datepicker-orange.css";
+import DatePicker from "react-datepicker";
 
 // icons
 import { BsCalendar2Event } from "react-icons/bs";
@@ -40,6 +44,9 @@ import { TbSettingsCheck } from "react-icons/tb";
 import { TbSettingsQuestion } from "react-icons/tb";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { GoDownload } from "react-icons/go";
+import { FaRegCalendarAlt } from "react-icons/fa";
+import { FaSave } from "react-icons/fa";
+import { GiCancel } from "react-icons/gi";
 
 type ReviewedPO = {
     po_id: number;
@@ -128,6 +135,16 @@ type VendorSelected = {
     address2: string;
 }
 
+const getLatestDeliDate = (lists?: POList[]): Date | null => {
+    if (!lists || lists.length === 0) return null;
+    const dates = lists
+        .filter(item => item.deli_date)
+        .map(item => new Date(item.deli_date));
+    if (dates.length === 0) return null;
+    dates.sort((a, b) => b.getTime() - a.getTime());
+    return dates[0];
+};
+
 // Type สำหรับ vendor ที่เลือก
 // type VendorSelected = { ... } // เพิ่ม type ตามที่ใช้งานจริง
 
@@ -204,6 +221,11 @@ export default function ReviewedPOPage() {
 
     // State สำหรับ modal SendMail
     const [showSendMailModal, setShowSendMailModal] = useState(false);
+
+    // State สำหรับแก้ไขวันที่จัดส่ง
+    const [showEditDeliveryDate, setShowEditDeliveryDate] = useState(false);
+    const [deliveryDate, setDeliveryDate] = useState<Date | null>(null); // วันที่ที่ยืนยันแล้ว
+    const [tempDeliveryDate, setTempDeliveryDate] = useState<Date | null>(null); // วันที่ที่เลือกอยู่ระหว่างแก้ไข
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -476,6 +498,10 @@ export default function ReviewedPOPage() {
             );
         }
     }
+
+    const handleDeliveryDateChange = (date: Date | null) => {
+        setTempDeliveryDate(date);
+    };
 
     const { isCollapsed, isMobile } = useSidebar();
     if (loading) return <div className="flex items-center justify-center min-h-screen"><div className={`text-lg ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>กำลังโหลดข้อมูล...</div></div>;
@@ -941,18 +967,89 @@ export default function ReviewedPOPage() {
                                             </div>
                                         </div>
                                         <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/30' : 'bg-gray-50'}`}>
-                                            <div className="flex items-center justify-between">
-                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>วันที่จัดส่ง</span>
-                                                <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
-                                                    {(() => {
-                                                        if (!poData.po_lists || poData.po_lists.length === 0) return '-';
-                                                        const latestDeliDate = poData.po_lists
-                                                            .filter(item => item.deli_date)
-                                                            .map(item => new Date(item.deli_date))
-                                                            .sort((a, b) => b.getTime() - a.getTime())[0];
-                                                        return latestDeliDate ? latestDeliDate.toLocaleDateString('th-TH') : '-';
-                                                    })()}
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                    วันที่จัดส่ง
                                                 </span>
+                                                <div className="flex items-center gap-2">
+                                                    {!(poData.approved_by || poData.rejected_by) && showEditDeliveryDate ? (
+                                                        <div className="relative w-48 sm:w-56">
+                                                            <DatePicker
+                                                                selected={tempDeliveryDate}
+                                                                onChange={handleDeliveryDateChange}
+                                                                dateFormat="dd/MM/yyyy"
+                                                                placeholderText="เลือกวันที่"
+                                                                className={`px-3 py-2 pr-10 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 transition-all duration-200 ${isDarkMode
+                                                                    ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-orange-500/30 focus:border-orange-500'
+                                                                    : 'border-slate-300 bg-white text-slate-800 focus:ring-orange-500 focus:border-orange-500'
+                                                                    }`}
+                                                                calendarClassName={isDarkMode ? 'react-datepicker-orange-dark' : 'react-datepicker-orange'}
+                                                                popperClassName="z-[9999]"
+                                                                popperPlacement="bottom-start"
+                                                            />
+                                                            <span className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none">
+                                                                <FaRegCalendarAlt className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-500'}`} />
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className={`text-sm ${isDarkMode ? 'text-slate-200' : 'text-gray-800'}`}>
+                                                            {(() => {
+                                                                const baseDate = deliveryDate || getLatestDeliDate(poData.po_lists);
+                                                                return baseDate ? baseDate.toLocaleDateString('th-TH') : '-';
+                                                            })()}
+                                                        </span>
+                                                    )}
+
+                                                    {!(poData.approved_by || poData.rejected_by) && (
+                                                        <>
+                                                            {showEditDeliveryDate ? (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        className={`px-2 py-1 text-xs rounded-lg font-semibold cursor-pointer transition-colors duration-150 border ${isDarkMode
+                                                                            ? 'border-emerald-500/60 text-emerald-300 hover:bg-emerald-500/10'
+                                                                            : 'border-emerald-400/70 text-emerald-600 hover:bg-emerald-50'
+                                                                            }`}
+                                                                        onClick={() => {
+                                                                            setDeliveryDate(tempDeliveryDate || deliveryDate || getLatestDeliDate(poData.po_lists));
+                                                                            setShowEditDeliveryDate(false);
+                                                                        }}
+                                                                    >
+                                                                        <FaSave className='w-4 h-4'/>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className={`px-2 py-1 text-xs rounded-lg font-semibold cursor-pointer transition-colors duration-150 border ${isDarkMode
+                                                                            ? 'border-red-500/60 text-red-300 hover:bg-red-500/10'
+                                                                            : 'border-red-400/70 text-red-600 hover:bg-red-50'
+                                                                            }`}
+                                                                        onClick={() => {
+                                                                            setTempDeliveryDate(deliveryDate || getLatestDeliDate(poData.po_lists));
+                                                                            setShowEditDeliveryDate(false);
+                                                                        }}
+                                                                    >
+                                                                        <GiCancel className='w-4 h-4'/>
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    className={`px-2 py-1 text-xs rounded-lg font-semibold cursor-pointer transition-colors duration-150 border ${isDarkMode
+                                                                        ? 'border-orange-500/60 text-orange-300 hover:bg-orange-500/10'
+                                                                        : 'border-orange-400/70 text-orange-600 hover:bg-orange-50'
+                                                                        }`}
+                                                                    onClick={() => {
+                                                                        const current = deliveryDate || getLatestDeliDate(poData.po_lists);
+                                                                        setTempDeliveryDate(current || null);
+                                                                        setShowEditDeliveryDate(true);
+                                                                    }}
+                                                                >
+                                                                    แก้ไข
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-slate-900/30' : 'bg-gray-50'}`}>

@@ -164,11 +164,12 @@ export default function NotificationPage() {
 
     const handleRelatedToPage = (relatedLink: string) => {
         if (!relatedLink) return;
+        const compareBase = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
         if (!/^D|^I/.test(relatedLink)) {
-            router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/comparePrice?id=${relatedLink}`);
+            router.push(`${compareBase}?id=${relatedLink}`);
         }
         else {
-            router.push(`${process.env.NEXT_PUBLIC_PATH}/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
+            router.push(`/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
         }
     }
 

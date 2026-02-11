@@ -2880,6 +2880,67 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                         </div>
                                       </div>
                                     )}
+                                    <label htmlFor="Vat" className={`block mb-2 text-sm font-medium mt-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>Vat</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div
+                                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'D'
+                                            ? isDarkMode
+                                              ? 'bg-blue-900/60 border-blue-500'
+                                              : 'bg-blue-100 border-blue-500'
+                                            : isDarkMode
+                                              ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                              : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                            }`}
+                                          onClick={() => setPurchaseType('D')}
+                                        >
+                                          <div className="flex items-center space-x-2">
+                                            <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'D'
+                                              ? isDarkMode
+                                                ? 'border-blue-300 bg-blue-500'
+                                                : 'border-blue-500 bg-blue-500'
+                                              : isDarkMode
+                                                ? 'border-slate-500'
+                                                : 'border-slate-400'
+                                              }`}></div>
+                                            <div>
+                                              <div className={`font-bold text-sm ${purchaseType === 'D'
+                                                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                                : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                                }`}>Vat 7%</div>
+                                              <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>มีภาษี</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div
+                                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'I'
+                                            ? isDarkMode
+                                              ? 'bg-blue-900/60 border-blue-500'
+                                              : 'bg-blue-100 border-blue-500'
+                                            : isDarkMode
+                                              ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                              : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                            }`}
+                                          onClick={() => setPurchaseType('I')}
+                                        >
+                                          <div className="flex items-center space-x-2">
+                                            <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'I'
+                                              ? isDarkMode
+                                                ? 'border-blue-300 bg-blue-500'
+                                                : 'border-blue-500 bg-blue-500'
+                                              : isDarkMode
+                                                ? 'border-slate-500'
+                                                : 'border-slate-400'
+                                              }`}></div>
+                                            <div>
+                                              <div className={`font-bold text-sm ${purchaseType === 'I'
+                                                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                                : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                                }`}>No Vat</div>
+                                              <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ไม่มีภาษี</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
                                     {/* Remark input field */}
                                     <div className="mt-6">
                                       <label htmlFor="remark" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Remark</label>
@@ -4770,7 +4831,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                   <tr className={`${isDarkMode ? 'bg-slate-800/50' : 'bg-gray-50/80'} border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'} ${isDisabled ? 'opacity-60' : ''}`}>
                                     <td className="px-4 py-2" />
                                     <td className="px-4 py-2" />
-                                    <td className="px-4 py-2 flex justify-center" ><LuNotebookPen className={`w-4 h-4 ${isDisabled ? 'text-amber-400/100' : 'text-amber-400'}`} /></td>
+                                    <td className="px-4 py-2 flex justify-center" ><LuNotebookPen className={`w-4 h-4 ${isDisabled ? 'text-amber-400/100' : 'text-amber-600'}`} /></td>
                                     <td colSpan={6} className="px-4 py-2 text-xs align-top">
                                       {editingNote === vendor.compare_id ? (
                                         <div className="flex items-start gap-2">
@@ -4822,8 +4883,8 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                           </div>
                                         </div>
                                       ) : (
-                                        <span className={`${isDisabled ? (isDarkMode ? 'text-amber-300/100' : 'text-amber-600/100') : (isDarkMode ? 'text-amber-300' : 'text-amber-600')}`}>
-                                          {vendor.remark}
+                                        <span className={`${isDisabled ? (isDarkMode ? 'text-amber-300/100' : 'text-amber-600/100') : (isDarkMode ? 'text-white' : 'text-black')}`}>
+                                          หมายเหตุ : {vendor.remark}
                                         </span>
                                       )}
                                     </td>

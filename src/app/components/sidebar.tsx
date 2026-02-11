@@ -19,7 +19,8 @@ import { useSidebar } from '../context/SidebarContext';
 const manualPdfPath = process.env.NEXT_PUBLIC_MANUAL_PDF || '/guidebook/manual.pdf';
 
 const menu = [
-  { label: 'Dashboard', icon: RiDashboardFill, href: process.env.NEXT_PUBLIC_DASHBOARD_ROOT_REDIRECT },
+  { label: 'Dashboard', icon: RiDashboardFill },
+  // { label: 'Dashboard', icon: RiDashboardFill, href: process.env.NEXT_PUBLIC_DASHBOARD_ROOT_REDIRECT },
   // ใช้ PDF โดยตรง แทนหน้าภายใน; ต้องวางไฟล์ไว้ที่ public/guidebook/manual.pdf หรือกำหนด env NEXT_PUBLIC_MANUAL_PDF
   { label: 'คู่มือการใช้งาน', icon: FaBook, href: manualPdfPath },
 ];
