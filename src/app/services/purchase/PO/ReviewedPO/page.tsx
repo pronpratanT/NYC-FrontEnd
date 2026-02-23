@@ -1000,7 +1000,7 @@ export default function ReviewedPOPage() {
                                                         </span>
                                                     )}
 
-                                                    {!(poData.approved_by || poData.rejected_by) && (
+                                                    {/* {!(poData.approved_by || poData.rejected_by) && (
                                                         <>
                                                             {showEditDeliveryDate ? (
                                                                 <>
@@ -1048,7 +1048,7 @@ export default function ReviewedPOPage() {
                                                                 </button>
                                                             )}
                                                         </>
-                                                    )}
+                                                    )} */}
                                                 </div>
                                             </div>
                                         </div>

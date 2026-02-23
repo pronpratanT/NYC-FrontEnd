@@ -151,7 +151,7 @@ function ComparePriceContent({ token }: { token: string | null }) {
         ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
         : undefined;
     const departmentId = user?.Department?.ID;
-    console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
+    // console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
     const searchParams = useSearchParams();
     const prId = searchParams.get("id");

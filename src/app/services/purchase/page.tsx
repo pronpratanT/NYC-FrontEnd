@@ -32,6 +32,7 @@ import { TbLayoutList, TbLayoutCards } from "react-icons/tb";
 import { TbProgressCheck } from "react-icons/tb";
 import { RiFileEditLine } from "react-icons/ri";
 import { HiClipboardDocument } from "react-icons/hi2";
+import useSWR from "swr";
 
 type PRCard = {
     id: number;
@@ -88,6 +89,8 @@ const departmentColors: { [key: string]: string } = {
     "IT-p2": "text-cyan-600",
     "ฝ่ายผลิต": "text-blue-700"
 };
+
+type StatusError = Error & { status?: number };
 
 // ตัดตัวอักษรภาษาอังกฤษออกจากข้อความ
 // แต่ถ้าข้อความนั้นไม่มีภาษาไทยเลย จะคืนค่าเดิม
@@ -421,127 +424,159 @@ function PurchasePageContent() {
     }
 
     // TODO: GET Data
-    {/* PR data */ }
-    useEffect(() => {
-        const fetchPrCards = async () => {
-            try {
-                setError(null);
-                setLoading(true);
+    {/* PR data via SWR */ }
 
-                if (!token) {
-                    setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
-                    setLoading(false);
-                    return;
-                }
+    const maxItemsNeeded = Math.max(500, itemsPerPage * 20);
 
-                // Fetch total PR count
-                const responseCount = await fetch(`${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/count/all`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+    const getPrKey = () => {
+        if (!token) return null;
+        const start = dateRange?.start ?? "";
+        const end = dateRange?.end ?? "";
+        return [
+            "pr-list",
+            token,
+            search || "",
+            start,
+            end,
+            maxItemsNeeded,
+        ];
+    };
 
-                if (responseCount.ok) {
-                    // const countData = await responseCount.json();
-                    // setTotalPrCount(countData.data || 0);
-                } else {
-                    console.warn("Failed to fetch PR count:", responseCount.statusText);
-                }
+    const fetchPrCards = async (key: readonly unknown[]) => {
+        const [_, tokenValue, searchValue, start, end, limit] = key as [
+            string,
+            string,
+            string,
+            string,
+            string,
+            number
+        ];
 
-                // Calculate API parameters: fetch enough data to ensure proper sorting
-                // Use a larger dataset to ensure we get the actual newest/oldest data
-                const maxItemsNeeded = Math.max(500, itemsPerPage * 20); // Fetch at least 500 items or 20 pages worth
-
-                let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/departments?page=1&limit=${maxItemsNeeded}`;
-                let fetchOptions: RequestInit = {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                };
-
-                // ถ้ามี search ให้ใช้ API search-pr
-                if (search && search.trim() !== "") {
-                    url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-pr?keyword=${encodeURIComponent(search)}&page=1&limit=${maxItemsNeeded}`;
-                    fetchOptions = {
-                        ...fetchOptions,
-                        cache: "no-store",
-                        headers: {
-                            ...(fetchOptions.headers || {}),
-                            Authorization: `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    };
-                }
-
-                const response = await fetch(url, fetchOptions);
-                if (response.status === 401) {
-                    setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
-                    document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
-                    return;
-                }
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                let prsArray = Array.isArray(data) ? data : data.data || [];
-
-                // Sort by PR number immediately after fetching to ensure proper order
-                // Sort by PR number, format: PR{YY}{Alpha}{NNN}
-                const extractPRNumber = (pr_no: string) => {
-                    const match = pr_no.match(/^PR(\d{2})([A-Z])(\d{3})$/i);
-                    if (match) {
-                        const year = parseInt(match[1]);
-                        const alpha = match[2].toUpperCase();
-                        const alphaNum = alpha.charCodeAt(0) - 65; // 'A' = 0, 'B' = 1, ...
-                        const num = parseInt(match[3]);
-                        // Combine for sorting: year * 10000 + alphaNum * 1000 + num
-                        return year * 10000 + alphaNum * 1000 + num;
-                    }
-                    return 0;
-                };
-
-                // Default sort: newest first (highest PR number first)
-                prsArray.sort((a: PRCard, b: PRCard) => {
-                    const va = extractPRNumber(a.pr_no);
-                    const vb = extractPRNumber(b.pr_no);
-                    return vb - va; // newest first
-                });
-
-                // Filter by date range
-                if (dateRange && dateRange.start && dateRange.end) {
-                    prsArray = prsArray.filter((pr: PRCard) => {
-                        if (!pr.pr_date) return false;
-                        // แปลง pr_date เป็น Date object
-                        // ถ้า pr_date เป็น ISO format (YYYY-MM-DD)
-                        const prDate = new Date(pr.pr_date);
-                        // แปลง dateRange.start และ dateRange.end จาก YYYY-MM-DD เป็น Date
-                        const startDate = new Date(dateRange.start);
-                        const endDate = new Date(dateRange.end);
-                        // ตั้งเวลาให้ครอบคลุมทั้งวัน
-                        startDate.setHours(0, 0, 0, 0);
-                        endDate.setHours(23, 59, 59, 999);
-                        // เปรียบเทียบ
-                        return prDate >= startDate && prDate <= endDate;
-                    });
-                }
-                setPrCards(prsArray);
-                console.log("Fetched and sorted PR cards:", prsArray.length, "items", prsArray.slice(0, 5).map((p: PRCard) => p.pr_no));
-            } catch (error: unknown) {
-                console.error("Failed to fetch PR cards:", error);
-                if (error instanceof Error) {
-                    setError(error.message || "ไม่สามารถโหลดข้อมูล PR ได้");
-                } else {
-                    setError("ไม่สามารถโหลดข้อมูล PR ได้");
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (token !== null) {
-            fetchPrCards();
+        if (!tokenValue) {
+            const error: StatusError = new Error("ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
+            error.status = 401;
+            throw error;
         }
-    }, [token, router, search, dateRange, searchParams, itemsPerPage]);
+
+        let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/pr/request/departments?page=1&limit=${limit}`;
+        let fetchOptions: RequestInit = {
+            headers: {
+                Authorization: `Bearer ${tokenValue}`,
+                "Content-Type": "application/json",
+            },
+            cache: "no-store",
+        };
+
+        const searchText = (searchValue || "").trim();
+        if (searchText !== "") {
+            url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/search-pr?keyword=${encodeURIComponent(
+                searchText
+            )}&page=1&limit=${limit}`;
+            fetchOptions = {
+                ...fetchOptions,
+                cache: "no-store",
+                headers: {
+                    ...(fetchOptions.headers || {}),
+                    Authorization: `Bearer ${tokenValue}`,
+                    "Content-Type": "application/json",
+                },
+            };
+        }
+
+        const response = await fetch(url, fetchOptions);
+
+        if (response.status === 401) {
+            const error: StatusError = new Error("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+            error.status = 401;
+            throw error;
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        let prsArray: PRCard[] = Array.isArray(data) ? data : data.data || [];
+
+        const extractPRNumber = (pr_no: string) => {
+            const match = pr_no.match(/^PR(\d{2})([A-Z])(\d{3})$/i);
+            if (match) {
+                const year = parseInt(match[1]);
+                const alpha = pr_no[3]?.toUpperCase?.() ?? match[2].toUpperCase();
+                const alphaNum = alpha.charCodeAt(0) - 65;
+                const num = parseInt(match[3]);
+                return year * 10000 + alphaNum * 1000 + num;
+            }
+            return 0;
+        };
+
+        prsArray.sort((a: PRCard, b: PRCard) => {
+            const va = extractPRNumber(a.pr_no);
+            const vb = extractPRNumber(b.pr_no);
+            return vb - va;
+        });
+
+        const startStr = (start as string) || "";
+        const endStr = (end as string) || "";
+        if (startStr && endStr) {
+            const startDate = new Date(startStr);
+            const endDate = new Date(endStr);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+
+            prsArray = prsArray.filter((pr: PRCard) => {
+                if (!pr.pr_date) return false;
+                const prDate = new Date(pr.pr_date);
+                return prDate >= startDate && prDate <= endDate;
+            });
+        }
+
+        return prsArray;
+    };
+
+    const {
+        data: swrPrCards,
+        error: swrError,
+        isLoading: swrLoading,
+    } = useSWR(getPrKey, fetchPrCards, {
+        revalidateOnFocus: true,
+        keepPreviousData: true,
+    });
+
+    // sync SWR data -> local state ที่ใช้ต่อกับ logic เดิม
+    useEffect(() => {
+        if (swrPrCards) {
+            setPrCards(swrPrCards);
+        }
+    }, [swrPrCards]);
+
+    // จัดการ error / redirect เมื่อ token หมดอายุ
+    useEffect(() => {
+        if (!swrError) return;
+
+        console.error("Failed to fetch PR cards (SWR):", swrError);
+        const statusError = swrError as StatusError;
+
+        if (statusError.status === 401) {
+            setError("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+            document.cookie =
+                "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            router.push(process.env.NEXT_PUBLIC_LOGOUT_REDIRECT || "/login");
+        } else if (swrError instanceof Error) {
+            setError(swrError.message || "ไม่สามารถโหลดข้อมูล PR ได้");
+        } else {
+            setError("ไม่สามารถโหลดข้อมูล PR ได้");
+        }
+    }, [swrError, router]);
+
+    // ผูกสถานะ loading ของหน้าเข้ากับ SWR (เฉพาะ PR list)
+    useEffect(() => {
+        if (swrLoading && !swrPrCards) {
+            setLoading(true);
+        } else if (!swrLoading) {
+            setLoading(false);
+        }
+    }, [swrLoading, swrPrCards]);
 
     {/* departments */ }
     useEffect(() => {

@@ -126,12 +126,12 @@ export default function Header() {
 
   const handleRelatedToPage = (relatedLink: string) => {
     if (!relatedLink) return;
-    const compareBase = process.env.NEXT_PUBLIC_PURCHASE_PR_COMPARE_REDIRECT || '/services/purchase/comparePrice';
+    const compareBase = 'http://192.168.0.145:3000/services/purchase/comparePrice';
     if (!/^D|^I/.test(relatedLink)) {
       router.push(`${compareBase}?id=${relatedLink}`);
     }
     else {
-      router.push(`/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
+      router.push(`http://192.168.0.145:3000/services/purchase/PO/ReviewedPO?poNo=${relatedLink}`);
     }
   }
 

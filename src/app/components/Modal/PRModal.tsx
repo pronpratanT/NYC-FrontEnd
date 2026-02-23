@@ -237,7 +237,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
     ? (typeof permission.service === "string" ? parseInt(permission.service, 10) : permission.service)
     : undefined;
   const departmentId = user?.Department?.ID;
-  console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
+  // console.log("User Role ID:", roleID, "Service ID:", serviceID, "Department ID:", departmentId);
 
   // State สำหรับรายการที่เลือกใน Approved Dropdown
   const [selectedApprovedItems, setSelectedApprovedItems] = useState<{ pr_list_id: number; part_no: string; part_name: string; prod_code: string }[]>([]);
@@ -265,6 +265,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
   }>>([]);
   // console.log("multipleOrderDetails:", multipleOrderDetails);
   const [purchaseType, setPurchaseType] = useState<'D' | 'I' | undefined>(undefined);
+  const [tax, setTax] = useState<1 | 0>(0);
   const [remark, setRemark] = useState<string>("");
   const [lastDiscount, setLastDiscount] = useState<number | null>(null);
   const [compareData, setCompareData] = useState<PartNo | null>(null);
@@ -1018,6 +1019,7 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       material_type: purchaseType,
       remark: remark,
       ext_discount: lastDiscount,
+      tax : tax,
       po_list: [
         {
           pcl_id: compareData?.pcl_id,
@@ -1037,8 +1039,9 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
       ]
     };
     try {
+      // ตรวจสอบว่ามี po_no หรือไม่ ถ้ามีให้ใช้ endpoint สำหรับ repeat-or-new และ body แบบ editPO
       let url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/create`;
-      let body = poCreate;
+      let body: typeof poCreate | typeof editPO = poCreate;
       if (po_no) {
         url = `${process.env.NEXT_PUBLIC_ROOT_PATH_PURCHASE_SERVICE}/api/purchase/po/repeat-or-new`;
         body = editPO;
@@ -2819,128 +2822,131 @@ const PRModal: React.FC<PRModalProps> = ({ partNo, prNumber, department, prDate,
                                       <h4 className={`text-lg font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>ประเภทการซื้อ</h4>
                                     </div>
                                     {!prWithPO.po_no && (
-                                      <div className="grid grid-cols-2 gap-3">
-                                        <div
-                                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'D'
-                                            ? isDarkMode
-                                              ? 'bg-blue-900/60 border-blue-500'
-                                              : 'bg-blue-100 border-blue-500'
-                                            : isDarkMode
-                                              ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
-                                              : 'bg-slate-50 border-slate-200 hover:border-blue-400'
-                                            }`}
-                                          onClick={() => setPurchaseType('D')}
-                                        >
-                                          <div className="flex items-center space-x-2">
-                                            <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'D'
+                                      <>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'D'
                                               ? isDarkMode
-                                                ? 'border-blue-300 bg-blue-500'
-                                                : 'border-blue-500 bg-blue-500'
+                                                ? 'bg-blue-900/60 border-blue-500'
+                                                : 'bg-blue-100 border-blue-500'
                                               : isDarkMode
-                                                ? 'border-slate-500'
-                                                : 'border-slate-400'
-                                              }`}></div>
-                                            <div>
-                                              <div className={`font-bold text-sm ${purchaseType === 'D'
-                                                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                                : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                                }`}>DIRECT</div>
-                                              <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่เกี่ยวข้องกับการผลิต</div>
+                                                ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                                : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                              }`}
+                                            onClick={() => setPurchaseType('D')}
+                                          >
+                                            <div className="flex items-center space-x-2">
+                                              <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'D'
+                                                ? isDarkMode
+                                                  ? 'border-blue-300 bg-blue-500'
+                                                  : 'border-blue-500 bg-blue-500'
+                                                : isDarkMode
+                                                  ? 'border-slate-500'
+                                                  : 'border-slate-400'
+                                                }`}></div>
+                                              <div>
+                                                <div className={`font-bold text-sm ${purchaseType === 'D'
+                                                  ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                                  : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                                  }`}>DIRECT</div>
+                                                <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่เกี่ยวข้องกับการผลิต</div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'I'
+                                              ? isDarkMode
+                                                ? 'bg-blue-900/60 border-blue-500'
+                                                : 'bg-blue-100 border-blue-500'
+                                              : isDarkMode
+                                                ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                                : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                              }`}
+                                            onClick={() => setPurchaseType('I')}
+                                          >
+                                            <div className="flex items-center space-x-2">
+                                              <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'I'
+                                                ? isDarkMode
+                                                  ? 'border-blue-300 bg-blue-500'
+                                                  : 'border-blue-500 bg-blue-500'
+                                                : isDarkMode
+                                                  ? 'border-slate-500'
+                                                  : 'border-slate-400'
+                                                }`}></div>
+                                              <div>
+                                                <div className={`font-bold text-sm ${purchaseType === 'I'
+                                                  ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                                  : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                                  }`}>INDIRECT</div>
+                                                <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต</div>
+                                              </div>
                                             </div>
                                           </div>
                                         </div>
-                                        <div
-                                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'I'
-                                            ? isDarkMode
-                                              ? 'bg-blue-900/60 border-blue-500'
-                                              : 'bg-blue-100 border-blue-500'
-                                            : isDarkMode
-                                              ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
-                                              : 'bg-slate-50 border-slate-200 hover:border-blue-400'
-                                            }`}
-                                          onClick={() => setPurchaseType('I')}
-                                        >
-                                          <div className="flex items-center space-x-2">
-                                            <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'I'
+
+                                        <label htmlFor="Vat" className={`block mb-2 text-sm font-medium mt-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>Vat</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${tax === 1
                                               ? isDarkMode
-                                                ? 'border-blue-300 bg-blue-500'
-                                                : 'border-blue-500 bg-blue-500'
+                                                ? 'bg-blue-900/60 border-blue-500'
+                                                : 'bg-blue-100 border-blue-500'
                                               : isDarkMode
-                                                ? 'border-slate-500'
-                                                : 'border-slate-400'
-                                              }`}></div>
-                                            <div>
-                                              <div className={`font-bold text-sm ${purchaseType === 'I'
-                                                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                                : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                                }`}>INDIRECT</div>
-                                              <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>วัตถุดิบที่ไม่เกี่ยวข้องกับการผลิต</div>
+                                                ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                                : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                              }`}
+                                            onClick={() => setTax(1)}
+                                          >
+                                            <div className="flex items-center space-x-2">
+                                              <div className={`w-3 h-3 rounded-full border-2 ${tax === 1
+                                                ? isDarkMode
+                                                  ? 'border-blue-300 bg-blue-500'
+                                                  : 'border-blue-500 bg-blue-500'
+                                                : isDarkMode
+                                                  ? 'border-slate-500'
+                                                  : 'border-slate-400'
+                                                }`}></div>
+                                              <div>
+                                                <div className={`font-bold text-sm ${tax === 1
+                                                  ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                                  : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                                  }`}>Vat 7%</div>
+                                                <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>มีภาษี</div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${tax === 0
+                                              ? isDarkMode
+                                                ? 'bg-blue-900/60 border-blue-500'
+                                                : 'bg-blue-100 border-blue-500'
+                                              : isDarkMode
+                                                ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
+                                                : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                              }`}
+                                            onClick={() => setTax(0)}
+                                          >
+                                            <div className="flex items-center space-x-2">
+                                              <div className={`w-3 h-3 rounded-full border-2 ${tax === 0
+                                                ? isDarkMode
+                                                  ? 'border-blue-300 bg-blue-500'
+                                                  : 'border-blue-500 bg-blue-500'
+                                                : isDarkMode
+                                                  ? 'border-slate-500'
+                                                  : 'border-slate-400'
+                                                }`}></div>
+                                              <div>
+                                                <div className={`font-bold text-sm ${tax === 0
+                                                  ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                                                  : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                                                  }`}>No Vat</div>
+                                                <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ไม่มีภาษี</div>
+                                              </div>
                                             </div>
                                           </div>
                                         </div>
-                                      </div>
+                                      </>
                                     )}
-                                    <label htmlFor="Vat" className={`block mb-2 text-sm font-medium mt-4 ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>Vat</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div
-                                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'D'
-                                            ? isDarkMode
-                                              ? 'bg-blue-900/60 border-blue-500'
-                                              : 'bg-blue-100 border-blue-500'
-                                            : isDarkMode
-                                              ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
-                                              : 'bg-slate-50 border-slate-200 hover:border-blue-400'
-                                            }`}
-                                          onClick={() => setPurchaseType('D')}
-                                        >
-                                          <div className="flex items-center space-x-2">
-                                            <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'D'
-                                              ? isDarkMode
-                                                ? 'border-blue-300 bg-blue-500'
-                                                : 'border-blue-500 bg-blue-500'
-                                              : isDarkMode
-                                                ? 'border-slate-500'
-                                                : 'border-slate-400'
-                                              }`}></div>
-                                            <div>
-                                              <div className={`font-bold text-sm ${purchaseType === 'D'
-                                                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                                : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                                }`}>Vat 7%</div>
-                                              <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>มีภาษี</div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <div
-                                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${purchaseType === 'I'
-                                            ? isDarkMode
-                                              ? 'bg-blue-900/60 border-blue-500'
-                                              : 'bg-blue-100 border-blue-500'
-                                            : isDarkMode
-                                              ? 'bg-slate-800/50 border-slate-600 hover:border-blue-500'
-                                              : 'bg-slate-50 border-slate-200 hover:border-blue-400'
-                                            }`}
-                                          onClick={() => setPurchaseType('I')}
-                                        >
-                                          <div className="flex items-center space-x-2">
-                                            <div className={`w-3 h-3 rounded-full border-2 ${purchaseType === 'I'
-                                              ? isDarkMode
-                                                ? 'border-blue-300 bg-blue-500'
-                                                : 'border-blue-500 bg-blue-500'
-                                              : isDarkMode
-                                                ? 'border-slate-500'
-                                                : 'border-slate-400'
-                                              }`}></div>
-                                            <div>
-                                              <div className={`font-bold text-sm ${purchaseType === 'I'
-                                                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                                : isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                                                }`}>No Vat</div>
-                                              <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>ไม่มีภาษี</div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
                                     {/* Remark input field */}
                                     <div className="mt-6">
                                       <label htmlFor="remark" className={`block mb-2 text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Remark</label>
